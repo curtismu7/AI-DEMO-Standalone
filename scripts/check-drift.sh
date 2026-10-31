@@ -4,6 +4,7 @@
 # For each app dir it checks:
 #   1. the vendored shared stylesheet is byte-identical to shared/standalone-ui.css in this repo
 #   2. the vendored PingFederate installer (if present) is byte-identical to scripts/pingfederate-setup.sh
+#   2b. the vendored shelf-register helper (if present) is byte-identical to scripts/shelf-register.mjs
 #   3. the README meets the README standard checklist (title, tier, repo URL, port section, run-from-clone, no internal names)
 #   4. scripts/check-css.sh reports no FAIL
 #   5. package.json requires Node 26 and CI uses Node 26 only
@@ -12,6 +13,7 @@ set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
 canon_css="$root/shared/standalone-ui.css"
 canon_pf="$root/scripts/pingfederate-setup.sh"
+canon_shelf="$root/scripts/shelf-register.mjs"
 status=0
 
 for app in "$@"; do
@@ -33,6 +35,13 @@ for app in "$@"; do
   # 2. vendored PingFederate installer
   if [ -f "$app/scripts/pingfederate-setup.sh" ]; then
     if cmp -s "$app/scripts/pingfederate-setup.sh" "$canon_pf"; then say ok "pingfederate-setup.sh identical"; else say FAIL "pingfederate-setup.sh differs from canonical"; fi
+  fi
+
+  # 2b. vendored shelf-register helper
+  if [ -f "$app/scripts/shelf-register.mjs" ]; then
+    if cmp -s "$app/scripts/shelf-register.mjs" "$canon_shelf"; then say ok "shelf-register.mjs identical"; else say FAIL "shelf-register.mjs differs from canonical"; fi
+  else
+    say note "no shelf-register.mjs (the app will not add itself to the shelf)"
   fi
 
   # 3. README checklist
