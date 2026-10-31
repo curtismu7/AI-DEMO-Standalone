@@ -6,7 +6,7 @@
 # Admin credentials are written only to ~/.config/demo-kit/provisioning.json (mode 600), never to the shared .env.
 # Environment overrides: PF_ADMIN_PORT (4731), PF_ENGINE_PORT (4732), PF_CONTAINER (pingfederate-lab),
 #   PF_IMAGE (pingidentity/pingfederate:latest), PF_LICENSE_FILE (~/Documents/pingfederate.lic),
-#   PF_ACCEPT_EULA=YES to skip the EULA prompt.
+#   PF_SERVER_PROFILE_URL and PF_SERVER_PROFILE_PATH (Ping getting-started profile), PF_ACCEPT_EULA=YES to skip the prompt.
 set -u
 
 ADMIN_PORT="${PF_ADMIN_PORT:-4731}"
@@ -14,6 +14,10 @@ ENGINE_PORT="${PF_ENGINE_PORT:-4732}"
 NAME="${PF_CONTAINER:-pingfederate-lab}"
 IMAGE="${PF_IMAGE:-pingidentity/pingfederate:latest}"
 LICENSE="${PF_LICENSE_FILE:-$HOME/Documents/pingfederate.lic}"
+# Ping's public "getting-started" server profile creates the first administrator from PING_IDENTITY_PASSWORD.
+# Without a profile a fresh PingFederate shows a setup wizard and has no admin account yet.
+PROFILE_URL="${PF_SERVER_PROFILE_URL:-https://github.com/pingidentity/pingidentity-server-profiles.git}"
+PROFILE_PATH="${PF_SERVER_PROFILE_PATH:-getting-started/pingfederate}"
 DEFAULT_USER="administrator"
 DEFAULT_PASSWORD="2FederateM0re"   # the official image's documented default; change it for anything beyond local use
 PROVISIONING="$HOME/.config/demo-kit/provisioning.json"
@@ -36,6 +40,16 @@ login_result() {
   local status="${out##*$'\n'}" body="${out%$'\n'*}" id="-"
   case "$body" in *license_agreement_not_accepted*) id="license_agreement_not_accepted";; esac
   echo "$status $id"
+}
+
+# Accepts PingFederate's in-product license agreement through its admin API. Only called after the user has said YES
+# (the prompt or PF_ACCEPT_EULA=YES), which covers both the image terms and this agreement.
+accept_agreement() {
+  local url
+  url="$(printf 'user = "%s:%s"\n' "$DEFAULT_USER" "$DEFAULT_PASSWORD" | curl -sk -K - -H 'X-XSRF-Header: PingFederate' --max-time 10 "$BASE/license/agreement" 2>/dev/null | sed -n 's/.*"licenseAgreementUrl":"\([^"]*\)".*/\1/p')"
+  [ -n "$url" ] || return 1
+  printf 'user = "%s:%s"\n' "$DEFAULT_USER" "$DEFAULT_PASSWORD" | curl -sk -K - -X PUT -H 'X-XSRF-Header: PingFederate' -H 'Content-Type: application/json' \
+    -d "{\"licenseAgreementUrl\":\"$url\",\"accepted\":true}" --max-time 10 "$BASE/license/agreement" 2>/dev/null | grep -q '"accepted":true'
 }
 
 agreement_help() {
@@ -70,7 +84,15 @@ if [ -n "$code" ] && [ "$code" != "000" ]; then
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$NAME"; then
     read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
     if [ "$status" = "200" ]; then save_creds "$DEFAULT_USER" "$DEFAULT_PASSWORD"; echo "Existing PingFederate verified (default login)."; exit 0; fi
-    if [ "$rid" = "license_agreement_not_accepted" ]; then agreement_help; exit 2; fi
+    if [ "$rid" = "license_agreement_not_accepted" ]; then
+      if [ "${PF_ACCEPT_EULA:-}" = "YES" ] && accept_agreement; then
+        echo "PingFederate's in-product license agreement accepted."
+        read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
+        if [ "$status" = "200" ]; then save_creds "$DEFAULT_USER" "$DEFAULT_PASSWORD"; echo "Existing PingFederate verified (default login)."; exit 0; fi
+        fail "the default login was refused (HTTP $status). Do not retry in a loop: repeated failures lock the account."
+      fi
+      agreement_help; exit 2
+    fi
   fi
   read -r -p "Admin username: " user
   read -r -s -p "Admin password: " pass; echo
@@ -94,7 +116,8 @@ done
 
 if [ "${PF_ACCEPT_EULA:-}" != "YES" ]; then
   echo "PingFederate is licensed by Ping. Read the terms: https://www.pingidentity.com/en/legal.html"
-  read -r -p "Accept the PingFederate terms and install? Type YES to continue: " answer
+  echo "Typing YES accepts the terms for the PingFederate image and PingFederate's in-product license agreement."
+  read -r -p "Accept and install? Type YES to continue: " answer
   [ "$answer" = "YES" ] || fail "not accepted. Nothing was installed."
 fi
 
@@ -104,6 +127,8 @@ docker run -d --name "$NAME" --restart unless-stopped \
   -e PING_IDENTITY_ACCEPT_EULA=YES \
   -e ROOT_USER="$DEFAULT_USER" \
   -e PING_IDENTITY_PASSWORD="$DEFAULT_PASSWORD" \
+  -e SERVER_PROFILE_URL="$PROFILE_URL" \
+  -e SERVER_PROFILE_PATH="$PROFILE_PATH" \
   -v "$LICENSE:/opt/out/instance/server/default/conf/pingfederate.lic:ro" \
   "$IMAGE" >/dev/null || fail "docker could not start $NAME"
 echo "Started $NAME. Waiting for the admin API (this can take a few minutes)..."
@@ -113,13 +138,21 @@ for _ in $(seq 1 90); do
   if [ -n "$code" ] && [ "$code" != "000" ]; then break; fi
   sleep 2
 done
-read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
-if [ "$rid" = "license_agreement_not_accepted" ]; then
-  echo "PingFederate is running at https://127.0.0.1:$ADMIN_PORT, but its license agreement is not accepted yet." >&2
-  agreement_help
-  exit 2
-fi
-[ "$status" = "200" ] || fail "the new install did not accept the default login (HTTP $status). Check: docker logs $NAME"
+# The server profile is imported shortly after start, and the import can reset the agreement. Accept it, then retry
+# ONLY while PingFederate answers "agreement not accepted" (that does not count as a failed password). Any other
+# refusal stops at once: repeated failed logins lock the administrator account.
+status=""; rid=""
+for _ in $(seq 1 30); do
+  read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
+  if [ "$status" = "200" ]; then break; fi
+  if [ "$rid" = "license_agreement_not_accepted" ]; then
+    accept_agreement && echo "PingFederate's in-product license agreement accepted."
+    sleep 6
+    continue
+  fi
+  break
+done
+[ "$status" = "200" ] || fail "the default login was refused (HTTP $status, $rid). Do not retry in a loop: repeated failures lock the account. Check: docker logs $NAME"
 save_creds "$DEFAULT_USER" "$DEFAULT_PASSWORD"
 echo "PingFederate is up."
 echo "  Admin console and API: https://127.0.0.1:$ADMIN_PORT"

@@ -39,7 +39,9 @@ You need Docker (OrbStack or Docker Desktop) and a license file named `pingfeder
 
 These are the official image's defaults. They're published here, so they only suit a local install bound to 127.0.0.1. Change the password for anything else.
 
-**One-time step:** the first time you sign in to the admin console, PingFederate shows its own license agreement. Open https://127.0.0.1:4731, sign in, read and accept it, then run the setup script again so it can verify the login and save it. The script does not accept legal terms for you.
+**Agreements:** typing `YES` at the prompt (or setting `PF_ACCEPT_EULA=YES`) accepts Ping's terms for the image and PingFederate's in-product license agreement. The script accepts the in-product agreement through the admin API; it never accepts anything before you say YES.
+
+**First admin account:** a fresh PingFederate has no admin account until a server profile creates one. The script applies Ping's public `getting-started` profile (override with `PF_SERVER_PROFILE_URL` and `PF_SERVER_PROFILE_PATH`), which creates `administrator` with the password above. The container needs internet access to GitHub for this.
 
 **Ports:** admin console and API at https://127.0.0.1:4731, runtime at https://127.0.0.1:4732. Override with `PF_ADMIN_PORT` and `PF_ENGINE_PORT`. If a port is taken, see "Ports, and what to do if a port is taken" above.
 
