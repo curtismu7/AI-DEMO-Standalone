@@ -16,6 +16,7 @@ status=0
 
 for app in "$@"; do
   [ -d "$app" ] || { echo "skip (missing): $app"; continue; }
+  app="$(cd "$app" && pwd)"
   name="$(basename "$app")"
   fails=0
   say() { printf '  %-5s %s\n' "$1" "$2"; if [ "$1" = "FAIL" ]; then fails=$((fails+1)); fi; return 0; }
