@@ -13,6 +13,13 @@ css_files() {
     -not -name 'standalone-ui.css' 2>/dev/null
 }
 
+# Script files that can carry colours (reported only: some, like brand-contrast maths, are legitimate).
+js_files() {
+  find "$1" \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' \) \
+    -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/.git/*' -not -path '*/__tests__/*' \
+    -not -name '*.test.*' -not -name 'vitest.config.*' 2>/dev/null
+}
+
 check() {  # $1 label, $2 regex, $3 "fail" or "report"
   local label="$1" pattern="$2" mode="$3" hits
   hits="$(for f in "${files[@]}"; do grep -n -E "$pattern" "$f" 2>/dev/null | sed "s|^|$f:|"; done)"
@@ -37,5 +44,7 @@ for app in "${apps[@]}"; do
   check "no italics" 'font-style:[[:space:]]*italic' fail
   check "id selectors (gap, reported only)" '(^|[ ,>+~])#[A-Za-z][A-Za-z0-9_-]*' report
   check "camelCase class names (gap, reported only)" '\.[a-z]+[A-Z][A-Za-z0-9]*[ ,{:.>]' report
+  jsf=("${files[@]}"); files=(); while IFS= read -r f; do files+=("$f"); done < <(js_files "$app")
+  check "colour literals in JS/JSX/TSX (reported only; use var(--token) or a CSS class)" "['\"]#[0-9a-fA-F]{3,8}['\"]" report
 done
 exit $fail
