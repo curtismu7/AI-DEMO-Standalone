@@ -78,8 +78,7 @@ docker run -d --name "$NAME" --restart unless-stopped \
   -e PING_IDENTITY_ACCEPT_EULA=YES \
   -e ROOT_USER="$DEFAULT_USER" \
   -e PING_IDENTITY_PASSWORD="$DEFAULT_PASSWORD" \
-  -e LICENSE_DIR=/opt/in \
-  -v "$LICENSE:/opt/in/pingfederate.lic:ro" \
+  -v "$LICENSE:/opt/out/instance/server/default/conf/pingfederate.lic:ro" \
   "$IMAGE" >/dev/null || fail "docker could not start $NAME"
 echo "Started $NAME. Waiting for the admin API (this can take a few minutes)..."
 
