@@ -9,6 +9,6 @@ git submodule update --init --recursive
 
 | App | Tier | Repo |
 | --- | --- | --- |
-| ai-gateway-client | Tester | standalone/ai-gateway-client |
-| privilege-a2a-anthropic-demo | Demo | standalone/privilege-a2a-anthropic-demo |
-| mcp-demo-client-privilege | Demo | standalone/mcp-demo-client-privilege |
+| ai-gateway-client-LAB | Tester | standalone/ai-gateway-client-LAB |
+| privilege-a2a-anthropic-demo-LAB | Demo | standalone/privilege-a2a-anthropic-demo-LAB |
+| mcp-demo-client-privilege-LAB | Demo | standalone/mcp-demo-client-privilege-LAB |
