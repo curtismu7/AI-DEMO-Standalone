@@ -29,6 +29,27 @@ login_status() {
   printf 'user = "%s:%s"\n' "$1" "$2" | curl -sk -K - -o /dev/null -w '%{http_code}' --max-time 10 "$BASE/version" 2>/dev/null || true
 }
 
+# Prints "<http status> <resultId or ->" for a login attempt. The body is parsed, never printed in full.
+login_result() {
+  local out
+  out="$(printf 'user = "%s:%s"\n' "$1" "$2" | curl -sk -K - -H 'X-XSRF-Header: PingFederate' -w '\n%{http_code}' --max-time 10 "$BASE/version" 2>/dev/null)" || true
+  local status="${out##*$'\n'}" body="${out%$'\n'*}" id="-"
+  case "$body" in *license_agreement_not_accepted*) id="license_agreement_not_accepted";; esac
+  echo "$status $id"
+}
+
+agreement_help() {
+  cat >&2 <<EOF
+
+PingFederate needs its own license agreement accepted once, in the admin console. This is a legal step,
+so this script does not do it for you:
+  1. Open https://127.0.0.1:$ADMIN_PORT in a browser (accept the local certificate warning).
+  2. Sign in as $DEFAULT_USER with the default password from the README.
+  3. Read and accept the PingFederate license agreement.
+  4. Run this script again. It will verify the login and save it.
+EOF
+}
+
 save_creds() {
   mkdir -p "$(dirname "$PROVISIONING")"
   PF_URL="https://127.0.0.1:$ADMIN_PORT" PF_USER="$1" PF_PASS="$2" PROV="$PROVISIONING" node -e '
@@ -46,6 +67,11 @@ save_creds() {
 code="$(probe)"
 if [ -n "$code" ] && [ "$code" != "000" ]; then
   echo "PingFederate answers on https://127.0.0.1:$ADMIN_PORT (HTTP $code). Using the existing install."
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$NAME"; then
+    read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
+    if [ "$status" = "200" ]; then save_creds "$DEFAULT_USER" "$DEFAULT_PASSWORD"; echo "Existing PingFederate verified (default login)."; exit 0; fi
+    if [ "$rid" = "license_agreement_not_accepted" ]; then agreement_help; exit 2; fi
+  fi
   read -r -p "Admin username: " user
   read -r -s -p "Admin password: " pass; echo
   status="$(login_status "$user" "$pass")"
@@ -87,7 +113,12 @@ for _ in $(seq 1 90); do
   if [ -n "$code" ] && [ "$code" != "000" ]; then break; fi
   sleep 2
 done
-status="$(login_status "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
+read -r status rid <<<"$(login_result "$DEFAULT_USER" "$DEFAULT_PASSWORD")"
+if [ "$rid" = "license_agreement_not_accepted" ]; then
+  echo "PingFederate is running at https://127.0.0.1:$ADMIN_PORT, but its license agreement is not accepted yet." >&2
+  agreement_help
+  exit 2
+fi
 [ "$status" = "200" ] || fail "the new install did not accept the default login (HTTP $status). Check: docker logs $NAME"
 save_creds "$DEFAULT_USER" "$DEFAULT_PASSWORD"
 echo "PingFederate is up."
