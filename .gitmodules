@@ -10,3 +10,12 @@
 [submodule "standalone/id-jag-standalone-LAB"]
 	path = standalone/id-jag-standalone-LAB
 	url = https://github.com/ping-sandbox/id-jag-standalone-LAB.git
+[submodule "standalone/privilege-demo-LAB"]
+	path = standalone/privilege-demo-LAB
+	url = https://github.com/ping-sandbox/privilege-demo-LAB.git
+[submodule "standalone/privilege-map-LAB"]
+	path = standalone/privilege-map-LAB
+	url = https://github.com/ping-sandbox/privilege-map-LAB.git
+[submodule "standalone/agent-mcp-door-demo-LAB"]
+	path = standalone/agent-mcp-door-demo-LAB
+	url = https://github.com/ping-sandbox/agent-mcp-door-demo-LAB.git
