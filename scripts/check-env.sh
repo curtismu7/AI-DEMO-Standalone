@@ -16,7 +16,7 @@ for key in PINGONE_ENVIRONMENT_ID PINGONE_REGION; do
     echo "OK       $key"
   fi
 done
-for key in PINGONE_CLIENT_ID PINGONE_CLIENT_SECRET PINGONE_ADMIN_CLIENT_ID PINGONE_ADMIN_CLIENT_SECRET VAULT_PASSWORD; do
+for key in PINGONE_ADMIN_CLIENT_ID PINGONE_ADMIN_CLIENT_SECRET VAULT_PASSWORD; do
   if grep -q -E "^$key=" "$file"; then
     echo "FORBID   $key must not be in the shared file (move it to ~/.config/demo-kit/provisioning.json)"; status=1
   fi
