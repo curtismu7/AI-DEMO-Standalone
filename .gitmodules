@@ -25,3 +25,6 @@
 [submodule "standalone/customer-agent-LAB"]
 	path = standalone/customer-agent-LAB
 	url = https://github.com/ping-sandbox/customer-agent-LAB.git
+[submodule "standalone/mcp-resource-server-LAB"]
+	path = standalone/mcp-resource-server-LAB
+	url = https://github.com/ping-sandbox/mcp-resource-server-LAB.git
