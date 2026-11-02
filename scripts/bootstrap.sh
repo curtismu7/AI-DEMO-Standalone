@@ -27,6 +27,16 @@ fi
 echo "== Submodules"
 git -C "$root" submodule update --init --recursive
 
+echo "== Shelf"
+# The shelf sits beside the apps so each app finds it and adds itself on npm start.
+if [ -d "$root/standalone/demo-shelf-LAB" ]; then
+  echo "demo-shelf-LAB already present"
+else
+  git clone --quiet https://github.com/ping-sandbox/demo-shelf-LAB.git "$root/standalone/demo-shelf-LAB" \
+    && (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund && npm run build) \
+    || echo "Could not set up the shelf. Clone ping-sandbox/demo-shelf-LAB into standalone/ by hand."
+fi
+
 if [ "$skip_install" = 0 ]; then
   echo "== Install"
   (cd "$root/standalone/ai-gateway-client-LAB" && npm install --prefix server --no-audit --no-fund && npm install --prefix web --no-audit --no-fund)
