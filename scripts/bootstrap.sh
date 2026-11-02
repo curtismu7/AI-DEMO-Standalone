@@ -10,6 +10,20 @@ major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major)"; exit 1; fi
 echo "Node $(node -v) OK"
 
+echo "== Authorize policy snapshot (live mode only)"
+# The AI Demo P1AZ policy is imported by hand in the PingOne console (there is no import API). This only checks
+# whether the tenant already has it, and says what to do if not. Mock mode (the default in every app) needs no snapshot
+# and no tenant. It never blocks the setup. The file is policy/README.md's placeholder-host copy, safe to share.
+snapshot="${P1AZ_SNAPSHOT_FILE:-$root/policy/ai-demo-p1az.standalone.snapshot.json}"
+rc=0
+node "$root/scripts/check-authorize-policy.mjs" || rc=$?
+if [ "$rc" = 1 ]; then
+  echo "Import it once: PingOne console -> Authorize -> Trust Framework -> Import -> $snapshot"
+  [ -f "$snapshot" ] || echo "(that file is not here; set P1AZ_SNAPSHOT_FILE to a snapshot file)"
+  echo "Skip all of this by staying in mock mode: no tenant, no snapshot."
+  echo "Then re-run scripts/bootstrap.sh --skip-install to confirm."
+fi
+
 echo "== Submodules"
 git -C "$root" submodule update --init --recursive
 
