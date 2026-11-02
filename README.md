@@ -32,6 +32,16 @@ Each app sets its own ports. Ranges and variables are in each app's README:
 
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
+## Is every app on the standard? (fleet check)
+
+```
+node scripts/fleet-check.mjs            # one table for every app on the demo shelf
+node scripts/fleet-check.mjs --only token-workbench,session-lab
+node scripts/fleet-check.mjs --json     # same data for other tools; --strict exits 1 if any app has a problem
+```
+
+It reads the app list from the shelf registry on GitHub and shallow-clones each app, so it never relies on a local checkout (a local checkout can sit on an old branch). Per app it reports the vendored `standalone-ui.css` (canonical, stale or none, against GitHub's copy), the `check-css.sh` failures, whether `scripts/check-ui-standard.sh` exists and its pin matches, the rule 19 Mock/Real toggle, and the latest CI result on main. The toggle column is a static look at the source (a POST `/mode` route and a toggle in the UI); it does not start the app, so prove a switch in a browser. Needs `gh` signed in with access to the `ping-sandbox` repos.
+
 ## PingFederate (for apps that need it)
 
 Some apps (for example id-jag-standalone) need a PingFederate. The setup script checks for one first. If one answers, it asks for its admin login. If none is running, it installs the official image in Docker and binds it to 127.0.0.1 only.
