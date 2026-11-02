@@ -19,3 +19,9 @@
 [submodule "standalone/agent-mcp-door-demo-LAB"]
 	path = standalone/agent-mcp-door-demo-LAB
 	url = https://github.com/ping-sandbox/agent-mcp-door-demo-LAB.git
+[submodule "standalone/pingfederate-LAB"]
+	path = standalone/pingfederate-LAB
+	url = https://github.com/ping-sandbox/pingfederate-LAB.git
+[submodule "standalone/customer-agent-LAB"]
+	path = standalone/customer-agent-LAB
+	url = https://github.com/ping-sandbox/customer-agent-LAB.git

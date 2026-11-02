@@ -16,6 +16,8 @@ git submodule update --init --recursive
 | privilege-demo-LAB | Demo | standalone/privilege-demo-LAB |
 | privilege-map-LAB | Demo | standalone/privilege-map-LAB |
 | agent-mcp-door-demo-LAB | Demo | standalone/agent-mcp-door-demo-LAB |
+| pingfederate-LAB | Demo | standalone/pingfederate-LAB |
+| customer-agent-LAB | Demo | standalone/customer-agent-LAB |
 
 ## Ports, and what to do if a port is taken
 
