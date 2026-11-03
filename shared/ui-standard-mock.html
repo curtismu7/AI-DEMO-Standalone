@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standalone UI Standard — Reference Mock</title>
+<!--
+  Reference mock of the AI-DEMO2 standalone-family UI design.
+  Not brand (colors/fonts come from shared/standalone-ui.css tokens) — this shows the
+  LAYOUT and COMPONENT patterns every standalone app standardizes against:
+
+    1. App shell: Core Dark header bar, Ping Red gradient rule, pill nav, theme toggle
+    2. Simulation/status banner on every page
+    3. Card grid with accent top edge
+    4. Key-value data panel
+    5. Inspector layout: tree + form + output (tool-tier apps)
+    6. Status chips / tokens panel
+    7. Buttons, tabs (aria states), code block, diagram box
+
+  In a real app, replace the <style> tokens with:  <link rel="stylesheet" href="standalone-ui.css">
+-->
+<style>
+/* ===== tokens (identical to shared/standalone-ui.css :root) ===== */
+:root {
+  color-scheme: light;
+  --bg: #fcfcfc;
+  --surface: #ffffff;
+  --surface-2: #eff0f1;
+  --text: #051727;
+  --text-body: #263746;
+  --muted: #556070;
+  --border: #556070;
+  --accent: #d20e0f;
+  --accent-deep: #aa0005;
+  --on-accent: #ffffff;
+  --accent-soft: #fde8e8;
+  --focus: #12538d;
+  --danger-text: #aa0005;
+  --accent-gradient: linear-gradient(90deg, #d20e0f 55%, #aa0005);
+  --status-ok: #1d7a43;
+  --status-warn: #8a5a00;
+  --status-info: #12538d;
+  --shadow-ink: rgba(5, 23, 39, 0.16);
+  --box-dark: #051727;
+  --box-blue: #12538d;
+  --box-grey: #3e4f60;
+  --box-red: #aa0005;
+  --on-box: #fcfcfc;
+  --primary-edge: transparent;
+  --bg-lab: var(--bg);
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #051727;
+  --surface: #172033;
+  --surface-2: #0f2236;
+  --text: #fcfcfc;
+  --text-body: #e0e2e4;
+  --muted: #909ea4;
+  --border: #909ea4;
+  --primary-edge: #909ea4;
+  --accent-soft: #3a1213;
+  --focus: #fcfcfc;
+  --danger-text: #fca5a5;
+  --status-ok: #7fd1a0;
+  --status-warn: #f0b34c;
+  --status-info: #8fbcff;
+  --shadow-ink: rgba(0, 0, 0, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #051727;
+    --surface: #172033;
+    --surface-2: #0f2236;
+    --text: #fcfcfc;
+    --text-body: #e0e2e4;
+    --muted: #909ea4;
+    --border: #909ea4;
+    --primary-edge: #909ea4;
+    --accent-soft: #3a1213;
+    --focus: #fcfcfc;
+    --danger-text: #fca5a5;
+    --status-ok: #7fd1a0;
+    --status-warn: #f0b34c;
+    --status-info: #8fbcff;
+    --shadow-ink: rgba(0, 0, 0, 0.5);
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg-lab);
+  color: var(--text-body);
+  font-family: var(--font-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { color: var(--text); font-weight: 700; }
+code, pre, .mono { font-family: var(--font-mono); }
+[hidden] { display: none !important; }
+
+/* ===== 1. App shell ===== */
+.shell-bar {
+  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+  padding: 0.65rem 1.25rem;
+  background: var(--box-dark); color: #fff;
+  border-bottom: 3px solid transparent;
+  border-image: var(--accent-gradient) 1;
+  margin: 0 -16px;
+}
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
+.shell-logo {
+  width: 1.9rem; height: 1.9rem; border-radius: 4px;
+  background: var(--accent-gradient); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.8rem;
+}
+.shell-nav { display: flex; gap: 0.25rem; flex: 1; }
+.shell-nav a { padding: 0.3rem 0.75rem; border-radius: 999px; color: rgba(255,255,255,0.78); text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.shell-nav a:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.shell-nav a[aria-current="page"] { color: #fff; background: var(--accent-gradient); font-weight: 600; }
+.shell-right { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.shell-badge { padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--accent-gradient); color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+@media (max-width: 600px) {
+  .shell-bar { gap: 0.75rem; padding: 0.6rem 1rem; }
+  .shell-nav { order: 3; flex-basis: 100%; }
+}
+
+/* ===== 2. Simulation banner ===== */
+.banner {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+}
+.banner[data-state="live"] { border-left-color: var(--focus); }
+
+/* ===== Controls ===== */
+input, textarea, select, button {
+  max-width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 600;
+  min-height: 40px;
+}
+input::placeholder, textarea::placeholder { color: var(--muted); font-weight: 400; }
+button { cursor: pointer; }
+button:disabled { opacity: 0.75; cursor: not-allowed; }
+button.primary:disabled { opacity: 0.88; }
+button.primary { background: var(--accent-gradient); color: var(--on-accent); border-color: var(--primary-edge); }
+button[aria-selected="true"], button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ===== 3. Card grid ===== */
+.page { max-width: 1100px; margin: 0 auto; padding: 0.5rem 0 3rem; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+.card {
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface);
+  border-top: 4px solid var(--accent);
+  padding: 1rem 1.1rem;
+  min-width: 0;
+}
+.card--neutral { border-top-color: var(--border); }
+.card--ok { border-top-color: var(--status-ok); }
+.card h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+.card p { margin: 0; font-size: 0.85rem; }
+.card--neutral h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ===== 4. Key-value panel ===== */
+.kv { margin: 0.6rem 0 0; display: grid; grid-template-columns: minmax(9rem, max-content) 1fr; gap: 0.2rem 0.9rem; font-size: 0.85rem; }
+.kv dt { color: var(--muted); font-weight: 600; }
+.kv dd { margin: 0; }
+
+/* ===== 5. Inspector layout ===== */
+.inspector { display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1.2fr); gap: 0.75rem; margin: 1rem 0; }
+.tree { display: grid; gap: 0.25rem; align-content: start; padding: 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.tree button { text-align: left; border-color: transparent; font-weight: 500; }
+.tree button[aria-selected="true"] { border-color: var(--accent); }
+.panel { padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); min-width: 0; }
+@media (max-width: 900px) { .inspector { grid-template-columns: 1fr 1fr; } .tree { grid-column: 1 / -1; grid-auto-flow: column; } }
+@media (max-width: 600px) { .inspector { grid-template-columns: 1fr; } .tree { grid-auto-flow: row; } }
+
+/* ===== 6. Status chips ===== */
+.chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.75rem; font-weight: 700; }
+.chip--ok { color: var(--status-ok); border-color: var(--status-ok); }
+.chip--warn { color: var(--status-warn); border-color: var(--status-warn); }
+.chip--info { color: var(--status-info); border-color: var(--status-info); }
+.chip--danger { color: var(--danger-text); border-color: var(--danger-text); }
+.chip .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
+
+/* ===== 7. Code block, tabs, diagram box ===== */
+pre.code {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.8rem 1rem; overflow-x: auto; font-size: 0.8rem; margin: 0.6rem 0 0;
+}
+.tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.diagram { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+.dbox { padding: 0.6rem 1rem; border-radius: 8px; color: var(--on-box); font-weight: 600; font-size: 0.85rem; border: 1px solid transparent; }
+.dbox--dark { background: var(--box-dark); }
+.dbox--blue { background: var(--box-blue); }
+.dbox--grey { background: var(--box-grey); }
+.dbox--red { background: var(--box-red); }
+.darrow { color: var(--muted); font-weight: 700; }
+
+.section-label { margin: 2rem 0 0.25rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="shell-bar">
+  <span class="shell-brand"><span class="shell-logo">P</span> App Name <span class="shell-badge">Mock</span></span>
+  <nav class="shell-nav" aria-label="Site">
+    <a href="#" aria-current="page">Playground</a>
+    <a href="#">Trusted IdPs</a>
+    <a href="#">Inspector</a>
+    <a href="#">Learn</a>
+  </nav>
+  <span class="shell-right">
+    <span>user@example.com</span>
+    <button type="button">Sign out</button>
+    <button type="button" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Dark</button>
+  </span>
+</header>
+
+<main class="page">
+
+  <div class="banner" role="note">
+    <strong>MOCK MODE</strong> — tokens, decisions and user data on this page are simulated. Nothing here calls a real tenant.
+  </div>
+
+  <h1>Page title</h1>
+  <p>Body copy at 14px Montserrat. Emphasis is <strong style="font-weight:700">heavier weight</strong>, never italics.</p>
+
+  <p class="section-label">3 · Summary cards (accent top edge)</p>
+  <div class="card-grid">
+    <div class="card card--ok">
+      <h3>Exchange result</h3>
+      <p><span class="chip chip--ok"><span class="dot"></span>OK</span> ID-JAG issued and exchanged.</p>
+      <dl class="kv">
+        <dt>Grant type</dt><dd class="mono">urn:ietf:params:oauth:grant-type:id-jag</dd>
+        <dt>Expires in</dt><dd>300s</dd>
+      </dl>
+    </div>
+    <div class="card card--neutral">
+      <h3>Pending approval</h3>
+      <p><span class="chip chip--warn"><span class="dot"></span>Waiting</span> Human approval required.</p>
+      <dl class="kv">
+        <dt>Requested by</dt><dd>agent-7f3a</dd>
+        <dt>Scope</dt><dd class="mono">transfer:write</dd>
+      </dl>
+    </div>
+    <div class="card card--neutral">
+      <h3>Refused</h3>
+      <p><span class="chip chip--danger"><span class="dot"></span>Denied</span> Insufficient scope.</p>
+      <dl class="kv">
+        <dt>Policy</dt><dd>mcp-door-guard</dd>
+        <dt>Decision</dt><dd class="mono">403 insufficient_scope</dd>
+      </dl>
+    </div>
+  </div>
+
+  <p class="section-label">5 · Inspector layout (tree + form + output)</p>
+  <div class="inspector">
+    <div class="tree" role="tablist" aria-label="Tools">
+      <button aria-selected="true">Token exchange</button>
+      <button aria-selected="false">Decode token</button>
+      <button aria-selected="false">Live check</button>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Parameters</h3>
+      <div style="display:grid; gap:0.6rem">
+        <label style="display:grid; gap:0.25rem; font-weight:600; font-size:0.85rem">Subject token
+          <input placeholder="eyJhbGciOi...">
+        </label>
+        <label style="display:grid; gap:0.25rem; font-weight:600; font-size:0.85rem">Audience
+          <input placeholder="resource-server.example">
+        </label>
+        <div style="display:flex; gap:0.5rem">
+          <button type="button" class="primary">Run exchange</button>
+          <button type="button">Reset</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Output</h3>
+      <div class="tabs" role="tablist">
+        <button aria-selected="true">Pretty</button>
+        <button aria-selected="false">Wire</button>
+      </div>
+      <pre class="code">{
+  "access_token": "eyJraWQiOi...",
+  "token_type": "Bearer",
+  "expires_in": 300
+}</pre>
+    </div>
+  </div>
+
+  <p class="section-label">7 · Diagram boxes (dark in both themes)</p>
+  <div class="card card--neutral">
+    <div class="diagram">
+      <span class="dbox dbox--dark">Agent</span>
+      <span class="darrow">→</span>
+      <span class="dbox dbox--blue">MCP Gateway</span>
+      <span class="darrow">→</span>
+      <span class="dbox dbox--red">PingOne Authorize</span>
+      <span class="darrow">→</span>
+      <span class="dbox dbox--grey">Resource API</span>
+    </div>
+  </div>
+
+  <p class="section-label">6 · Status chips</p>
+  <p style="display:flex; gap:0.5rem; flex-wrap:wrap">
+    <span class="chip chip--ok"><span class="dot"></span>Issued</span>
+    <span class="chip chip--warn"><span class="dot"></span>Pending</span>
+    <span class="chip chip--info"><span class="dot"></span>Info</span>
+    <span class="chip chip--danger"><span class="dot"></span>Denied</span>
+  </p>
+
+</main>
+</body>
+</html>
