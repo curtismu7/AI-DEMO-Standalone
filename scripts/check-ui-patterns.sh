@@ -31,9 +31,11 @@ for app in "${apps[@]}"; do
   markup=$(find "$app" \( -name '*.jsx' -o -name '*.html' \) -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/__tests__/*' 2>/dev/null)
   css=$(find "$app" -name '*.css' -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/.git/*' -not -name 'standalone-ui.css' 2>/dev/null)
   # Headless apps (no UI at all) are exempt: banner, chips, cards and the vendored
-  # stylesheet do not apply. Recorded per PR #1 of the app; remove the name when it gains a UI.
+  # stylesheet do not apply. mcp-resource-server-LAB: recorded per its PR #1.
+  # deploy-test-LAB: owner-exempted 2026-11-03 — a throwaway that only exercises the
+  # shelf's one-click Deploy; not held to the full app standard. Remove when it gains a UI.
   case "$name" in
-    mcp-resource-server-LAB)
+    mcp-resource-server-LAB|deploy-test-LAB)
       if [ -z "$markup" ] && [ -z "$css" ]; then
         echo "  SKIP  headless app (no UI; banner/stylesheet patterns do not apply)"
         continue
