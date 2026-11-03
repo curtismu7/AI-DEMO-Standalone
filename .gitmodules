@@ -61,3 +61,15 @@
 [submodule "standalone/ping-gateway-route-LAB"]
 	path = standalone/ping-gateway-route-LAB
 	url = https://github.com/ping-sandbox/ping-gateway-route-LAB.git
+[submodule "standalone/hostile-mcp-LAB"]
+	path = standalone/hostile-mcp-LAB
+	url = https://github.com/ping-sandbox/hostile-mcp-LAB.git
+[submodule "standalone/hostile-a2a-LAB"]
+	path = standalone/hostile-a2a-LAB
+	url = https://github.com/ping-sandbox/hostile-a2a-LAB.git
+[submodule "standalone/cimd-LAB"]
+	path = standalone/cimd-LAB
+	url = https://github.com/ping-sandbox/cimd-LAB.git
+[submodule "standalone/deploy-test-LAB"]
+	path = standalone/deploy-test-LAB
+	url = https://github.com/ping-sandbox/deploy-test-LAB.git
