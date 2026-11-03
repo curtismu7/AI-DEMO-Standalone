@@ -56,8 +56,9 @@ for app in "${apps[@]}"; do
     report "$name" "P1 app shell" "INFO" "no shell markup found (may be a single-page tool)"
   fi
 
-  # P2 banner
-  if [ -n "$(grep_m 'class=\"banner\"|className=\"banner|\"banner ')" ] || grep -q 'banner' <<<"$(cat $css 2>/dev/null)"; then
+  # P2 banner: the shared .banner class, or an app's own ModeBanner/HostedBanner component
+  # (role="note" is the contract; the class name is per-app).
+  if [ -n "$(grep_m 'class=\"banner\"|className=\"banner|\"banner |ModeBanner|HostedBanner|role=\"note\"')" ] || grep -q 'banner' <<<"$(cat $css 2>/dev/null)"; then
     report "$name" "P2 simulation banner" "PASS"
   else
     report "$name" "P2 simulation banner" "DRIFT" "no .banner in markup"
