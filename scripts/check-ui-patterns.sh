@@ -27,6 +27,16 @@ for app in "${apps[@]}"; do
   # Search markup (jsx/html) and CSS for the pattern landmarks.
   markup=$(find "$app" \( -name '*.jsx' -o -name '*.html' \) -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/__tests__/*' 2>/dev/null)
   css=$(find "$app" -name '*.css' -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/.git/*' -not -name 'standalone-ui.css' 2>/dev/null)
+  # Headless apps (no UI at all) are exempt: banner, chips, cards and the vendored
+  # stylesheet do not apply. Recorded per PR #1 of the app; remove the name when it gains a UI.
+  case "$name" in
+    mcp-resource-server-LAB)
+      if [ -z "$markup" ] && [ -z "$css" ]; then
+        echo "  SKIP  headless app (no UI; banner/stylesheet patterns do not apply)"
+        continue
+      fi
+      ;;
+  esac
   grep_m() { grep -l -E "$1" $markup 2>/dev/null | head -1; }
   grep_c() { grep -l -E "$1" $css 2>/dev/null | head -1; }
 
