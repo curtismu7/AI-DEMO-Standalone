@@ -31,3 +31,30 @@
 [submodule "standalone/mcp-tools-LAB"]
 	path = standalone/mcp-tools-LAB
 	url = https://github.com/ping-sandbox/mcp-tools-LAB.git
+[submodule "standalone/gateway-claims-LAB"]
+	path = standalone/gateway-claims-LAB
+	url = https://github.com/ping-sandbox/gateway-claims-LAB.git
+[submodule "standalone/secrets-vault-LAB"]
+	path = standalone/secrets-vault-LAB
+	url = https://github.com/ping-sandbox/secrets-vault-LAB.git
+[submodule "standalone/mcp-surface-LAB"]
+	path = standalone/mcp-surface-LAB
+	url = https://github.com/ping-sandbox/mcp-surface-LAB.git
+[submodule "standalone/federated-identity-LAB"]
+	path = standalone/federated-identity-LAB
+	url = https://github.com/ping-sandbox/federated-identity-LAB.git
+[submodule "standalone/ai-policies-LAB"]
+	path = standalone/ai-policies-LAB
+	url = https://github.com/ping-sandbox/ai-policies-LAB.git
+[submodule "standalone/diagram-studio-LAB"]
+	path = standalone/diagram-studio-LAB
+	url = https://github.com/ping-sandbox/diagram-studio-LAB.git
+[submodule "standalone/agent-registry-demo-LAB"]
+	path = standalone/agent-registry-demo-LAB
+	url = https://github.com/ping-sandbox/agent-registry-demo-LAB.git
+[submodule "standalone/agent-kill-switch-LAB"]
+	path = standalone/agent-kill-switch-LAB
+	url = https://github.com/ping-sandbox/agent-kill-switch-LAB.git
+[submodule "standalone/intent-par-inspector-LAB"]
+	path = standalone/intent-par-inspector-LAB
+	url = https://github.com/ping-sandbox/intent-par-inspector-LAB.git

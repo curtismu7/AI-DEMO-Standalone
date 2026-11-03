@@ -18,6 +18,15 @@ git submodule update --init --recursive
 | agent-mcp-door-demo-LAB | Demo | standalone/agent-mcp-door-demo-LAB |
 | pingfederate-LAB | Demo | standalone/pingfederate-LAB |
 | customer-agent-LAB | Demo | standalone/customer-agent-LAB |
+| gateway-claims-LAB | Demo | standalone/gateway-claims-LAB |
+| secrets-vault-LAB | Demo | standalone/secrets-vault-LAB |
+| mcp-surface-LAB | Demo | standalone/mcp-surface-LAB |
+| federated-identity-LAB | Demo | standalone/federated-identity-LAB |
+| ai-policies-LAB | Demo | standalone/ai-policies-LAB |
+| diagram-studio-LAB | Tool | standalone/diagram-studio-LAB |
+| agent-registry-demo-LAB | Demo | standalone/agent-registry-demo-LAB |
+| agent-kill-switch-LAB | Demo | standalone/agent-kill-switch-LAB |
+| intent-par-inspector-LAB | Tester | standalone/intent-par-inspector-LAB |
 
 ## Ports, and what to do if a port is taken
 
