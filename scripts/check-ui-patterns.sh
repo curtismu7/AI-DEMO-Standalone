@@ -11,7 +11,10 @@ apps=()
 for a in "$@"; do
   [ "$a" = "--strict" ] && strict=1 || apps+=("$a")
 done
-[ ${#apps[@]} -eq 0 ] && apps=("$DEV/id-jag-standalone" "$CANON/standalone/ai-gateway-client-LAB" "$CANON/standalone/mcp-demo-client-privilege-LAB" "$CANON/standalone/privilege-demo-LAB" "$CANON/standalone/pingone-lab" "$CANON/standalone/mcp-tools-LAB" "$CANON/standalone/diagram-studio-LAB")
+# Default: every submodule checkout in this repo (owner 2026-11-03: apps live here, not in loose ~/Development clones).
+if [ ${#apps[@]} -eq 0 ]; then
+  for d in "$CANON"/standalone/*-LAB; do [ -d "$d" ] && apps+=("$d"); done
+fi
 fail=0
 
 report() { # $2 label, $3 status, $4 detail
