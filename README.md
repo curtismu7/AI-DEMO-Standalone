@@ -32,6 +32,7 @@ git submodule update --init --recursive
 | jev-lab-LAB | Tester | standalone/jev-lab-LAB |
 | obo-lab-LAB | Demo | standalone/obo-lab-LAB |
 | jit-lab-LAB | Demo | standalone/jit-lab-LAB |
+| ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
 
 ## Ports, and what to do if a port is taken
 

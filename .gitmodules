@@ -163,3 +163,6 @@
 [submodule "standalone/jit-lab-LAB"]
 	path = standalone/jit-lab-LAB
 	url = https://github.com/ping-sandbox/jit-lab.git
+[submodule "shared/ping-shared"]
+	path = shared/ping-shared
+	url = https://github.com/ping-sandbox/ping-shared.git
