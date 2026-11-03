@@ -154,3 +154,12 @@
 [submodule "standalone/pingone-LAB"]
 	path = standalone/pingone-LAB
 	url = https://github.com/ping-sandbox/pingone-LAB.git
+[submodule "standalone/jev-lab-LAB"]
+	path = standalone/jev-lab-LAB
+	url = https://github.com/ping-sandbox/jev-lab.git
+[submodule "standalone/obo-lab-LAB"]
+	path = standalone/obo-lab-LAB
+	url = https://github.com/ping-sandbox/obo-lab.git
+[submodule "standalone/jit-lab-LAB"]
+	path = standalone/jit-lab-LAB
+	url = https://github.com/ping-sandbox/jit-lab.git

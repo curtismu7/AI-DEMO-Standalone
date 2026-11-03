@@ -29,6 +29,9 @@ git submodule update --init --recursive
 | intent-par-inspector-LAB | Tester | standalone/intent-par-inspector-LAB |
 | ping-gateway-route-LAB | Tester | standalone/ping-gateway-route-LAB |
 | pingone-LAB | Demo | standalone/pingone-LAB |
+| jev-lab-LAB | Tester | standalone/jev-lab-LAB |
+| obo-lab-LAB | Demo | standalone/obo-lab-LAB |
+| jit-lab-LAB | Demo | standalone/jit-lab-LAB |
 
 ## Ports, and what to do if a port is taken
 
