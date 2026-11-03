@@ -151,3 +151,6 @@
 [submodule "standalone/mcp-elicitation-LAB"]
 	path = standalone/mcp-elicitation-LAB
 	url = https://github.com/ping-sandbox/mcp-elicitation-LAB.git
+[submodule "standalone/pingone-LAB"]
+	path = standalone/pingone-LAB
+	url = https://github.com/ping-sandbox/pingone-LAB.git
