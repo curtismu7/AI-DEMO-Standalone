@@ -27,6 +27,7 @@ git submodule update --init --recursive
 | agent-registry-demo-LAB | Demo | standalone/agent-registry-demo-LAB |
 | agent-kill-switch-LAB | Demo | standalone/agent-kill-switch-LAB |
 | intent-par-inspector-LAB | Tester | standalone/intent-par-inspector-LAB |
+| ping-gateway-route-LAB | Tester | standalone/ping-gateway-route-LAB |
 
 ## Ports, and what to do if a port is taken
 

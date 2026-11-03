@@ -58,3 +58,6 @@
 [submodule "standalone/intent-par-inspector-LAB"]
 	path = standalone/intent-par-inspector-LAB
 	url = https://github.com/ping-sandbox/intent-par-inspector-LAB.git
+[submodule "standalone/ping-gateway-route-LAB"]
+	path = standalone/ping-gateway-route-LAB
+	url = https://github.com/ping-sandbox/ping-gateway-route-LAB.git
