@@ -73,3 +73,81 @@
 [submodule "standalone/deploy-test-LAB"]
 	path = standalone/deploy-test-LAB
 	url = https://github.com/ping-sandbox/deploy-test-LAB.git
+[submodule "standalone/pingone-signin-LAB"]
+	path = standalone/pingone-signin-LAB
+	url = https://github.com/ping-sandbox/pingone-signin-LAB.git
+[submodule "standalone/ai-guard-sidecar-LAB"]
+	path = standalone/ai-guard-sidecar-LAB
+	url = https://github.com/ping-sandbox/ai-guard-sidecar-LAB.git
+[submodule "standalone/attack-gallery-LAB"]
+	path = standalone/attack-gallery-LAB
+	url = https://github.com/ping-sandbox/attack-gallery-LAB.git
+[submodule "standalone/mcp-auth-conformance-LAB"]
+	path = standalone/mcp-auth-conformance-LAB
+	url = https://github.com/ping-sandbox/mcp-auth-conformance-LAB.git
+[submodule "standalone/mcp-discovery-LAB"]
+	path = standalone/mcp-discovery-LAB
+	url = https://github.com/ping-sandbox/mcp-discovery-LAB.git
+[submodule "standalone/no-tool-no-promise-LAB"]
+	path = standalone/no-tool-no-promise-LAB
+	url = https://github.com/ping-sandbox/no-tool-no-promise-LAB.git
+[submodule "standalone/p1-third-party-exchange-LAB"]
+	path = standalone/p1-third-party-exchange-LAB
+	url = https://github.com/ping-sandbox/p1-third-party-exchange-LAB.git
+[submodule "standalone/personal-agent-demo-LAB"]
+	path = standalone/personal-agent-demo-LAB
+	url = https://github.com/ping-sandbox/personal-agent-demo-LAB.git
+[submodule "standalone/token-workbench-LAB"]
+	path = standalone/token-workbench-LAB
+	url = https://github.com/ping-sandbox/token-workbench-LAB.git
+[submodule "standalone/worker-demo-LAB"]
+	path = standalone/worker-demo-LAB
+	url = https://github.com/ping-sandbox/worker-demo-LAB.git
+[submodule "standalone/session-LAB"]
+	path = standalone/session-LAB
+	url = https://github.com/ping-sandbox/session-LAB.git
+[submodule "standalone/poppy-agent-tester-LAB"]
+	path = standalone/poppy-agent-tester-LAB
+	url = https://github.com/ping-sandbox/poppy-agent-tester-LAB.git
+[submodule "standalone/intent-purpose-behaviour-LAB"]
+	path = standalone/intent-purpose-behaviour-LAB
+	url = https://github.com/ping-sandbox/intent-purpose-behaviour-LAB.git
+[submodule "standalone/coding-agents-LAB"]
+	path = standalone/coding-agents-LAB
+	url = https://github.com/ping-sandbox/coding-agents-LAB.git
+[submodule "standalone/data-protection-LAB"]
+	path = standalone/data-protection-LAB
+	url = https://github.com/ping-sandbox/data-protection-LAB.git
+[submodule "standalone/saas-access-LAB"]
+	path = standalone/saas-access-LAB
+	url = https://github.com/ping-sandbox/saas-access-LAB.git
+[submodule "standalone/agent-governance-LAB"]
+	path = standalone/agent-governance-LAB
+	url = https://github.com/ping-sandbox/agent-governance-LAB.git
+[submodule "standalone/p1az-inspector-LAB"]
+	path = standalone/p1az-inspector-LAB
+	url = https://github.com/ping-sandbox/p1az-inspector-LAB.git
+[submodule "standalone/agent-gateway-inspector-LAB"]
+	path = standalone/agent-gateway-inspector-LAB
+	url = https://github.com/ping-sandbox/agent-gateway-inspector-LAB.git
+[submodule "standalone/pingone-mcp-inspector-LAB"]
+	path = standalone/pingone-mcp-inspector-LAB
+	url = https://github.com/ping-sandbox/pingone-mcp-inspector-LAB.git
+[submodule "standalone/agent-audit-trail-LAB"]
+	path = standalone/agent-audit-trail-LAB
+	url = https://github.com/ping-sandbox/agent-audit-trail-LAB.git
+[submodule "standalone/progressive-trust-ladder-LAB"]
+	path = standalone/progressive-trust-ladder-LAB
+	url = https://github.com/ping-sandbox/progressive-trust-ladder-LAB.git
+[submodule "standalone/chatgpt-mcp-flow-LAB"]
+	path = standalone/chatgpt-mcp-flow-LAB
+	url = https://github.com/ping-sandbox/chatgpt-mcp-flow-LAB.git
+[submodule "standalone/mock-authorize-LAB"]
+	path = standalone/mock-authorize-LAB
+	url = https://github.com/ping-sandbox/mock-authorize-LAB.git
+[submodule "standalone/stolen-token-LAB"]
+	path = standalone/stolen-token-LAB
+	url = https://github.com/ping-sandbox/stolen-token-LAB.git
+[submodule "standalone/mcp-elicitation-LAB"]
+	path = standalone/mcp-elicitation-LAB
+	url = https://github.com/ping-sandbox/mcp-elicitation-LAB.git
