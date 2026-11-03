@@ -89,6 +89,19 @@ banner patterns. Known convergence work for next PRs:
   border in dark theme, dark in BOTH themes. Arrows/edges are `--muted`. (Rule 17:
   real diagrams come from diagram-studio data; these are the box styles.)
 
+## 8b. Diagram edges — per-edge phase colors (owner, 2026-11-03)
+
+- An edge in diagram-studio/1 data may carry `"color": "<role>"` (same six roles as
+  groups: red dark grey blue green amber). Validators accept it; unknown colors fail.
+- Renderers stroke the edge with the role's `--dg-<role>` token (shared stylesheet).
+  The ACTIVE hop still wins: `--accent`, thicker, and its numbered badge accented.
+- Phase vocabulary when colouring: requests/setup = blue, person actions/tokens
+  returned = green, decisions (deny/permit/policy) = red, results/background = dark,
+  neutral = grey, pending/warning = amber. Node and edge colors are independent.
+- Reference: pingone-lab `#/run/device` (colored), ciba-hitl-lab (24 edges by phase).
+  CSS lives in each app's stylesheet for now; promote to the shared file when the
+  second renderer converges (it already has, three times — next touch migrates).
+
 ## 9. Buttons and tabs
 
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.

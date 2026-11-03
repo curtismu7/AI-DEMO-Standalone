@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram standard mock — standalone family (DRAFT for owner approval)</title>
+<!--
+  DRAFT: proposed shared look for every ReactFlow diagram in the -LAB family.
+  Tokens are copied verbatim from AI-DEMO-Standalone/shared/standalone-ui.css (canonical).
+  Approve and this becomes: (a) a §8 extension of STANDALONE-UI-PATTERNS.md,
+  (b) a section in ui-standard-mock.html, (c) the diagram CSS vendored apps copy.
+  Toggle: press D to flip dark/light, P to flip present(er) size.
+-->
+<style>
+/* ===== canonical tokens (verbatim from shared/standalone-ui.css) ===== */
+:root {
+  --bg: #fcfcfc; --surface: #ffffff; --surface-2: #eff0f1;
+  --text: #051727; --text-body: #263746; --muted: #556070;
+  --border: #556070; --accent: #d20e0f; --accent-deep: #aa0005;
+  --on-accent: #ffffff; --accent-soft: #fde8e8; --focus: #12538d;
+  --danger-text: #aa0005; --status-ok: #1d7a43; --status-warn: #8a5a00;
+  --status-info: #12538d; --shadow-ink: rgba(5, 23, 39, 0.16);
+  --box-dark: #051727; --box-blue: #12538d; --box-grey: #3e4f60; --box-red: #aa0005;
+  --on-box: #fcfcfc; --bg-lab: var(--bg);
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
+}
+:root[data-theme="dark"] {
+  --bg: #051727; --surface: #172033; --surface-2: #0f2236;
+  --text: #fcfcfc; --text-body: #e0e2e4; --muted: #909ea4; --border: #909ea4;
+  --accent-soft: #3a1213; --status-warn: #f0b34c; --status-info: #8fbcff;
+  --shadow-ink: rgba(0, 0, 0, 0.5);
+}
+:root[data-present="1"] body { font-size: 20px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-primary); font-size: 16px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+h2 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
+.lede { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.75rem; }
+.hint { color: var(--muted); font-size: 0.78rem; }
+button, select { font: inherit; font-size: 0.85rem; padding: 0.35rem 0.8rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ===== THE STANDARD: diagram canvas ===== */
+/* One look for every lab diagram. Canvas on --bg-lab; nodes are the family box fills
+   (--box-*, dark in BOTH themes) with --on-box text; arrows --muted, active = --accent
+   thick with a numbered pill badge; future arrows dim; hot node = accent ring. */
+.dg { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-lab); position: relative; overflow: hidden; }
+.dg-canvas { height: 430px; position: relative; }
+.dg-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+.dg-toolbar .spacer { flex: 1; }
+.dg-now { padding: 0.55rem 0.9rem; border-top: 1px solid var(--border); background: var(--surface-2); font-size: 0.85rem; }
+.dg-now b { color: var(--accent); }
+
+/* Nodes: the family box look (§8 of the patterns standard), scaled up for the canvas. */
+.dg-node { position: absolute; transform: translate(-50%, -50%); min-width: 8.5rem; max-width: 13rem;
+  padding: 0.55rem 0.8rem; border-radius: var(--radius-md); color: var(--on-box);
+  font-weight: 600; font-size: 0.85rem; text-align: center; cursor: grab; }
+.dg-node small { display: block; font-weight: 400; font-size: 0.72rem; opacity: 0.75; margin-top: 2px; }
+.dg-node--dark { background: var(--box-dark); }
+.dg-node--blue { background: var(--box-blue); }
+.dg-node--grey { background: var(--box-grey); }
+.dg-node--red  { background: var(--box-red); }
+.dg-node--hot  { box-shadow: 0 0 0 3px var(--accent); }
+.dg-node--seen { opacity: 0.85; }
+
+/* Arrows: SVG lines + the numbered pill badge (pattern: every arrow numbered and named). */
+.dg-edge { position: absolute; height: 2px; background: var(--muted); transform-origin: 0 50%; }
+.dg-edge.active { background: var(--accent); height: 3.5px; z-index: 2; }
+.dg-edge.seen { opacity: 0.55; }
+.dg-edge.future { opacity: 0.3; }
+.dg-edge.dashed { background-image: linear-gradient(90deg, var(--muted) 55%, transparent 55%); background-size: 10px 2px; background-color: transparent; }
+.dg-edge.dashed.active { background-image: linear-gradient(90deg, var(--accent) 55%, transparent 55%); background-size: 10px 3.5px; }
+.dg-arrowhead { position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.dg-badge { position: absolute; transform: translate(-50%, -50%); z-index: 3; padding: 1px 7px; border-radius: 999px;
+  background: var(--surface); border: 1.5px solid var(--muted); color: var(--text);
+  font-size: 0.7rem; font-weight: 700; font-family: var(--font-mono); }
+.dg-edge.active .dg-badge, .dg-badge.active { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+
+/* Legend chips (family chip pattern, diagram colors from the same fills). */
+.dg-legend { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--border); }
+.dg-legend .chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+.dg-legend .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+.dot--dark { background: var(--box-dark); } .dot--blue { background: var(--box-blue); }
+.dot--grey { background: var(--box-grey); } .dot--red { background: var(--box-red); }
+.chip.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Step list (what/why detail), tokens only. */
+.dg-steps { border-top: 1px solid var(--border); max-height: 220px; overflow-y: auto; font-size: 0.8rem; }
+.dg-steps details { border-bottom: 1px solid var(--border); }
+.dg-steps summary { display: flex; gap: 0.5rem; padding: 0.45rem 0.8rem; cursor: pointer; align-items: baseline; }
+.dg-steps summary:hover { background: var(--surface-2); }
+.dg-steps summary .n { color: var(--accent); font-weight: 700; min-width: 1.3rem; font-family: var(--font-mono); font-size: 0.75rem; }
+.dg-steps .body { padding: 0.1rem 0.8rem 0.7rem 3.2rem; color: var(--text-body); }
+.dg-steps .body .why { color: var(--muted); margin-top: 0.2rem; }
+
+/* Side-by-side light/dark demo of the same nodes. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 800px) { .pair { grid-template-columns: 1fr; } }
+.mini { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-lab); padding: 1rem; }
+.mini.dark { background: var(--box-dark); }
+.mini .dg-node { position: static; display: inline-block; transform: none; margin: 0.25rem 0.4rem 0.25rem 0; }
+.mini p { color: var(--muted); font-size: 0.78rem; margin: 0.6rem 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Diagram standard — one look for every -LAB diagram</h1>
+  <p class="lede">DRAFT for owner approval. Extends <b>STANDALONE-UI-PATTERNS.md §8</b> (diagram boxes) to the whole canvas: toolbar, nodes, numbered arrows, active/dim states, legend, step list. Every colour here is an existing canonical token — nothing new is invented. Press <b>D</b> to toggle dark, <b>P</b> for presenter size.</p>
+
+  <h2>1 · The full canvas (CIBA HITL, 24 steps, shown at step 7)</h2>
+  <p class="lede">Toolbar (Simulate / Next / Reset / speed) · nodes = family box fills · every arrow numbered with a pill badge · active arrow accent-thick, seen dimmed, future faint · hot node ringed · legend chips · step list with what/why.</p>
+
+  <div class="dg" data-testid="diagram">
+    <div class="dg-toolbar">
+      <button class="primary">Pause</button>
+      <button>Next step</button>
+      <button>Reset</button>
+      <label style="font-size:0.8rem; display:flex; gap:0.4rem; align-items:center;">Speed
+        <select><option>1x</option></select>
+      </label>
+      <span class="spacer"></span>
+      <span class="hint">step 7 / 24 · drag boxes to rearrange</span>
+    </div>
+    <div class="dg-canvas">
+      <!-- edges (simplified straight runs for the mock) -->
+      <div class="dg-edge seen" style="left:11%; top:88px; width:9%;  transform:rotate(14deg)"><span class="dg-badge" style="left:50%; top:0">1</span></div>
+      <div class="dg-edge seen" style="left:20.5%; top:107px; width:9.5%; transform:rotate(0deg)"><span class="dg-badge" style="left:50%; top:-3px">2</span></div>
+      <div class="dg-edge seen" style="left:5%; top:175px; width:24%; transform:rotate(-3deg)"><span class="dg-badge" style="left:50%; top:-3px">3</span></div>
+      <div class="dg-edge seen" style="left:20.5%; top:150px; width:9.5%; transform:rotate(0deg)"><span class="dg-badge" style="left:50%; top:-3px">4</span></div>
+      <div class="dg-edge seen" style="left:32%; top:255px; width:9.5%; transform:rotate(-14deg)"><span class="dg-badge" style="left:50%; top:-3px">5</span></div>
+      <div class="dg-edge seen" style="left:32%; top:290px; width:9.5%; transform:rotate(10deg)"><span class="dg-badge" style="left:50%; top:-3px">6</span></div>
+      <div class="dg-edge active" style="left:41.5%; top:255px; width:9.5%; transform:rotate(0deg); height:3.5px"><span class="dg-badge active" style="left:50%; top:-4px">7</span></div>
+      <div class="dg-edge future" style="left:20.5%; top:225px; width:11.5%; transform:rotate(38deg)"><span class="dg-badge" style="left:50%; top:-3px">8</span></div>
+      <div class="dg-edge future dashed" style="left:51%; top:243px; width:10%; transform:rotate(0deg)"><span class="dg-badge" style="left:50%; top:-3px">9</span></div>
+      <div class="dg-edge future" style="left:61%; top:232px; width:8%; transform:rotate(0deg)"><span class="dg-badge" style="left:50%; top:-3px">10</span></div>
+      <div class="dg-edge future" style="left:61%; top:280px; width:8%; transform:rotate(0deg)"><span class="dg-badge" style="left:50%; top:-3px">11</span></div>
+      <div class="dg-arrowhead" style="left:69%; top:277px; border-left: 8px solid var(--muted);"></div>
+
+      <!-- nodes -->
+      <div class="dg-node dg-node--grey seen" style="left:6%;  top:70px">Browser</div>
+      <div class="dg-node dg-node--dark seen" style="left:15.5%; top:115px">Application<small>web-banking</small></div>
+      <div class="dg-node dg-node--blue seen" style="left:25.5%; top:100px">IAM Core<small>PingFederate / PingOne</small></div>
+      <div class="dg-node dg-node--dark" style="left:36.5%; top:255px">personal-agent<small>Agent</small></div>
+      <div class="dg-node dg-node--blue hot" style="left:46.5%; top:255px">Token exchange<small>actor + user token</small></div>
+      <div class="dg-node dg-node--red" style="left:56.5%; top:255px">MCP Gateway</div>
+      <div class="dg-node dg-node--red" style="left:66.5%; top:255px">Authorize<small>policy + CIBA</small></div>
+    </div>
+    <div class="dg-now" role="status"><b>Token exchange (OBO) · step 7 of 24 · Token exchange: actor + user token.</b> The agent sends both tokens; the result is ONE OBO token: sub = the person, act = the agent, FULL scope set kept — the token never narrows per tool.</div>
+    <div class="dg-legend">
+      <span class="chip on"><span class="dot dot--blue"></span>User login and user token</span>
+      <span class="chip"><span class="dot dot--dark"></span>Agent identity</span>
+      <span class="chip"><span class="dot dot--red"></span>Authorize denies, starts CIBA</span>
+      <span class="chip"><span class="dot dot--grey"></span>Tool runs, response returns</span>
+    </div>
+    <div class="dg-steps">
+      <details open><summary><span class="n">7</span><span>Token exchange: actor + user token</span></summary>
+        <div class="body">The agent sends the actor token (agent) and the user token (subject).<div class="why">Why it matters: the only token exchange in the flow. The OBO token carries the full scope set; Authorize does the per-tool narrowing.</div></div>
+      </details>
+      <details><summary><span class="n">8</span><span>Write request</span></summary><div class="body">The application asks the agent to update a record.<div class="why">Why it matters: the agent decides which tool to call.</div></div></details>
+    </div>
+  </div>
+
+  <h2>2 · Node fills in both themes (identical, per §8 — dark in BOTH themes)</h2>
+  <div class="pair">
+    <div class="mini">
+      <div class="dg-node dg-node--dark">Application</div>
+      <div class="dg-node dg-node--blue">IAM Core</div>
+      <div class="dg-node dg-node--red">Authorize</div>
+      <div class="dg-node dg-node--grey">Resource API</div>
+      <p><b>Light theme.</b> Same four fills; arrows --muted; active --accent.</p>
+    </div>
+    <div class="mini dark">
+      <div class="dg-node dg-node--dark" style="outline:1px solid var(--border); outline-offset:-1px;">Application</div>
+      <div class="dg-node dg-node--blue">IAM Core</div>
+      <div class="dg-node dg-node--red">Authorize</div>
+      <div class="dg-node dg-node--grey">Resource API</div>
+      <p><b>Dark theme.</b> Identical fills (dark in both themes, §8); --on-box text; border keeps 3:1.</p>
+    </div>
+  </div>
+
+  <h2>3 · What this standardizes (and what each lab must change)</h2>
+  <div class="mini">
+    <p style="margin:0 0 0.4rem"><b>Becomes the one diagram look:</b></p>
+    <p style="margin:0 0 0.4rem">• Nodes: <code>--box-dark|blue|grey|red</code> fills, <code>--on-box</code> text, radius 8px, dark in both themes (§8 today — unchanged).</p>
+    <p style="margin:0 0 0.4rem">• Arrows: <code>--muted</code> stroke 1.5–2px; <b>active = <code>--accent</code> 3.5px + numbered pill badge</b> (surface fill, accent border); seen 55% opacity; future 30%.</p>
+    <p style="margin:0 0 0.4rem">• Canvas: <code>--bg-lab</code> background, 1px <code>--border</code>, radius 12px; toolbar and "now" strip use surface/surface-2.</p>
+    <p style="margin:0 0 0.4rem">• Legend: family chip pattern with fill dots; step list = details/summary, number in accent mono.</p>
+    <p style="margin:0"><b>Convergence:</b> pingone-lab (outline + stripe boxes) and any hand-rolled palette move to these fills; the diagram-studio box colors map 1:1 (red/dark/grey/blue/green→status-ok/amber→status-warn). CSS ships in the shared stylesheet so apps stop hand-rolling it.</p>
+  </div>
+</div>
+<script>
+const flip = (k, v) => v ? document.documentElement.dataset[k] = v : delete document.documentElement.dataset[k];
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'd' || e.key === 'D') flip('theme', document.documentElement.dataset.theme === 'dark' ? null : 'dark');
+  if (e.key === 'p' || e.key === 'P') flip('present', document.documentElement.dataset.present === '1' ? null : '1');
+});
+// hot-node cycle so the ring state is visible in motion
+const hot = document.querySelectorAll('.dg-node');
+let i = 2;
+setInterval(() => { hot.forEach(n => n.classList.remove('dg-node--hot')); hot[i % hot.length].classList.add('dg-node--hot'); i++; }, 1400);
+</script>
+</body>
+</html>
