@@ -54,12 +54,27 @@ echo "git OK ($(git --version))"
 echo "== Node"
 major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$major" -lt 26 ]; then
-  if [ "$major" = "0" ] && command -v brew > /dev/null; then
-    echo "Node missing — installing (brew install node@26)..."
-    brew install node@26 && brew link --overwrite node@26 || true
+  if command -v brew > /dev/null; then
+    if [ "$major" = "0" ]; then
+      echo "Node missing — installing (brew install node@26)..."
+      brew install node@26 || true
+    elif brew list --versions node@26 > /dev/null 2>&1; then
+      echo "Node $major found but node@26 is installed and not linked — linking (brew link --overwrite node@26)..."
+    else
+      echo "Node $major found — installing node@26..."
+      brew install node@26 || true
+    fi
+    # Keg-only formula: the versioned node is installed but another node shadows it on PATH.
+    brew link --overwrite node@26 2>/dev/null || true
+    hash -r
     major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
   fi
-  if [ "$major" -lt 26 ]; then echo "Node 26 is required (found major $major). Install it: brew install node@26"; exit 1; fi
+  if [ "$major" -lt 26 ]; then
+    echo "Node 26 is required (found major $major)."
+    echo "  brew install node@26 && brew link --overwrite node@26"
+    echo "If a non-brew node shadows it: which node (then remove that entry from PATH)."
+    exit 1
+  fi
 fi
 echo "Node $(node -v) OK"
 
