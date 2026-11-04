@@ -27,6 +27,7 @@ services:
       - gwclient
       - meridian
       - learnhub
+      - agentcore
       - shelf
 
 networks:
