@@ -1,9 +1,9 @@
 # AI-DEMO-Standalone
 
-Parent repo for the standalone SE demo apps. Each app is its own repo under `ping-sandbox`, added as a git submodule under `standalone/`.
+Parent repo for the standalone SE demo apps. Each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`), added as a git submodule under `standalone/`.
 
 ```sh
-git clone --recurse-submodules https://github.com/ping-sandbox/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone
+git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone
 cd ~/Development/AI-DEMO-Standalone
 scripts/bootstrap.sh
 ```
@@ -23,7 +23,7 @@ Bootstrap does the rest on a new machine — even a bare Mac: it installs Homebr
 (which brings the Xcode tools and git), then brew-installs anything missing (Node 26, gh, orbstack),
 runs `gh auth login --web` if you are not signed in, wires gh as git's credential helper, starts
 Docker, and adds the `/etc/hosts` entry (sudo prompt) for the one-domain launcher. The only thing
-you provide: a GitHub account with ping-sandbox membership.
+you provide: a GitHub account with access to the repos under `curtismu7` (or the fork owner).
 
 To init just one lab instead of all 64 submodules:
 
@@ -90,7 +90,7 @@ node scripts/fleet-check.mjs --only token-workbench,session-lab
 node scripts/fleet-check.mjs --json     # same data for other tools; --strict exits 1 if any app has a problem
 ```
 
-It reads the app list from the shelf registry on GitHub and shallow-clones each app, so it never relies on a local checkout (a local checkout can sit on an old branch). Per app it reports the vendored `standalone-ui.css` (canonical, stale or none, against GitHub's copy), the `check-css.sh` failures, whether `scripts/check-ui-standard.sh` exists and its pin matches, the rule 19 Mock/Real toggle, and the latest CI result on main. The toggle column is a static look at the source (a POST `/mode` route and a toggle in the UI); it does not start the app, so prove a switch in a browser. Needs `gh` signed in with access to the `ping-sandbox` repos.
+It reads the app list from the shelf registry on GitHub and shallow-clones each app, so it never relies on a local checkout (a local checkout can sit on an old branch). Per app it reports the vendored `standalone-ui.css` (canonical, stale or none, against GitHub's copy), the `check-css.sh` failures, whether `scripts/check-ui-standard.sh` exists and its pin matches, the rule 19 Mock/Real toggle, and the latest CI result on main. The toggle column is a static look at the source (a POST `/mode` route and a toggle in the UI); it does not start the app, so prove a switch in a browser. Needs `gh` signed in with access to the repos under this meta-repo owner.
 
 ## PingFederate (for apps that need it)
 

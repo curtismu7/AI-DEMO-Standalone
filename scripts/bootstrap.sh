@@ -102,12 +102,15 @@ fi
 gh auth setup-git
 ghuser="$(gh api user --jq .login 2>/dev/null || true)"
 if [ -z "$ghuser" ]; then echo "gh is signed in but the API call failed; check gh auth status"; exit 1; fi
-if ! gh api repos/ping-sandbox/AI-DEMO-Standalone --jq .full_name > /dev/null 2>&1; then
-  echo "Signed in as $ghuser but ping-sandbox is not reachable with this account."
-  echo "The labs are Internal repos: your account needs ping-sandbox membership."
+# Gate on the meta-repo's OWN origin (works for any owner: ping-sandbox, curtismu7, an org fork).
+meta_origin="$(git config --get remote.origin.url | sed 's|\.git$||')"
+if ! gh api "repos/$meta_origin" --jq .full_name > /dev/null 2>&1; then
+  echo "Signed in as $ghuser but the meta-repo origin is not reachable with this account:"
+  echo "  $meta_origin"
+  echo "The labs live under the same owner: your account needs access to that owner's repos."
   exit 1
 fi
-echo "gh OK ($ghuser, ping-sandbox reachable)"
+echo "gh OK ($ghuser, $meta_origin reachable)"
 
 echo "== Docker"
 if ! command -v docker > /dev/null; then
