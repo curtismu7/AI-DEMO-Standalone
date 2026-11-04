@@ -8,6 +8,7 @@ for arg in "$@"; do
     --skip-install) skip_install=1 ;;
     --pingone) run_pingone=1 ;;
     --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
+    --no-pingone) run_pingone=0 ;;
     --app) : ;; # value handled below
     --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
     *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"; else echo "Unknown argument: $arg (usage: bootstrap.sh [--skip-install] [--app <lab>] [--pingone[=--region R --admin-env-id ID --client-id ID --client-secret SECRET]])"; exit 2; fi ;;
@@ -99,18 +100,20 @@ if ! grep -q "local.ping-devops.com" /etc/hosts 2>/dev/null; then
   fi
 fi
 
-echo "== PingOne environment (optional, Real mode)"
+echo "== PingOne environment"
 # scripts/pingone-setup.sh creates a dedicated demo environment from ONE worker app's
-# credentials and writes ~/Development/.env. Mock mode needs none of it. Run it when
-# --pingone is passed (with optional key=value args to skip its prompts):
-if [ "${run_pingone:-0}" = "1" ]; then
-  if grep -q "^PINGONE_ENVIRONMENT_ID=" "$HOME/Development/.env" 2>/dev/null && [ -z "${PINGONE_ARGS:-}" ]; then
-    echo "~/Development/.env already has PINGONE_ENVIRONMENT_ID — skipping (pass --pingone=... to reconfigure)"
-  else
-    # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
-    # shellcheck disable=SC2086
-    "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-} || echo "pingone-setup failed — fix and re-run, or stay in mock mode."
-  fi
+# credentials (client id, client secret, admin environment id — asked for anything not
+# passed via --pingone="...") and writes ~/Development/.env. Default: run it. Skipped
+# when the .env already has an environment (pass --pingone="..." to reconfigure) or
+# with --no-pingone (stay in mock mode).
+if [ "${run_pingone:-1}" = "0" ]; then
+  echo "--no-pingone: staying in mock mode (no PingOne environment needed)"
+elif grep -q "^PINGONE_ENVIRONMENT_ID=" "${STANDALONE_ENV:-$HOME/Development/.env}" 2>/dev/null && [ -z "${PINGONE_ARGS:-}" ]; then
+  echo "~/Development/.env already has PINGONE_ENVIRONMENT_ID — skipping (pass --pingone=... to reconfigure, or --no-pingone to skip)"
+else
+  # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
+  # shellcheck disable=SC2086
+  "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-} || echo "pingone-setup failed — fix and re-run, or stay in mock mode (--no-pingone)."
 fi
 
 echo "== Authorize policy snapshot (live mode only)"
