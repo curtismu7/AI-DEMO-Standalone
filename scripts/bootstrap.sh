@@ -106,17 +106,21 @@ else
 fi
 
 echo "== Shelf"
-# The shelf sits beside the apps so each app finds it and adds itself on npm start.
+# The shelf is the demo-shelf-LAB submodule (same meta-repo, init'd above); each app finds it
+# beside itself and adds itself on npm start.
 if [ -d "$root/standalone/demo-shelf-LAB" ]; then
-  echo "demo-shelf-LAB already present"
+  echo "demo-shelf-LAB present (submodule)"
+  if [ "$skip_install" = 0 ]; then
+    (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund && npm run build) \
+      || echo "Shelf build failed; run cd standalone/demo-shelf-LAB && npm install && npm run build by hand."
+  fi
 else
-  git clone --quiet https://github.com/ping-sandbox/demo-shelf-LAB.git "$root/standalone/demo-shelf-LAB" \
-    && (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund && npm run build) \
-    || echo "Could not set up the shelf. Clone ping-sandbox/demo-shelf-LAB into standalone/ by hand."
+  echo "demo-shelf-LAB missing — init it: git submodule update --init standalone/demo-shelf-LAB"
 fi
 
 if [ "$skip_install" = 0 ]; then
   echo "== Install"
+  (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund && npm run build) || echo "shelf install failed"
   (cd "$root/standalone/ai-gateway-client-LAB" && npm install --prefix server --no-audit --no-fund && npm install --prefix web --no-audit --no-fund)
   (cd "$root/standalone/mcp-demo-client-privilege-LAB" && npm install --no-package-lock --no-audit --no-fund)
   (cd "$root/standalone/privilege-a2a-anthropic-demo-LAB" && npm ci --no-audit --no-fund)
