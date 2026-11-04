@@ -8,10 +8,10 @@ cd AI-DEMO-Standalone
 scripts/bootstrap.sh
 ```
 
-Prerequisites for a new machine (bootstrap checks these and stops with install hints if missing):
-Node >= 22, the `gh` CLI signed in to an account with ping-sandbox membership (the labs are
-Internal repos), and Docker. `/etc/hosts` needs `127.0.0.1 local.ping-devops.com` for the
-one-domain launcher (sudo; agents cannot add it).
+Bootstrap does the rest on a new machine: it brew-installs anything missing (node, gh,
+orbstack), runs `gh auth login --web` if you are not signed in, wires gh as git's credential
+helper, starts Docker, and adds the `/etc/hosts` entry (sudo prompt) for the one-domain
+launcher. You need: a GitHub account with ping-sandbox membership, and Homebrew (macOS).
 
 To init just one lab instead of all 64 submodules:
 
