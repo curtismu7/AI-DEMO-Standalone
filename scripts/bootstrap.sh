@@ -6,9 +6,11 @@ skip_install=0
 for arg in "$@"; do
   case "$arg" in
     --skip-install) skip_install=1 ;;
+    --pingone) run_pingone=1 ;;
+    --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
     --app) : ;; # value handled below
     --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
-    *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"; else echo "Unknown argument: $arg (usage: bootstrap.sh [--skip-install] [--app <lab-dir-name>])"; exit 2; fi ;;
+    *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"; else echo "Unknown argument: $arg (usage: bootstrap.sh [--skip-install] [--app <lab>] [--pingone[=--region R --admin-env-id ID --client-id ID --client-secret SECRET]])"; exit 2; fi ;;
   esac
   prev="$arg"
 done
@@ -94,6 +96,20 @@ if ! grep -q "local.ping-devops.com" /etc/hosts 2>/dev/null; then
       echo "  127.0.0.1 local.ping-devops.com"
       echo "Apps still work directly (cd standalone/<app> && npm start) without it."
     fi
+  fi
+fi
+
+echo "== PingOne environment (optional, Real mode)"
+# scripts/pingone-setup.sh creates a dedicated demo environment from ONE worker app's
+# credentials and writes ~/Development/.env. Mock mode needs none of it. Run it when
+# --pingone is passed (with optional key=value args to skip its prompts):
+if [ "${run_pingone:-0}" = "1" ]; then
+  if grep -q "^PINGONE_ENVIRONMENT_ID=" "$HOME/Development/.env" 2>/dev/null && [ -z "${PINGONE_ARGS:-}" ]; then
+    echo "~/Development/.env already has PINGONE_ENVIRONMENT_ID — skipping (pass --pingone=... to reconfigure)"
+  else
+    # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
+    # shellcheck disable=SC2086
+    "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-} || echo "pingone-setup failed — fix and re-run, or stay in mock mode."
   fi
 fi
 

@@ -22,6 +22,11 @@
 # Env-var overrides (scripted runs): PINGONE_ADMIN_ENV_ID, PINGONE_REGION,
 # PINGONE_WORKER_CLIENT_ID, PINGONE_WORKER_CLIENT_SECRET, ASSUME_YES=1.
 set -euo pipefail
+# CLI flags (each optional; anything not passed is asked interactively):
+#   --region com|eu|ca|asia
+#   --admin-env-id <Administrators environment ID>
+#   --client-id <worker client id>
+#   --client-secret <worker client secret>
 
 # ── style ─────────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -55,6 +60,16 @@ ask_secret() { # ask_secret <prompt> <envvar-name>
 }
 
 ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --region) PINGONE_REGION="$2"; shift 2 ;;
+    --admin-env-id) PINGONE_ADMIN_ENV_ID="$2"; shift 2 ;;
+    --client-id) PINGONE_WORKER_CLIENT_ID="$2"; shift 2 ;;
+    --client-secret) PINGONE_WORKER_CLIENT_SECRET="$2"; shift 2 ;;
+    *) err "unknown argument: $1 (usage: pingone-setup.sh [--region R] [--admin-env-id ID] [--client-id ID] [--client-secret SECRET])"; exit 2 ;;
+  esac
+done
 
 echo ""
 echo "${BOLD}Standalone labs — PingOne environment setup${RESET}"
