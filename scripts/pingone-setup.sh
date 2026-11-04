@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# pingone-setup.sh — create a dedicated PingOne demo environment and write the
+# standalone labs' shared settings file (~/Development/.env).
+#
+# What the user does by hand (once, in the PingOne console):
+#   1. In the Administrators environment: create a Worker app
+#      (Applications -> + -> Worker, Client Secret Basic, enabled) and grant it
+#      the organization roles that allow environment creation
+#      (Organization Admin, or at minimum an environment-creation role).
+#   2. Copy that worker's client ID + secret, and note the Administrators
+#      environment ID (the env id in the console URL) and the region.
+#
+# What this script then does (no console needed):
+#   1. Mints an org token with those worker creds.
+#   2. Picks an active license with the demo's entitlements.
+#   3. Creates a dedicated SANDBOX environment (SSO, MFA, DaVinci, Authorize).
+#   4. Mints a Worker app (Identity Data Admin) inside the new environment.
+#   5. Writes ~/Development/.env (mode 600) with the new env id + worker creds.
+#
+# After this: run scripts/bootstrap.sh — every lab reads the same .env.
+#
+# Env-var overrides (scripted runs): PINGONE_ADMIN_ENV_ID, PINGONE_REGION,
+# PINGONE_WORKER_CLIENT_ID, PINGONE_WORKER_CLIENT_SECRET, ASSUME_YES=1.
+set -euo pipefail
+
+# ── style ─────────────────────────────────────────────────────────────────────
+if [[ -t 1 ]]; then
+  BOLD=$'\033[1m'; RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
+else
+  BOLD=''; RED=''; GREEN=''; BLUE=''; RESET=''
+fi
+info() { echo "${BLUE}${BOLD}==>${RESET} $*"; }
+ok()   { echo "${GREEN}✓${RESET}  $*"; }
+err()  { echo "${RED}✗${RESET} $*" >&2; }
+fatal() { err "$*"; exit 1; }
+
+ask() { # ask <prompt> <envvar-name>
+  local prompt="$1" var="$2" answer=""
+  if [[ -n "${!var:-}" ]]; then info "$prompt (from environment)"; return 0; fi
+  if [[ -t 0 ]]; then read -r -p "$prompt" answer
+  elif [[ -r /dev/tty ]]; then read -r -p "$prompt" answer </dev/tty
+  else fatal "cannot prompt (no terminal). Set $var and re-run."; fi
+  [[ -z "$answer" ]] && fatal "a value is required."
+  printf -v "$var" '%s' "$answer"
+}
+
+ask_secret() { # ask_secret <prompt> <envvar-name>
+  local prompt="$1" var="$2" answer=""
+  if [[ -n "${!var:-}" ]]; then info "$prompt (from environment)"; return 0; fi
+  if [[ -t 0 ]]; then read -rs -p "$prompt" answer; echo
+  elif [[ -r /dev/tty ]]; then read -rs -p "$prompt" answer </dev/tty; echo
+  else fatal "cannot prompt (no terminal). Set $var and re-run."; fi
+  [[ -z "$answer" ]] && fatal "a value is required."
+  printf -v "$var" '%s' "$answer"
+}
+
+ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
+
+echo ""
+echo "${BOLD}Standalone labs — PingOne environment setup${RESET}"
+echo "──────────────────────────────────────────────"
+echo "  In the PingOne console (Administrators environment) create a Worker app:"
+echo "    Applications → + → Worker · Client Secret Basic · enabled"
+echo "    Roles: Organization Admin (so it can create environments)."
+echo "  Then enter its credentials below. Everything else is automated."
+echo ""
+
+ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
+PINGONE_REGION="${PINGONE_REGION:-com}"
+ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
+ask "Worker client ID: " PINGONE_WORKER_CLIENT_ID
+ask_secret "Worker client secret: " PINGONE_WORKER_CLIENT_SECRET
+
+api="https://api.pingone.${PINGONE_REGION}/v1"
+auth="https://auth.pingone.${PINGONE_REGION}"
+
+# ── 1. org token ──────────────────────────────────────────────────────────────
+info "Minting an organization token..."
+# Tokens live on the AS host; the management API host rejects token POSTs
+# (measured). Workers default to client_secret_basic — POST-body auth is
+# rejected on current tenants (measured).
+tok="$(curl -s --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
+  -u "$PINGONE_WORKER_CLIENT_ID:$PINGONE_WORKER_CLIENT_SECRET" \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  --data-urlencode 'grant_type=client_credentials')"
+access="$(printf '%s' "$tok" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
+if [[ -z "$access" ]]; then
+  err "Token mint failed:"
+  printf '%s\n' "$tok" | sed 's/"access_token":"[^"]*"/"access_token":"<redacted>"/' >&2
+  fatal "check the environment ID, worker client id/secret and region."
+fi
+ok "organization token minted"
+
+# ── 2. license ────────────────────────────────────────────────────────────────
+info "Looking for an active license with the demo's entitlements..."
+org_id="$(curl -s --max-time 30 "$api/environments/$PINGONE_ADMIN_ENV_ID" \
+  -H "authorization: Bearer $access" \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin).get("organization",{}).get("id",""))' 2>/dev/null || true)"
+[[ -z "$org_id" ]] && fatal "could not resolve the organization id from the admin environment."
+license_id="$(curl -s --max-time 30 "$api/organizations/$org_id/licenses" -H "authorization: Bearer $access" | python3 -c '
+import sys, json, datetime
+d = json.load(sys.stdin)
+now = datetime.datetime.now(datetime.timezone.utc)
+best, best_score = "", -1
+for l in d.get("_embedded", {}).get("licenses", []):
+    exp = l.get("expiresAt", "")
+    try:
+        if datetime.datetime.fromisoformat(exp.replace("Z", "+00:00")) < now: continue
+    except Exception: pass
+    if l.get("status") != "ACTIVE": continue
+    score = sum([
+        bool(l.get("privilege", {}).get("allowPrivilege")),
+        bool(l.get("authorize", {}).get("allowDynamicAuthorization")),
+        bool(l.get("orchestrate", {}).get("allowOrchestration")),
+        bool(l.get("mfa", {}).get("allowMfaSignOnPolicies")),
+        bool(l.get("environments", {}).get("allowProduction")),
+    ])
+    if score > best_score: best, best_score = l["id"], score
+if not best or best_score < 3:
+    sys.stderr.write("no active license with Authorize+Privilege+DaVinci entitlements\n")
+    sys.exit(1)
+print(best)' )" || fatal "license lookup failed."
+ok "license found"
+
+# ── 3. create the environment ─────────────────────────────────────────────────
+info "Creating the SANDBOX demo environment (SSO, MFA, DaVinci, Authorize)..."
+# Constraints measured live: name allows only letters/digits/space/-/_/./';
+# SANDBOX licenses reject PING_ONE_FRAUD (Privilege is not a BOM product).
+env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
+  -H "authorization: Bearer $access" -H 'content-type: application/json' \
+  -d '{"name":"Standalone Labs Demo","region":"'"$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z' | sed 's/COM\.AU/COM_AU/')"'",
+       "type":"SANDBOX","description":"Created by AI-DEMO-Standalone pingone-setup.sh",
+       "license":{"id":"'"$license_id"'"},
+       "billOfMaterials":{"products":[{"type":"PING_ONE_BASE"},{"type":"PING_ONE_MFA"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}]}}')"
+new_env="$(printf '%s' "$env_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+if [[ -z "$new_env" ]]; then
+  err "Environment creation failed:"
+  printf '%s\n' "$env_json" >&2
+  exit 1
+fi
+ok "environment created: $new_env"
+
+# ── 4. per-env worker ─────────────────────────────────────────────────────────
+info "Minting a Worker app (Identity Data Admin) in the new environment..."
+app_json="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications" \
+  -H "authorization: Bearer $access" -H 'content-type: application/json' \
+  -d '{"name":"Standalone Labs Worker","description":"Worker for the standalone labs","protocol":"OPENID_CONNECT","type":"WORKER","enabled":true,"grantTypes":["CLIENT_CREDENTIALS"],"tokenEndpointAuthMethod":"CLIENT_SECRET_BASIC"}')"
+app_id="$(printf '%s' "$app_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+[[ -z "$app_id" ]] && { err "Worker app creation failed:"; printf '%s\n' "$app_json" >&2; exit 1; }
+
+roles_json="$(curl -s --max-time 30 "$api/roles?filter=name%20eq%20%22Identity%20Data%20Admin%22" -H "authorization: Bearer $access")"
+role_id="$(printf '%s' "$roles_json" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+roles = d if isinstance(d, list) else d.get("_embedded", {}).get("roles", [])
+print(next((r["id"] for r in roles if r.get("name") == "Identity Data Admin"), ""))' 2>/dev/null || true)"
+[[ -z "$role_id" ]] && { err "could not resolve the Identity Data Admin role id:"; printf '%s\n' "$roles_json" >&2; exit 1; }
+# Role assignment is /roleAssignments with an explicit scope (/roles 403s — measured).
+assign="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/roleAssignments" \
+    -H "authorization: Bearer $access" -H 'content-type: application/json' \
+    -d '{"role":{"id":"'"$role_id"'"},"scope":{"id":"'"$new_env"'","type":"ENVIRONMENT"}}')"
+if printf '%s' "$assign" | grep -q 'UNIQUENESS_VIOLATION'; then
+  info "role already assigned — continuing"
+elif printf '%s' "$assign" | grep -q '"code"'; then
+  err "role assignment failed:"; printf '%s\n' "$assign" >&2; exit 1
+fi
+# Secret mint is POST /secret (singular); the value lands in "secret".
+secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/secret" \
+  -H "authorization: Bearer $access" \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
+[[ -z "$secret" ]] && { err "secret mint failed:"; printf '%s\n' "$secret_json" >&2; exit 1; }
+ok "worker minted in the new environment"
+
+# ── 5. write the shared settings file ─────────────────────────────────────────
+mkdir -p "$(dirname "$ENV_FILE")"
+umask 177
+{
+  echo "# Standalone labs shared settings (written by scripts/pingone-setup.sh on $(date +%Y-%m-%d))."
+  echo "PINGONE_ENVIRONMENT_ID=$new_env"
+  echo "PINGONE_REGION=$PINGONE_REGION"
+  # Both key-name conventions: some labs read WORKER_CLIENT_ID/SECRET, others
+  # (ciba-hitl-lab) read WORKER_ID/WORKER_SECRET.
+  echo "PINGONE_WORKER_CLIENT_ID=$app_id"
+  echo "PINGONE_WORKER_CLIENT_SECRET=$secret"
+  echo "PINGONE_WORKER_ID=$app_id"
+  echo "PINGONE_WORKER_SECRET=$secret"
+} > "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+ok "settings written: $ENV_FILE (mode 600)"
+
+echo ""
+ok "Done. Now run:  scripts/bootstrap.sh"
+echo "  Every lab reads PINGONE_ENVIRONMENT_ID/REGION from that file; the worker"
+echo "  creds above stay in it for labs that provision their own resources."
