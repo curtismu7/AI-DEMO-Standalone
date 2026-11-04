@@ -1,5 +1,8 @@
 #!/bin/bash
-# Owner-run: map every lab to its local.ping-devops.com name and restart the labs with LAB_ALLOWED_HOSTS.
+# DEPRECATED 2026-11-03: the lab-proxy path mode needs NO /etc/hosts edits and NO per-lab subdomains.
+# The one domain (local.ping-devops.com) is already in /etc/hosts; labs accept it via LAB_ALLOWED_HOSTS
+# (now in every lab's .env and compose). Kept only for history - do not run.
+# Was: owner-run script mapping every lab to its local.ping-devops.com subdomain.
 # Idempotent. Sudo needed for /etc/hosts.
 set -e
 LABS="pingone-lab pingfederate-lab privilege-demo ciba-hitl gateway-claims cimd"

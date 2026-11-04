@@ -49,4 +49,15 @@ echo "== UI standard"
 
 echo "== Settings file"
 "$root/scripts/check-env.sh" || echo "Fix the lines above, then re-run scripts/check-env.sh"
-echo "Done. Start an app with: cd standalone/<app> && npm start"
+echo "== One-domain launcher (lab-proxy)"
+# All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.
+#   https://local.ping-devops.com:8443            -> the shelf (launcher)
+#   https://local.ping-devops.com:8443/<app>/     -> each app
+# The proxy needs the apps' Docker networks, so it starts after the first apps are up. Try it, don't fail the setup.
+if docker --context orbstack compose -p lab-proxy -f "$root/shared/lab-proxy/docker-compose.yml" up -d >/dev/null 2>&1; then
+  echo "lab-proxy started: https://local.ping-devops.com:8443"
+else
+  echo "lab-proxy not started (Docker down or some apps not running yet). Start it later with:"
+  echo "  docker --context orbstack compose -p lab-proxy -f shared/lab-proxy/docker-compose.yml up -d"
+fi
+echo "Done. Open https://local.ping-devops.com:8443 (launcher) or run an app directly: cd standalone/<app> && npm start"

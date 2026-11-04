@@ -17,6 +17,16 @@ services:
       - ciba
       - gateway
       - cimd
+      - ntnp
+      - aigs
+      - tokwb
+      - hostile
+      - killsw
+      - custagent
+      - regdemo
+      - gwclient
+      - meridian
+      - learnhub
       - shelf
 
 networks:
@@ -38,6 +48,36 @@ networks:
   cimd:
     external: true
     name: cimd-lab_default
+  ntnp:
+    external: true
+    name: no-tool-no-promise_default
+  aigs:
+    external: true
+    name: ai-guard-sidecar_default
+  tokwb:
+    external: true
+    name: token-workbench_default
+  hostile:
+    external: true
+    name: hostile-mcp_default
+  killsw:
+    external: true
+    name: agent-kill-switch_default
+  custagent:
+    external: true
+    name: customer-agent-lab_default
+  regdemo:
+    external: true
+    name: agent-registry-demo_default
+  gwclient:
+    external: true
+    name: ai-gateway-client-lab_default
+  meridian:
+    external: true
+    name: meridian-a2a-hop-lab_demo
+  learnhub:
+    external: true
+    name: learning-hub_default
   shelf:
     external: true
     name: demo-shelf-lab_default
