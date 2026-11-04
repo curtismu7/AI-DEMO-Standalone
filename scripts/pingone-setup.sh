@@ -63,6 +63,25 @@ ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    -h|--help)
+      cat <<'USAGE'
+Creates a dedicated PingOne demo environment and writes ~/Development/.env.
+
+Usage: scripts/pingone-setup.sh [options]
+
+You need (once, in the PingOne console's Administrators environment):
+  a Worker app (Client Secret Basic, enabled, Organization Admin role).
+
+Options (anything omitted is asked interactively):
+  --region <com|eu|ca|asia>
+  --admin-env-id <Administrators environment ID>
+  --client-id <worker client ID>
+  --client-secret <worker client secret>
+
+Creates: SANDBOX environment (SSO, MFA, DaVinci, Authorize) + a per-environment
+Identity Data Admin worker. Writes ~/Development/.env (mode 600).
+USAGE
+      exit 0 ;;
     --region) PINGONE_REGION="$2"; shift 2 ;;
     --admin-env-id) PINGONE_ADMIN_ENV_ID="$2"; shift 2 ;;
     --client-id) PINGONE_WORKER_CLIENT_ID="$2"; shift 2 ;;

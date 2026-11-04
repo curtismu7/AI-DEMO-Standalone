@@ -5,6 +5,27 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 skip_install=0
 for arg in "$@"; do
   case "$arg" in
+    -h|--help)
+      cat <<'USAGE'
+AI-DEMO-Standalone first-time setup.
+
+Usage: scripts/bootstrap.sh [options]
+
+Options:
+  (none)           Full setup: prerequisites, submodules, shelf, lab-proxy,
+                   and PingOne setup (asks for worker client-id, client-secret,
+                   admin environment ID when no ~/Development/.env exists)
+  --app <lab-dir>  Init only one lab's submodule, e.g. --app id-jag-standalone-LAB
+  --skip-install   Skip the npm install/build steps
+  --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
+                   --pingone="--region com --admin-env-id ID --client-id ID --client-secret SECRET"
+  --no-pingone     Skip PingOne entirely (mock mode)
+  -h, --help       This help
+
+After setup: https://local.ping-devops.com:8443 (launcher)
+Real/live mode needs ~/Development/.env (written by the PingOne step).
+USAGE
+      exit 0 ;;
     --skip-install) skip_install=1 ;;
     --pingone) run_pingone=1 ;;
     --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
