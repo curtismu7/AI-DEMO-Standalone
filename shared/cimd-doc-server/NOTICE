@@ -1,0 +1,6 @@
+cimd-doc-server
+Copyright 2026 the AI-DEMO-Standalone authors
+
+The Client ID Metadata Document shape served at /oauth/metadata.json follows
+https://github.com/stytchauth/client.dev (MIT License, Copyright (c) Stytch).
+This server's code is original.
