@@ -187,3 +187,6 @@
 [submodule "standalone/ciba-hitl-lab"]
 	path = standalone/ciba-hitl-lab
 	url = https://github.com/ping-sandbox/ciba-hitl-lab.git
+[submodule "standalone/gateway-suite-LAB"]
+	path = standalone/gateway-suite-LAB
+	url = https://github.com/ping-sandbox/gateway-suite-LAB.git
