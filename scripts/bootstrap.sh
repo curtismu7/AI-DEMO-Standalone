@@ -3,12 +3,47 @@
 set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 skip_install=0
-[ "${1:-}" = "--skip-install" ] && skip_install=1
+for arg in "$@"; do
+  case "$arg" in
+    --skip-install) skip_install=1 ;;
+    --app) : ;; # value handled below
+    --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
+    *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"; else echo "Unknown argument: $arg (usage: bootstrap.sh [--skip-install] [--app <lab-dir-name>])"; exit 2; fi ;;
+  esac
+  prev="$arg"
+done
 
 echo "== Node"
 major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major)"; exit 1; fi
+if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major)"; echo "Install it: brew install node@22"; exit 1; fi
 echo "Node $(node -v) OK"
+
+echo "== gh CLI + ping-sandbox access"
+# The labs are Internal repos under ping-sandbox; submodule init fails cryptically without access.
+if ! command -v gh > /dev/null; then echo "gh CLI is required (the labs live in private ping-sandbox repos)"; echo "Install it: brew install gh, then: gh auth login"; exit 1; fi
+if ! gh auth status > /dev/null 2>&1; then echo "gh is not signed in. Run: gh auth login"; exit 1; fi
+ghuser="$(gh api user --jq .login 2>/dev/null || true)"
+if [ -z "$ghuser" ]; then echo "gh is signed in but the API call failed; check gh auth status"; exit 1; fi
+if ! gh api repos/ping-sandbox/AI-DEMO-Standalone --jq .full_name > /dev/null 2>&1; then
+  echo "Signed in as $ghuser but ping-sandbox is not reachable with this account."
+  echo "The labs are Internal repos: your account needs ping-sandbox membership."
+  exit 1
+fi
+echo "gh OK ($ghuser, ping-sandbox reachable)"
+
+echo "== Docker"
+if ! command -v docker > /dev/null; then echo "Docker is required (OrbStack recommended: brew install orbstack)"; exit 1; fi
+if ! docker info > /dev/null 2>&1; then echo "Docker is installed but not running. Start OrbStack (or Docker Desktop) and re-run."; exit 1; fi
+echo "docker OK"
+
+echo "== /etc/hosts entry for the one domain"
+# The lab-proxy serves https://local.ping-devops.com:8443; the name must resolve on this machine.
+# Only the owner adds host entries (sudo); if it is missing, say what to add and continue in mock/direct mode.
+if ! grep -q "local.ping-devops.com" /etc/hosts 2>/dev/null; then
+  echo "NOTE: /etc/hosts has no local.ping-devops.com entry. The lab-proxy launcher needs it:"
+  echo "  127.0.0.1 local.ping-devops.com"
+  echo "Apps still work directly (cd standalone/<app> && npm start) without it."
+fi
 
 echo "== Authorize policy snapshot (live mode only)"
 # The AI Demo P1AZ policy is imported by hand in the PingOne console (there is no import API). This only checks
@@ -25,7 +60,12 @@ if [ "$rc" = 1 ]; then
 fi
 
 echo "== Submodules"
-git -C "$root" submodule update --init --recursive
+# Init every lab, or just one with: scripts/bootstrap.sh --app id-jag-standalone-LAB
+if [ -n "${BOOTSTRAP_APP:-}" ]; then
+  git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP"
+else
+  git -C "$root" submodule update --init --recursive
+fi
 
 echo "== Shelf"
 # The shelf sits beside the apps so each app finds it and adds itself on npm start.

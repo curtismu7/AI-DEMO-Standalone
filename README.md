@@ -4,7 +4,19 @@ Parent repo for the standalone SE demo apps. Each app is its own repo under `pin
 
 ```sh
 git clone --recurse-submodules https://github.com/ping-sandbox/AI-DEMO-Standalone.git
-git submodule update --init --recursive
+cd AI-DEMO-Standalone
+scripts/bootstrap.sh
+```
+
+Prerequisites for a new machine (bootstrap checks these and stops with install hints if missing):
+Node >= 22, the `gh` CLI signed in to an account with ping-sandbox membership (the labs are
+Internal repos), and Docker. `/etc/hosts` needs `127.0.0.1 local.ping-devops.com` for the
+one-domain launcher (sudo; agents cannot add it).
+
+To init just one lab instead of all 64 submodules:
+
+```sh
+scripts/bootstrap.sh --app id-jag-standalone-LAB --skip-install
 ```
 
 | App | Tier | Repo |

@@ -172,9 +172,6 @@
 [submodule "standalone/muse"]
 	path = standalone/muse
 	url = https://github.com/cmuir_pingcorp/muse.git
-[submodule "standalone/demo-shelf"]
-	path = standalone/demo-shelf
-	url = https://github.com/cmuir_pingcorp/demo-shelf.git
 [submodule "standalone/meridian-a2a-hop-LAB"]
 	path = standalone/meridian-a2a-hop-LAB
 	url = https://github.com/ping-sandbox/meridian-a2a-hop-LAB.git
