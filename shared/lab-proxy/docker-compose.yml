@@ -42,6 +42,9 @@ networks:
   ciba:
     external: true
     name: ciba-hitl-lab_default
+  agentcore:
+    external: true
+    name: agentcore-pingone-demo-lab_default
   gateway:
     external: true
     name: gateway-claims-lab_default
