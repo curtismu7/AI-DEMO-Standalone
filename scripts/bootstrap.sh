@@ -29,13 +29,13 @@ echo "git OK ($(git --version))"
 
 echo "== Node"
 major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-if [ "$major" -lt 22 ]; then
+if [ "$major" -lt 26 ]; then
   if [ "$major" = "0" ] && command -v brew > /dev/null; then
-    echo "Node missing — installing (brew install node@22)..."
-    brew install node@22 && brew link --overwrite node@22 || true
+    echo "Node missing — installing (brew install node@26)..."
+    brew install node@26 && brew link --overwrite node@26 || true
     major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
   fi
-  if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major). Install it: brew install node@22"; exit 1; fi
+  if [ "$major" -lt 26 ]; then echo "Node 26 is required (found major $major). Install it: brew install node@26"; exit 1; fi
 fi
 echo "Node $(node -v) OK"
 
