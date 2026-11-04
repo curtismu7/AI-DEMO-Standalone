@@ -8,11 +8,9 @@ cd ~/Development/AI-DEMO-Standalone
 scripts/bootstrap.sh
 ```
 
-Then set up PingOne once (mock mode works without it, Real mode needs it):
-
-```sh
-scripts/pingone-setup.sh
-```
+Then PingOne: `scripts/bootstrap.sh` itself asks for the worker client ID, client
+secret and Administrators environment ID (Real mode — mock mode: pass `--no-pingone`),
+or run `scripts/pingone-setup.sh` on its own / with flags.
 
 In the PingOne console's **Administrators** environment, create a **Worker** app
 (Applications → + → Worker, Client Secret Basic, enabled, Organization Admin role), then enter
