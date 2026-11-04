@@ -65,7 +65,18 @@ if [ "$major" -lt 26 ]; then
       brew install node@26 || true
     fi
     # Keg-only formula: the versioned node is installed but another node shadows it on PATH.
-    brew link --overwrite node@26 2>/dev/null || true
+    # If the plain `node` formula (any version) is linked, it owns the bin name — brew refuses
+    # to let node@26 overwrite it. Unlink it first (measured on the Air: "To relink, run:
+    # brew unlink node && brew link node").
+    if brew list --versions node > /dev/null 2>&1 && brew list node 2>/dev/null | head -1 | grep -q .; then
+      if ! brew link --overwrite node@26 > /dev/null 2>&1; then
+        echo "brew 'node' formula is linked and shadows node@26 — unlinking it..."
+        brew unlink node || true
+        brew link --overwrite node@26 || true
+      fi
+    else
+      brew link --overwrite node@26 2>/dev/null || true
+    fi
     hash -r
     major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
   fi
