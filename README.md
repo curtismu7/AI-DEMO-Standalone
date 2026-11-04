@@ -8,6 +8,19 @@ cd AI-DEMO-Standalone
 scripts/bootstrap.sh
 ```
 
+Then set up PingOne once (mock mode works without it, Real mode needs it):
+
+```sh
+scripts/pingone-setup.sh
+```
+
+In the PingOne console's **Administrators** environment, create a **Worker** app
+(Applications → + → Worker, Client Secret Basic, enabled, Organization Admin role), then enter
+the region, the Administrators environment ID and that worker's client ID + secret when the
+script asks. It creates a dedicated SANDBOX environment (SSO, MFA, DaVinci, Authorize), mints a
+per-environment worker, and writes `~/Development/.env` (mode 600) — the one settings file every
+lab reads. No other console work.
+
 Bootstrap does the rest on a new machine: it brew-installs anything missing (node, gh,
 orbstack), runs `gh auth login --web` if you are not signed in, wires gh as git's credential
 helper, starts Docker, and adds the `/etc/hosts` entry (sudo prompt) for the one-domain
