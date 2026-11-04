@@ -169,3 +169,9 @@
 [submodule "standalone/agentcore-pingone-demo-LAB"]
 	path = standalone/agentcore-pingone-demo-LAB
 	url = https://github.com/ping-sandbox/agentcore-pingone-demo-LAB
+[submodule "standalone/muse"]
+	path = standalone/muse
+	url = https://github.com/cmuir_pingcorp/muse.git
+[submodule "standalone/demo-shelf"]
+	path = standalone/demo-shelf
+	url = https://github.com/cmuir_pingcorp/demo-shelf.git
