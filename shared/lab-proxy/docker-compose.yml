@@ -28,6 +28,7 @@ services:
       - meridian
       - learnhub
       - agentcore
+      - gatewaysuite
       - shelf
 
 networks:
@@ -46,6 +47,9 @@ networks:
   agentcore:
     external: true
     name: agentcore-pingone-demo-lab_default
+  gatewaysuite:
+    external: true
+    name: gateway-suite-lab_default
   gateway:
     external: true
     name: gateway-claims-lab_default

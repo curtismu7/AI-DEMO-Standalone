@@ -54,6 +54,7 @@ Each app sets its own ports. Ranges and variables are in each app's README:
 - agent-mcp-door-demo-LAB: 6850-6879 (`PORT`)
 - id-jag-standalone-LAB: 4720-4723 (`PORT`, and the Docker `HOST_PORT`, `AS_HOST_PORT`, `MCP_HOST_PORT`)
 - agentcore-pingone-demo-LAB: 7601 (`HOST_PORT`; 7601-7649 is the lab's range)
+- gateway-suite-LAB: 5750 (`HOST_PORT`; 5750-5759 is the lab's range)
 
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
