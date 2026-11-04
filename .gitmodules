@@ -178,3 +178,12 @@
 [submodule "standalone/meridian-a2a-hop-LAB"]
 	path = standalone/meridian-a2a-hop-LAB
 	url = https://github.com/ping-sandbox/meridian-a2a-hop-LAB.git
+[submodule "standalone/ping-services-stub-LAB"]
+	path = standalone/ping-services-stub-LAB
+	url = https://github.com/ping-sandbox/ping-services-stub-LAB.git
+[submodule "standalone/demo-shelf-LAB"]
+	path = standalone/demo-shelf-LAB
+	url = https://github.com/ping-sandbox/demo-shelf-LAB.git
+[submodule "standalone/ciba-hitl-lab"]
+	path = standalone/ciba-hitl-lab
+	url = https://github.com/ping-sandbox/ciba-hitl-lab.git
