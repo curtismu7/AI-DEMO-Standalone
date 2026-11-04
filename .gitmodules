@@ -171,7 +171,7 @@
 	url = https://github.com/ping-sandbox/agentcore-pingone-demo-LAB
 [submodule "standalone/muse"]
 	path = standalone/muse
-	url = https://github.com/cmuir_pingcorp/muse.git
+	url = https://github.com/ping-sandbox/muse-LAB.git
 [submodule "standalone/meridian-a2a-hop-LAB"]
 	path = standalone/meridian-a2a-hop-LAB
 	url = https://github.com/ping-sandbox/meridian-a2a-hop-LAB.git
