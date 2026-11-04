@@ -54,10 +54,12 @@ echo "== One-domain launcher (lab-proxy)"
 #   https://local.ping-devops.com:8443            -> the shelf (launcher)
 #   https://local.ping-devops.com:8443/<app>/     -> each app
 # The proxy needs the apps' Docker networks, so it starts after the first apps are up. Try it, don't fail the setup.
-if docker --context orbstack compose -p lab-proxy -f "$root/shared/lab-proxy/docker-compose.yml" up -d >/dev/null 2>&1; then
-  echo "lab-proxy started: https://local.ping-devops.com:8443"
+# The watchdog also installs a launchd agent (RunAtLoad + every 5 min) so a reboot never leaves the
+# launcher down, and starts any lab containers a restart left exited. Users never see ERR_CONNECTION_REFUSED.
+if "$root/scripts/lab-proxy-watchdog.sh"; then
+  echo "lab-proxy started (and a launchd agent keeps it up): https://local.ping-devops.com:8443"
 else
-  echo "lab-proxy not started (Docker down or some apps not running yet). Start it later with:"
-  echo "  docker --context orbstack compose -p lab-proxy -f shared/lab-proxy/docker-compose.yml up -d"
+  echo "lab-proxy not serving yet (see /tmp/lab-proxy-watchdog.log). It retries every 5 minutes; or run:"
+  echo "  scripts/lab-proxy-watchdog.sh"
 fi
 echo "Done. Open https://local.ping-devops.com:8443 (launcher) or run an app directly: cd standalone/<app> && npm start"
