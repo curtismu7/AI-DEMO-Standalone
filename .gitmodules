@@ -1,189 +1,189 @@
 [submodule "standalone/ai-gateway-client"]
 	path = standalone/ai-gateway-client-LAB
-	url = https://github.com/ping-sandbox/ai-gateway-client-LAB.git
+	url = https://github.com/curtismu7/ai-gateway-client-LAB.git
 [submodule "standalone/privilege-a2a-anthropic-demo"]
 	path = standalone/privilege-a2a-anthropic-demo-LAB
-	url = https://github.com/ping-sandbox/privilege-a2a-anthropic-demo-LAB.git
+	url = https://github.com/curtismu7/privilege-a2a-anthropic-demo-LAB.git
 [submodule "standalone/mcp-demo-client-privilege"]
 	path = standalone/mcp-demo-client-privilege-LAB
-	url = https://github.com/ping-sandbox/mcp-demo-client-privilege-LAB.git
+	url = https://github.com/curtismu7/mcp-demo-client-privilege-LAB.git
 [submodule "standalone/id-jag-standalone-LAB"]
 	path = standalone/id-jag-standalone-LAB
-	url = https://github.com/ping-sandbox/id-jag-standalone-LAB.git
+	url = https://github.com/curtismu7/id-jag-standalone-LAB.git
 [submodule "standalone/privilege-demo-LAB"]
 	path = standalone/privilege-demo-LAB
-	url = https://github.com/ping-sandbox/privilege-demo-LAB.git
+	url = https://github.com/curtismu7/privilege-demo-LAB.git
 [submodule "standalone/privilege-map-LAB"]
 	path = standalone/privilege-map-LAB
-	url = https://github.com/ping-sandbox/privilege-map-LAB.git
+	url = https://github.com/curtismu7/privilege-map-LAB.git
 [submodule "standalone/agent-mcp-door-demo-LAB"]
 	path = standalone/agent-mcp-door-demo-LAB
-	url = https://github.com/ping-sandbox/agent-mcp-door-demo-LAB.git
+	url = https://github.com/curtismu7/agent-mcp-door-demo-LAB.git
 [submodule "standalone/pingfederate-LAB"]
 	path = standalone/pingfederate-LAB
-	url = https://github.com/ping-sandbox/pingfederate-LAB.git
+	url = https://github.com/curtismu7/pingfederate-LAB.git
 [submodule "standalone/customer-agent-LAB"]
 	path = standalone/customer-agent-LAB
-	url = https://github.com/ping-sandbox/customer-agent-LAB.git
+	url = https://github.com/curtismu7/customer-agent-LAB.git
 [submodule "standalone/mcp-resource-server-LAB"]
 	path = standalone/mcp-resource-server-LAB
-	url = https://github.com/ping-sandbox/mcp-resource-server-LAB.git
+	url = https://github.com/curtismu7/mcp-resource-server-LAB.git
 [submodule "standalone/mcp-tools-LAB"]
 	path = standalone/mcp-tools-LAB
-	url = https://github.com/ping-sandbox/mcp-tools-LAB.git
+	url = https://github.com/curtismu7/mcp-tools-LAB.git
 [submodule "standalone/gateway-claims-LAB"]
 	path = standalone/gateway-claims-LAB
-	url = https://github.com/ping-sandbox/gateway-claims-LAB.git
+	url = https://github.com/curtismu7/gateway-claims-LAB.git
 [submodule "standalone/secrets-vault-LAB"]
 	path = standalone/secrets-vault-LAB
-	url = https://github.com/ping-sandbox/secrets-vault-LAB.git
+	url = https://github.com/curtismu7/secrets-vault-LAB.git
 [submodule "standalone/mcp-surface-LAB"]
 	path = standalone/mcp-surface-LAB
-	url = https://github.com/ping-sandbox/mcp-surface-LAB.git
+	url = https://github.com/curtismu7/mcp-surface-LAB.git
 [submodule "standalone/federated-identity-LAB"]
 	path = standalone/federated-identity-LAB
-	url = https://github.com/ping-sandbox/federated-identity-LAB.git
+	url = https://github.com/curtismu7/federated-identity-LAB.git
 [submodule "standalone/ai-policies-LAB"]
 	path = standalone/ai-policies-LAB
-	url = https://github.com/ping-sandbox/ai-policies-LAB.git
+	url = https://github.com/curtismu7/ai-policies-LAB.git
 [submodule "standalone/diagram-studio-LAB"]
 	path = standalone/diagram-studio-LAB
-	url = https://github.com/ping-sandbox/diagram-studio-LAB.git
+	url = https://github.com/curtismu7/diagram-studio-LAB.git
 [submodule "standalone/agent-registry-demo-LAB"]
 	path = standalone/agent-registry-demo-LAB
-	url = https://github.com/ping-sandbox/agent-registry-demo-LAB.git
+	url = https://github.com/curtismu7/agent-registry-demo-LAB.git
 [submodule "standalone/agent-kill-switch-LAB"]
 	path = standalone/agent-kill-switch-LAB
-	url = https://github.com/ping-sandbox/agent-kill-switch-LAB.git
+	url = https://github.com/curtismu7/agent-kill-switch-LAB.git
 [submodule "standalone/intent-par-inspector-LAB"]
 	path = standalone/intent-par-inspector-LAB
-	url = https://github.com/ping-sandbox/intent-par-inspector-LAB.git
+	url = https://github.com/curtismu7/intent-par-inspector-LAB.git
 [submodule "standalone/ping-gateway-route-LAB"]
 	path = standalone/ping-gateway-route-LAB
-	url = https://github.com/ping-sandbox/ping-gateway-route-LAB.git
+	url = https://github.com/curtismu7/ping-gateway-route-LAB.git
 [submodule "standalone/hostile-mcp-LAB"]
 	path = standalone/hostile-mcp-LAB
-	url = https://github.com/ping-sandbox/hostile-mcp-LAB.git
+	url = https://github.com/curtismu7/hostile-mcp-LAB.git
 [submodule "standalone/hostile-a2a-LAB"]
 	path = standalone/hostile-a2a-LAB
-	url = https://github.com/ping-sandbox/hostile-a2a-LAB.git
+	url = https://github.com/curtismu7/hostile-a2a-LAB.git
 [submodule "standalone/cimd-LAB"]
 	path = standalone/cimd-LAB
-	url = https://github.com/ping-sandbox/cimd-LAB.git
+	url = https://github.com/curtismu7/cimd-LAB.git
 [submodule "standalone/deploy-test-LAB"]
 	path = standalone/deploy-test-LAB
-	url = https://github.com/ping-sandbox/deploy-test-LAB.git
+	url = https://github.com/curtismu7/deploy-test-LAB.git
 [submodule "standalone/pingone-signin-LAB"]
 	path = standalone/pingone-signin-LAB
-	url = https://github.com/ping-sandbox/pingone-signin-LAB.git
+	url = https://github.com/curtismu7/pingone-signin-LAB.git
 [submodule "standalone/ai-guard-sidecar-LAB"]
 	path = standalone/ai-guard-sidecar-LAB
-	url = https://github.com/ping-sandbox/ai-guard-sidecar-LAB.git
+	url = https://github.com/curtismu7/ai-guard-sidecar-LAB.git
 [submodule "standalone/attack-gallery-LAB"]
 	path = standalone/attack-gallery-LAB
-	url = https://github.com/ping-sandbox/attack-gallery-LAB.git
+	url = https://github.com/curtismu7/attack-gallery-LAB.git
 [submodule "standalone/mcp-auth-conformance-LAB"]
 	path = standalone/mcp-auth-conformance-LAB
-	url = https://github.com/ping-sandbox/mcp-auth-conformance-LAB.git
+	url = https://github.com/curtismu7/mcp-auth-conformance-LAB.git
 [submodule "standalone/mcp-discovery-LAB"]
 	path = standalone/mcp-discovery-LAB
-	url = https://github.com/ping-sandbox/mcp-discovery-LAB.git
+	url = https://github.com/curtismu7/mcp-discovery-LAB.git
 [submodule "standalone/no-tool-no-promise-LAB"]
 	path = standalone/no-tool-no-promise-LAB
-	url = https://github.com/ping-sandbox/no-tool-no-promise-LAB.git
+	url = https://github.com/curtismu7/no-tool-no-promise-LAB.git
 [submodule "standalone/p1-third-party-exchange-LAB"]
 	path = standalone/p1-third-party-exchange-LAB
-	url = https://github.com/ping-sandbox/p1-third-party-exchange-LAB.git
+	url = https://github.com/curtismu7/p1-third-party-exchange-LAB.git
 [submodule "standalone/personal-agent-demo-LAB"]
 	path = standalone/personal-agent-demo-LAB
-	url = https://github.com/ping-sandbox/personal-agent-demo-LAB.git
+	url = https://github.com/curtismu7/personal-agent-demo-LAB.git
 [submodule "standalone/token-workbench-LAB"]
 	path = standalone/token-workbench-LAB
-	url = https://github.com/ping-sandbox/token-workbench-LAB.git
+	url = https://github.com/curtismu7/token-workbench-LAB.git
 [submodule "standalone/worker-demo-LAB"]
 	path = standalone/worker-demo-LAB
-	url = https://github.com/ping-sandbox/worker-demo-LAB.git
+	url = https://github.com/curtismu7/worker-demo-LAB.git
 [submodule "standalone/session-LAB"]
 	path = standalone/session-LAB
-	url = https://github.com/ping-sandbox/session-LAB.git
+	url = https://github.com/curtismu7/session-LAB.git
 [submodule "standalone/poppy-agent-tester-LAB"]
 	path = standalone/poppy-agent-tester-LAB
-	url = https://github.com/ping-sandbox/poppy-agent-tester-LAB.git
+	url = https://github.com/curtismu7/poppy-agent-tester-LAB.git
 [submodule "standalone/intent-purpose-behaviour-LAB"]
 	path = standalone/intent-purpose-behaviour-LAB
-	url = https://github.com/ping-sandbox/intent-purpose-behaviour-LAB.git
+	url = https://github.com/curtismu7/intent-purpose-behaviour-LAB.git
 [submodule "standalone/coding-agents-LAB"]
 	path = standalone/coding-agents-LAB
-	url = https://github.com/ping-sandbox/coding-agents-LAB.git
+	url = https://github.com/curtismu7/coding-agents-LAB.git
 [submodule "standalone/data-protection-LAB"]
 	path = standalone/data-protection-LAB
-	url = https://github.com/ping-sandbox/data-protection-LAB.git
+	url = https://github.com/curtismu7/data-protection-LAB.git
 [submodule "standalone/saas-access-LAB"]
 	path = standalone/saas-access-LAB
-	url = https://github.com/ping-sandbox/saas-access-LAB.git
+	url = https://github.com/curtismu7/saas-access-LAB.git
 [submodule "standalone/agent-governance-LAB"]
 	path = standalone/agent-governance-LAB
-	url = https://github.com/ping-sandbox/agent-governance-LAB.git
+	url = https://github.com/curtismu7/agent-governance-LAB.git
 [submodule "standalone/p1az-inspector-LAB"]
 	path = standalone/p1az-inspector-LAB
-	url = https://github.com/ping-sandbox/p1az-inspector-LAB.git
+	url = https://github.com/curtismu7/p1az-inspector-LAB.git
 [submodule "standalone/agent-gateway-inspector-LAB"]
 	path = standalone/agent-gateway-inspector-LAB
-	url = https://github.com/ping-sandbox/agent-gateway-inspector-LAB.git
+	url = https://github.com/curtismu7/agent-gateway-inspector-LAB.git
 [submodule "standalone/pingone-mcp-inspector-LAB"]
 	path = standalone/pingone-mcp-inspector-LAB
-	url = https://github.com/ping-sandbox/pingone-mcp-inspector-LAB.git
+	url = https://github.com/curtismu7/pingone-mcp-inspector-LAB.git
 [submodule "standalone/agent-audit-trail-LAB"]
 	path = standalone/agent-audit-trail-LAB
-	url = https://github.com/ping-sandbox/agent-audit-trail-LAB.git
+	url = https://github.com/curtismu7/agent-audit-trail-LAB.git
 [submodule "standalone/progressive-trust-ladder-LAB"]
 	path = standalone/progressive-trust-ladder-LAB
-	url = https://github.com/ping-sandbox/progressive-trust-ladder-LAB.git
+	url = https://github.com/curtismu7/progressive-trust-ladder-LAB.git
 [submodule "standalone/chatgpt-mcp-flow-LAB"]
 	path = standalone/chatgpt-mcp-flow-LAB
-	url = https://github.com/ping-sandbox/chatgpt-mcp-flow-LAB.git
+	url = https://github.com/curtismu7/chatgpt-mcp-flow-LAB.git
 [submodule "standalone/mock-authorize-LAB"]
 	path = standalone/mock-authorize-LAB
-	url = https://github.com/ping-sandbox/mock-authorize-LAB.git
+	url = https://github.com/curtismu7/mock-authorize-LAB.git
 [submodule "standalone/stolen-token-LAB"]
 	path = standalone/stolen-token-LAB
-	url = https://github.com/ping-sandbox/stolen-token-LAB.git
+	url = https://github.com/curtismu7/stolen-token-LAB.git
 [submodule "standalone/mcp-elicitation-LAB"]
 	path = standalone/mcp-elicitation-LAB
-	url = https://github.com/ping-sandbox/mcp-elicitation-LAB.git
+	url = https://github.com/curtismu7/mcp-elicitation-LAB.git
 [submodule "standalone/pingone-LAB"]
 	path = standalone/pingone-LAB
-	url = https://github.com/ping-sandbox/pingone-LAB.git
+	url = https://github.com/curtismu7/pingone-LAB.git
 [submodule "standalone/jev-lab-LAB"]
 	path = standalone/jev-lab-LAB
-	url = https://github.com/ping-sandbox/jev-lab.git
+	url = https://github.com/curtismu7/jev-lab.git
 [submodule "standalone/obo-lab-LAB"]
 	path = standalone/obo-lab-LAB
-	url = https://github.com/ping-sandbox/obo-lab.git
+	url = https://github.com/curtismu7/obo-lab.git
 [submodule "standalone/jit-lab-LAB"]
 	path = standalone/jit-lab-LAB
-	url = https://github.com/ping-sandbox/jit-lab.git
+	url = https://github.com/curtismu7/jit-lab.git
 [submodule "shared/ping-shared"]
 	path = shared/ping-shared
-	url = https://github.com/ping-sandbox/ping-shared.git
+	url = https://github.com/curtismu7/ping-shared.git
 [submodule "standalone/agentcore-pingone-demo-LAB"]
 	path = standalone/agentcore-pingone-demo-LAB
-	url = https://github.com/ping-sandbox/agentcore-pingone-demo-LAB
+	url = https://github.com/curtismu7/agentcore-pingone-demo-LAB
 [submodule "standalone/muse"]
 	path = standalone/muse
-	url = https://github.com/ping-sandbox/muse-LAB.git
+	url = https://github.com/curtismu7/muse-LAB.git
 [submodule "standalone/meridian-a2a-hop-LAB"]
 	path = standalone/meridian-a2a-hop-LAB
-	url = https://github.com/ping-sandbox/meridian-a2a-hop-LAB.git
+	url = https://github.com/curtismu7/meridian-a2a-hop-LAB.git
 [submodule "standalone/ping-services-stub-LAB"]
 	path = standalone/ping-services-stub-LAB
-	url = https://github.com/ping-sandbox/ping-services-stub-LAB.git
+	url = https://github.com/curtismu7/ping-services-stub-LAB.git
 [submodule "standalone/demo-shelf-LAB"]
 	path = standalone/demo-shelf-LAB
-	url = https://github.com/ping-sandbox/demo-shelf-LAB.git
+	url = https://github.com/curtismu7/demo-shelf-LAB.git
 [submodule "standalone/ciba-hitl-lab"]
 	path = standalone/ciba-hitl-lab
-	url = https://github.com/ping-sandbox/ciba-hitl-lab.git
+	url = https://github.com/curtismu7/ciba-hitl-lab.git
 [submodule "standalone/gateway-suite-LAB"]
 	path = standalone/gateway-suite-LAB
-	url = https://github.com/ping-sandbox/gateway-suite-LAB.git
+	url = https://github.com/curtismu7/gateway-suite-LAB.git
