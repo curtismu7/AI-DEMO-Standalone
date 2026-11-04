@@ -34,6 +34,15 @@ git submodule update --init --recursive
 | jit-lab-LAB | Demo | standalone/jit-lab-LAB |
 | ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
 
+## One domain for demo users (lab-proxy)
+
+All apps are reached through ONE domain, already in `/etc/hosts` - never `127.0.0.1`, and never new hosts entries:
+
+- `https://local.ping-devops.com:8443` - the shelf (launcher)
+- `https://local.ping-devops.com:8443/<app>/` - each app, e.g. `/pingone-lab/`, `/ciba-hitl-lab/`
+
+The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; it joins a network per app, so an app only appears once its compose stack is up. `scripts/bootstrap.sh` starts it when possible. Adding an app to the proxy = one entry location + two cookie-map lines + its compose network in `shared/lab-proxy/`.
+
 ## Ports, and what to do if a port is taken
 
 Each app sets its own ports. Ranges and variables are in each app's README:
