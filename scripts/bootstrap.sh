@@ -89,8 +89,8 @@ if [ "$major" -lt 26 ]; then
 fi
 echo "Node $(node -v) OK"
 
-echo "== gh CLI + ping-sandbox access"
-# The labs are Internal repos under ping-sandbox; submodule init fails cryptically without access.
+echo "== gh CLI + repo access"
+# Submodule init fails cryptically without access to the submodule owner.
 if ! command -v gh > /dev/null; then
   if command -v brew > /dev/null; then echo "gh CLI missing — installing (brew install gh)"; brew install gh; else echo "gh CLI is required and brew is not available. Install: brew install gh"; exit 1; fi
 fi
