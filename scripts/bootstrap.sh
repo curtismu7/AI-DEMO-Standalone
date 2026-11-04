@@ -144,6 +144,9 @@ echo "== UI standard"
 "$root/scripts/check-ui-standard.sh" || true
 
 echo "== Settings file"
+# The shared settings file lives at ~/Development/.env (the family convention). Make sure
+# the folder exists even if the repo was cloned elsewhere.
+mkdir -p "$HOME/Development"
 "$root/scripts/check-env.sh" || echo "Fix the lines above, then re-run scripts/check-env.sh"
 echo "== One-domain launcher (lab-proxy)"
 # All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.

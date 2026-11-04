@@ -3,8 +3,8 @@
 Parent repo for the standalone SE demo apps. Each app is its own repo under `ping-sandbox`, added as a git submodule under `standalone/`.
 
 ```sh
-git clone --recurse-submodules https://github.com/ping-sandbox/AI-DEMO-Standalone.git
-cd AI-DEMO-Standalone
+git clone --recurse-submodules https://github.com/ping-sandbox/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone
+cd ~/Development/AI-DEMO-Standalone
 scripts/bootstrap.sh
 ```
 
