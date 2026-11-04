@@ -26,6 +26,7 @@ services:
       - regdemo
       - gwclient
       - meridian
+      - learnhub
       - shelf
 
 networks:
@@ -74,6 +75,9 @@ networks:
   meridian:
     external: true
     name: meridian-a2a-hop-lab_demo
+  learnhub:
+    external: true
+    name: learning-hub_default
   shelf:
     external: true
     name: demo-shelf-lab_default
