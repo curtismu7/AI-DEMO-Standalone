@@ -13,6 +13,20 @@ for arg in "$@"; do
   prev="$arg"
 done
 
+echo "== Homebrew (package manager for everything below)"
+if ! command -v brew > /dev/null; then
+  echo "Homebrew missing — installing (will ask for your password)..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # Apple Silicon puts brew in /opt/homebrew; the installer prints the eval line but a fresh shell needs it now.
+  if [ -x /opt/homebrew/bin/brew ]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi
+  if [ -x /usr/local/bin/brew ]; then eval "$(/usr/local/bin/brew shellenv)"; fi
+fi
+command -v brew > /dev/null || { echo "Homebrew install failed. Install it: https://brew.sh then re-run."; exit 1; }
+echo "brew OK ($(brew --version | head -1))"
+# git ships with the Xcode Command Line Tools, which the brew install above just set up.
+command -v git > /dev/null || { echo "git missing — installing the Xcode Command Line Tools (git included)..."; xcode-select --install || true; echo "Re-run this script after the tools finish installing."; exit 1; }
+echo "git OK ($(git --version))"
+
 echo "== Node"
 major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$major" -lt 22 ]; then
