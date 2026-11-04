@@ -15,13 +15,27 @@ done
 
 echo "== Node"
 major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major)"; echo "Install it: brew install node@22"; exit 1; fi
+if [ "$major" -lt 22 ]; then
+  if [ "$major" = "0" ] && command -v brew > /dev/null; then
+    echo "Node missing — installing (brew install node@22)..."
+    brew install node@22 && brew link --overwrite node@22 || true
+    major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+  fi
+  if [ "$major" -lt 22 ]; then echo "Node 22 or newer is required (found major $major). Install it: brew install node@22"; exit 1; fi
+fi
 echo "Node $(node -v) OK"
 
 echo "== gh CLI + ping-sandbox access"
 # The labs are Internal repos under ping-sandbox; submodule init fails cryptically without access.
-if ! command -v gh > /dev/null; then echo "gh CLI is required (the labs live in private ping-sandbox repos)"; echo "Install it: brew install gh, then: gh auth login"; exit 1; fi
-if ! gh auth status > /dev/null 2>&1; then echo "gh is not signed in. Run: gh auth login"; exit 1; fi
+if ! command -v gh > /dev/null; then
+  if command -v brew > /dev/null; then echo "gh CLI missing — installing (brew install gh)"; brew install gh; else echo "gh CLI is required and brew is not available. Install: brew install gh"; exit 1; fi
+fi
+if ! gh auth status > /dev/null 2>&1; then
+  echo "gh is not signed in — starting the browser login (--web)..."
+  gh auth login --hostname github.com --git-protocol https --web
+fi
+# Git needs gh as its credential helper or submodule fetches over HTTPS fail on private repos.
+gh auth setup-git
 ghuser="$(gh api user --jq .login 2>/dev/null || true)"
 if [ -z "$ghuser" ]; then echo "gh is signed in but the API call failed; check gh auth status"; exit 1; fi
 if ! gh api repos/ping-sandbox/AI-DEMO-Standalone --jq .full_name > /dev/null 2>&1; then
@@ -32,17 +46,41 @@ fi
 echo "gh OK ($ghuser, ping-sandbox reachable)"
 
 echo "== Docker"
-if ! command -v docker > /dev/null; then echo "Docker is required (OrbStack recommended: brew install orbstack)"; exit 1; fi
-if ! docker info > /dev/null 2>&1; then echo "Docker is installed but not running. Start OrbStack (or Docker Desktop) and re-run."; exit 1; fi
+if ! command -v docker > /dev/null; then
+  if command -v brew > /dev/null; then
+    if [ "$(uname -s)" = "Darwin" ]; then echo "Docker missing — installing OrbStack (brew install orbstack)"; brew install orbstack || true; fi
+  else
+    echo "Docker is required and brew is not available. Install: brew install orbstack"; exit 1
+  fi
+fi
+if command -v docker > /dev/null && ! docker info > /dev/null 2>&1; then
+  # Start OrbStack (auto-starts the VM on first command) or Docker Desktop as fallback.
+  if [ "$(uname -s)" = "Darwin" ]; then
+    echo "Starting Docker (OrbStack)..."
+    open -a OrbStack 2>/dev/null || open -a "Docker Desktop" 2>/dev/null || true
+    for i in $(seq 1 30); do docker info > /dev/null 2>&1 && break; sleep 2; done
+  fi
+fi
+if ! docker info > /dev/null 2>&1; then echo "Docker is not running. Start OrbStack (or Docker Desktop) and re-run."; exit 1; fi
 echo "docker OK"
 
 echo "== /etc/hosts entry for the one domain"
 # The lab-proxy serves https://local.ping-devops.com:8443; the name must resolve on this machine.
-# Only the owner adds host entries (sudo); if it is missing, say what to add and continue in mock/direct mode.
+# Bootstrap tries to add it with sudo (may prompt for your password); if sudo is unavailable it
+# tells you the line and continues — apps still work directly without it.
 if ! grep -q "local.ping-devops.com" /etc/hosts 2>/dev/null; then
-  echo "NOTE: /etc/hosts has no local.ping-devops.com entry. The lab-proxy launcher needs it:"
-  echo "  127.0.0.1 local.ping-devops.com"
-  echo "Apps still work directly (cd standalone/<app> && npm start) without it."
+  if sudo -n true 2>/dev/null; then
+    echo "127.0.0.1 local.ping-devops.com" | sudo tee -a /etc/hosts > /dev/null && echo "hosts entry added"
+  else
+    echo "Asking for your password to add the hosts entry (the launcher needs it)..."
+    if echo "127.0.0.1 local.ping-devops.com" | sudo tee -a /etc/hosts > /dev/null 2>&1; then
+      echo "hosts entry added"
+    else
+      echo "NOTE: could not add the /etc/hosts entry. Add this line yourself (sudo):"
+      echo "  127.0.0.1 local.ping-devops.com"
+      echo "Apps still work directly (cd standalone/<app> && npm start) without it."
+    fi
+  fi
 fi
 
 echo "== Authorize policy snapshot (live mode only)"
