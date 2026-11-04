@@ -22,7 +22,7 @@ per-environment worker, and writes `~/Development/.env` (mode 600) — the one s
 lab reads. No other console work.
 
 Bootstrap does the rest on a new machine — even a bare Mac: it installs Homebrew if missing
-(which brings the Xcode tools and git), then brew-installs anything missing (node, gh, orbstack),
+(which brings the Xcode tools and git), then brew-installs anything missing (Node 26, gh, orbstack),
 runs `gh auth login --web` if you are not signed in, wires gh as git's credential helper, starts
 Docker, and adds the `/etc/hosts` entry (sudo prompt) for the one-domain launcher. The only thing
 you provide: a GitHub account with ping-sandbox membership.
