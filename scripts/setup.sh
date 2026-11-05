@@ -86,6 +86,16 @@ case "$sub" in
         echo "  shelf unchanged and running."
       fi
     fi
+    # The lab-proxy serves the labs over one domain; its nginx.conf lives in this repo,
+    # so an update can change proxy behavior (forwarded headers, new lab routes). The
+    # force-recreate is idempotent and also re-resolves DNS against now-running labs.
+    if [ -x "$root/scripts/lab-proxy-watchdog.sh" ]; then
+      if "$root/scripts/lab-proxy-watchdog.sh" > /dev/null 2>&1; then
+        echo "  lab-proxy serving with the current config."
+      else
+        echo "  WARNING: lab-proxy did not come up — run: scripts/lab-proxy-watchdog.sh (it prints why)."
+      fi
+    fi
     echo "Done. All submodules at their recorded pins."
     echo "Next: scripts/setup.sh --skip-install to re-verify, or --start <lab>."
     exit 0
