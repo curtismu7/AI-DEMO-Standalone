@@ -187,7 +187,7 @@ gh auth setup-git
 ghuser="$(gh api user --jq .login 2>/dev/null || true)"
 [ -n "$ghuser" ] || step_fail "gh is signed in but the API call failed; check: gh auth status"
 # Gate on the meta-repo's OWN origin (works for any owner: ping-sandbox, curtismu7, an org fork).
-meta_repo="$(git config --get remote.origin.url | sed 's|\.git$||; s|^https://github.com/||')"
+meta_repo="$(git -C "$root" config --get remote.origin.url | sed 's|\.git$||; s|^https://github.com/||')"
 if [ -z "$meta_repo" ]; then
   step_detail "This script must run from inside the family checkout (a git repo with an origin).\nFrom nothing, run:\n  curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/scripts/install.sh | bash\nOr:\n  git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone"
   step_fail "not inside the family git checkout"
