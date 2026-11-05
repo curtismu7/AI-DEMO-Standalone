@@ -67,11 +67,21 @@ case "$sub" in
     git -C "$root" submodule update --init --recursive
     shelf_pin_after=$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')
     if [ -d "$root/standalone/demo-shelf-LAB" ]; then
-      if [ "$shelf_pin_before" != "$shelf_pin_after" ] || ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
-        echo "Shelf changed or not running — restarting it (this serves the update banner and release notes)..."
-        (cd "$root/standalone/demo-shelf-LAB" && npm run docker > /dev/null 2>&1) \
-          && echo "  shelf restarted with the new code" \
-          || echo "  shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker)"
+      if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
+        echo "Shelf not running — starting it..."
+        if (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1); then
+          echo "  shelf running with the current code (update banner + release notes)."
+        else
+          echo "  WARNING: shelf failed to start — the launcher will 404 until it is up."
+          echo "  Fix by hand:  cd standalone/demo-shelf-LAB && npm run docker   (its output shows why)"
+        fi
+      elif [ "$shelf_pin_before" != "$shelf_pin_after" ]; then
+        echo "Shelf changed — restarting it (this serves the update banner and release notes)..."
+        if (cd "$root/standalone/demo-shelf-LAB" && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1); then
+          echo "  shelf restarted with the new code."
+        else
+          echo "  WARNING: shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker) to see why."
+        fi
       else
         echo "  shelf unchanged and running."
       fi

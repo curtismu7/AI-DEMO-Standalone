@@ -274,10 +274,19 @@ else
   # If the shelf pin moved during this run and a shelf container is already up,
   # restart it so users actually get the new banner/notes code.
   shelf_pin_after="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
-  if [ "$shelf_pin_before" != "$shelf_pin_after" ] && docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
-    (cd "$root/standalone/demo-shelf-LAB" && npm run docker > /dev/null 2>&1) \
-      && step_detail "Shelf restarted with the new code (update banner + release notes)." \
-      || step_detail "Shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker)"
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
+    if [ "$shelf_pin_before" != "$shelf_pin_after" ]; then
+      (cd "$root/standalone/demo-shelf-LAB" && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1) \
+        && step_detail "Shelf restarted with the new code (update banner + release notes)." \
+        || step_detail "Shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker) to see why."
+    fi
+  else
+    # Shelf down (or never started): bring it up, else the launcher 404s.
+    if (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1); then
+      step_detail "Shelf started (the launcher now serves it)."
+    else
+      step_detail "Shelf did not start — the launcher will 404 until it is up. Fix by hand: cd standalone/demo-shelf-LAB && npm run docker"
+    fi
   fi
 fi
 
