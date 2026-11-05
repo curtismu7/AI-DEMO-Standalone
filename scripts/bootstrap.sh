@@ -56,6 +56,27 @@ step_warn()    { _step_pad; printf "${C_Y}WARN${C_0} %s\n" "${1:-}"; [ -n "${STE
 step_fail()    { _step_pad; printf "${C_R}FAIL${C_0} %s\n" "${1:-}"; [ -n "${STEP_DETAIL:-}" ] && printf '%b' "$STEP_DETAIL"; exit 1; }
 step_detail()  { STEP_DETAIL="${STEP_DETAIL}${1}\n"; }
 
+# repair_pins: when a submodule update fails with "not our ref", the pinned
+# commit is missing on that submodule's remote (a pin was committed from an
+# unpushed local HEAD). Re-point every such pin at the remote's own main and
+# commit locally — no push from consumer machines; the owner's machine reconciles.
+repair_pins() {
+  local fixed=0 sha name remote_main
+  while read -r mode type sha name; do
+    [ "$type" = "commit" ] || continue
+    d="$name"
+    [ -d "$root/$d/.git" ] || continue
+    git -C "$root/$d" ls-remote --heads origin 2>/dev/null | grep -q "$sha" && continue
+    remote_main=$(git -C "$root/$d" ls-remote --heads origin main 2>/dev/null | awk '{print $1}')
+    [ -n "$remote_main" ] || continue
+    git update-index --cacheinfo "160000,$remote_main,$d" && fixed=$((fixed + 1))
+  done < <(git -C "$root" ls-tree HEAD standalone/ shared/ 2>/dev/null)
+  if [ "$fixed" -gt 0 ]; then
+    git -C "$root" commit -q -m "pins: auto-repair — advance pins whose commits are missing on their remotes"
+    echo "    (repaired $fixed stale pin(s) locally; they were not pushed — the owner machine reconciles)"
+  fi
+}
+
 # ---- argument parsing -------------------------------------------------------
 for arg in "$@"; do
   case "$arg" in
@@ -265,11 +286,13 @@ out="$(node "$root/scripts/check-authorize-policy.mjs" 2>&1)" && step_ok "policy
 # ---- 8. Submodules + shelf + installs ---------------------------------------
 step "Submodules"
 if [ -n "$BOOTSTRAP_APP" ]; then
-  run_quiet "submodule init" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP"
+  run_quiet "submodule init" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP" \
+    || { repair_pins; run_quiet "submodule init (after pin repair)" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP"; }
   step_ok "$BOOTSTRAP_APP"
 else
   shelf_pin_before="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
-  run_quiet "submodule init" git -C "$root" submodule update --init --recursive
+  run_quiet "submodule init" git -C "$root" submodule update --init --recursive \
+    || { repair_pins; run_quiet "submodule init (after pin repair)" git -C "$root" submodule update --init --recursive; }
   step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs"
   # If the shelf pin moved during this run and a shelf container is already up,
   # restart it so users actually get the new banner/notes code.
