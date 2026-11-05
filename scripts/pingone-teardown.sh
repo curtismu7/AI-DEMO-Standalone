@@ -35,6 +35,15 @@ err()  { echo "${RED}✗${RESET} $*" >&2; }
 fatal() { err "$*"; exit 1; }
 
 ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
+# The admin (org worker) credentials live in ~/Documents/.env, written by
+# pingone-setup.sh. Source it so the prompts below are skipped when present.
+CRED_FILE="${STANDALONE_CRED_FILE:-$HOME/Documents/.env}"
+if [[ -f "$CRED_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CRED_FILE"
+  set +a
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -68,9 +77,9 @@ USAGE
     --admin-env-id) PINGONE_ADMIN_ENV_ID="$2"; shift 2 ;;
     --client-id) PINGONE_ADMIN_CLIENT_ID="$2"; shift 2 ;;
     --client-secret) PINGONE_ADMIN_CLIENT_SECRET="$2"; shift 2 ;;
-    --yes) ASSUME_YES=1 ;;
-    --keep-env-file) KEEP_ENV_FILE=1 ;;
-    --dry-run) DRY_RUN=1 ;;
+    --yes) ASSUME_YES=1; shift ;;
+    --keep-env-file) KEEP_ENV_FILE=1; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
     *) err "unknown argument: $1 (see --help)"; exit 2 ;;
   esac
 done
@@ -97,6 +106,7 @@ fi
 ask() { # ask <prompt> <var>
   local prompt="$1" var="$2" answer=""
   if [[ -n "${!var:-}" ]]; then info "$prompt (from settings)"; return 0; fi
+  if [[ -n "${DRY_RUN:-}" ]]; then fatal "dry run makes no prompts but $var is missing — set it, pass --region/--admin-env-id/--client-id/--client-secret, or let pingone-setup.sh write $CRED_FILE."; fi
   if [[ -t 0 ]]; then read -r -p "$prompt" answer
   elif [[ -r /dev/tty ]]; then read -r -p "$prompt" answer </dev/tty
   else fatal "cannot prompt (no terminal). Set $var or pass flags (see --help)."; fi
@@ -106,6 +116,7 @@ ask() { # ask <prompt> <var>
 ask_secret() {
   local prompt="$1" var="$2" answer=""
   if [[ -n "${!var:-}" ]]; then info "$prompt (from settings)"; return 0; fi
+  if [[ -n "${DRY_RUN:-}" ]]; then fatal "dry run makes no prompts but $var is missing — set it, pass --client-secret, or let pingone-setup.sh write $CRED_FILE."; fi
   if [[ -t 0 ]]; then read -rs -p "$prompt" answer; echo
   elif [[ -r /dev/tty ]]; then read -rs -p "$prompt" answer </dev/tty; echo
   else fatal "cannot prompt (no terminal). Set $var or pass flags (see --help)."; fi
@@ -158,8 +169,18 @@ print(envs[0]["id"] if envs else "")' 2>/dev/null || true)"
 fi
 [[ -z "${TARGET_ENV_ID:-}" ]] && fatal "no target environment: pass --env-id, --name, or have PINGONE_ENVIRONMENT_ID in $ENV_FILE."
 
-env_json="$(curl -s --max-time 30 "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
-env_name="$(printf '%s' "$env_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
+env_json="$(curl -s --max-time 30 -o /tmp/p1-lookup-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
+lookup_body="$(cat /tmp/p1-lookup-$$ 2>/dev/null || true)"
+: > /tmp/p1-lookup-$$ 2>/dev/null || true
+if [[ "$env_json" == "401" || "$env_json" == "403" ]]; then
+  err "the org worker cannot read environment $TARGET_ENV_ID (HTTP $env_json)."
+  fatal "check that the worker has an organization-wide admin role and that the region is right."
+elif [[ "$env_json" != "200" ]]; then
+  err "environment lookup failed (HTTP $env_json):"
+  printf '%s\n' "$lookup_body" | sed 's/"access_token":"[^"]*"/"access_token":"<redacted>"/' >&2
+  exit 1
+fi
+env_name="$(printf '%s' "$lookup_body" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
 if [[ -z "$env_name" ]]; then
   fatal "environment $TARGET_ENV_ID not found in region $PINGONE_REGION (or the org worker cannot see it)."
 fi
@@ -190,10 +211,19 @@ del_code="$(curl -s --max-time 60 -o /tmp/p1-teardown-$$ -w '%{http_code}' -X DE
 del_body="$(cat /tmp/p1-teardown-$$ 2>/dev/null || true)"
 : > /tmp/p1-teardown-$$ 2>/dev/null || true
 # 202 accepted (async delete) and 204 are successes; 404 already gone is fine.
+# 409 = deletion already in progress from an earlier run: nothing to do but report it.
 if [[ "$del_code" == "202" || "$del_code" == "204" ]]; then
   ok "delete accepted (HTTP $del_code)"
 elif [[ "$del_code" == "404" ]]; then
   ok "environment already gone (HTTP 404)"
+elif [[ "$del_code" == "409" ]]; then
+  ok "environment is already being deleted (HTTP 409) — PingOne finishes it asynchronously"
+  ok "treat as done; verify in the console in a minute or rerun to confirm 404"
+elif [[ "$del_code" == "403" ]]; then
+  err "delete refused (HTTP 403): the org worker lacks the role to delete environments."
+  err "fix: in the Administrators environment give the worker the Organization Admin role (or an environment-admin role with delete rights), then rerun."
+  printf '%s\n' "$del_body" | sed 's/"access_token":"[^"]*"/"access_token":"<redacted>"/' >&2
+  exit 1
 else
   err "delete failed (HTTP $del_code):"
   printf '%s\n' "$del_body" | sed 's/"access_token":"[^"]*"/"access_token":"<redacted>"/' >&2

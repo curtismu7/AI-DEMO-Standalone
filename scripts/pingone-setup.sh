@@ -295,7 +295,26 @@ rm -f "$new_keys"
 chmod 600 "$ENV_FILE"
 ok "settings written: $ENV_FILE (mode 600)"
 
+# ── 6. save the ADMIN (org worker) credentials for teardown ───────────────────
+# The admin creds are deliberately NOT in $ENV_FILE (check-env forbids them there —
+# that file gets copied around). They live alone in ~/Documents/.env so
+# pingone-teardown.sh can run without prompting.
+CRED_FILE="${STANDALONE_CRED_FILE:-$HOME/Documents/.env}"
+mkdir -p "$(dirname "$CRED_FILE")"
+umask 177
+cat > "$CRED_FILE" <<EOF
+# PingOne ADMIN credentials (org worker) — used by scripts/pingone-teardown.sh.
+# Written by scripts/pingone-setup.sh $(date +%Y-%m-%d). Do not copy this file around.
+PINGONE_REGION=$PINGONE_REGION
+PINGONE_ADMIN_ENV_ID=$PINGONE_ADMIN_ENV_ID
+PINGONE_ADMIN_CLIENT_ID=$PINGONE_ADMIN_CLIENT_ID
+PINGONE_ADMIN_CLIENT_SECRET=$PINGONE_ADMIN_CLIENT_SECRET
+EOF
+chmod 600 "$CRED_FILE"
+ok "admin credentials saved: $CRED_FILE (mode 600) — teardown reads them automatically"
+
 echo ""
 ok "Done. Now run:  scripts/bootstrap.sh"
+echo "  Teardown later is prompt-free: admin creds were saved to ~/Documents/.env"
 echo "  Every lab reads PINGONE_ENVIRONMENT_ID/REGION from that file; the worker"
 echo "  creds above stay in it for labs that provision their own resources."
