@@ -404,6 +404,13 @@ elif [ -n "$start_app" ]; then
   start_one "$start_app"
 fi
 
+# ---- open the shelf in the browser ------------------------------------------
+if [ "$dry_run" != 1 ]; then
+  if [ "$(uname -s)" = "Darwin" ]; then
+    open "https://local.ping-devops.com:8443" 2>/dev/null && browser_opened=1 || browser_opened=0
+  fi
+fi
+
 # ---- summary ----------------------------------------------------------------
 mode="mock (no PingOne env)"
 grep -q "^PINGONE_ENVIRONMENT_ID=" "${STANDALONE_ENV:-$HOME/Development/.env}" 2>/dev/null && mode="live (PingOne env configured)"
@@ -420,6 +427,7 @@ printf "${C_0}"
 printf "  Mode      %s\n" "$mode"
 printf "  Labs      %s initialized, ~%s containers running\n" "$labs" "$running"
 printf "  Launcher  %s\n" "$proxy"
+[ "${browser_opened:-0}" = "1" ] && printf "  Browser   shelf opened in your browser\n"
 printf "            ${C_B}https://local.ping-devops.com:8443${C_0}\n"
 printf "\n"
 printf "  Next:\n"
