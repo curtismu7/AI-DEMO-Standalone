@@ -62,6 +62,46 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | jit-lab-LAB | Demo | standalone/jit-lab-LAB |
 | ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
 
+| mcp-resource-server-LAB | Tool | standalone/mcp-resource-server-LAB |
+| mcp-tools-LAB | Tester | standalone/mcp-tools-LAB |
+| hostile-mcp-LAB | Demo | standalone/hostile-mcp-LAB |
+| hostile-a2a-LAB | Demo | standalone/hostile-a2a-LAB |
+| cimd-LAB | Demo | standalone/cimd-LAB |
+| deploy-test-LAB | Demo | standalone/deploy-test-LAB |
+| pingone-signin-LAB | Demo | standalone/pingone-signin-LAB |
+| ai-guard-sidecar-LAB | Demo | standalone/ai-guard-sidecar-LAB |
+| attack-gallery-LAB | Tester | standalone/attack-gallery-LAB |
+| mcp-auth-conformance-LAB | Demo | standalone/mcp-auth-conformance-LAB |
+| mcp-discovery-LAB | Tester | standalone/mcp-discovery-LAB |
+| no-tool-no-promise-LAB | Demo | standalone/no-tool-no-promise-LAB |
+| p1-third-party-exchange-LAB | Demo | standalone/p1-third-party-exchange-LAB |
+| personal-agent-demo-LAB | Demo | standalone/personal-agent-demo-LAB |
+| token-workbench-LAB | Demo | standalone/token-workbench-LAB |
+| worker-demo-LAB | Demo | standalone/worker-demo-LAB |
+| session-LAB | Demo | standalone/session-LAB |
+| poppy-agent-tester-LAB | Demo | standalone/poppy-agent-tester-LAB |
+| intent-purpose-behaviour-LAB | Demo | standalone/intent-purpose-behaviour-LAB |
+| coding-agents-LAB | Demo | standalone/coding-agents-LAB |
+| data-protection-LAB | Demo | standalone/data-protection-LAB |
+| saas-access-LAB | Demo | standalone/saas-access-LAB |
+| agent-governance-LAB | Demo | standalone/agent-governance-LAB |
+| p1az-inspector-LAB | Tester | standalone/p1az-inspector-LAB |
+| agent-gateway-inspector-LAB | Tester | standalone/agent-gateway-inspector-LAB |
+| pingone-mcp-inspector-LAB | Tester | standalone/pingone-mcp-inspector-LAB |
+| agent-audit-trail-LAB | Demo | standalone/agent-audit-trail-LAB |
+| progressive-trust-ladder-LAB | Demo | standalone/progressive-trust-ladder-LAB |
+| chatgpt-mcp-flow-LAB | Demo | standalone/chatgpt-mcp-flow-LAB |
+| mock-authorize-LAB | Tester | standalone/mock-authorize-LAB |
+| stolen-token-LAB | Demo | standalone/stolen-token-LAB |
+| mcp-elicitation-LAB | Demo | standalone/mcp-elicitation-LAB |
+| agentcore-pingone-demo-LAB | Demo | standalone/agentcore-pingone-demo-LAB |
+| muse | Demo | standalone/muse |
+| meridian-a2a-hop-LAB | Demo | standalone/meridian-a2a-hop-LAB |
+| ping-services-stub-LAB | Tester | standalone/ping-services-stub-LAB |
+| demo-shelf-LAB | Demo | standalone/demo-shelf-LAB |
+| ciba-hitl-lab | Demo | standalone/ciba-hitl-lab |
+| gateway-suite-LAB | Demo | standalone/gateway-suite-LAB |
+
 ## One domain for demo users (lab-proxy)
 
 All apps are reached through ONE domain, already in `/etc/hosts` - never `127.0.0.1`, and never new hosts entries:
