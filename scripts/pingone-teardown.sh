@@ -51,7 +51,10 @@ while [[ $# -gt 0 ]]; do
       cat <<'USAGE'
 Deletes the dedicated demo PingOne environment and cleans up ~/Development/.env.
 
-Usage: scripts/pingone-teardown.sh [options]
+Usage: scripts/setup.sh teardown [options]
+
+Admin credentials are read from ~/Documents/.env (written by pingone-setup.sh) —
+no prompts when it exists. Override with flags or STANDALONE_CRED_FILE.
 
 Target environment (first match wins):
   (default)          the PINGONE_ENVIRONMENT_ID from ~/Development/.env
