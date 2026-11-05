@@ -3,7 +3,7 @@
 //
 //   node scripts/fleet-check.mjs [--only <repo-or-id>[,..]] [--json] [--strict] [--cache <dir>] [--no-ci]
 //
-// The app list is the shelf registry on GitHub (ping-sandbox/demo-shelf-LAB data/demos.json); each app's repo is the folder
+// The app list is the shelf registry on GitHub (curtismu7/demo-shelf-LAB data/demos.json); each app's repo is the folder
 // of its composeFile. Every repo is shallow-cloned into the cache (default: a temp folder) from GitHub, and the canonical
 // standalone-ui.css is read from GitHub too, never from a local checkout (a local checkout can sit on an old branch).
 //
@@ -25,7 +25,7 @@ import { promisify } from 'node:util';
 
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ORG = 'ping-sandbox';
+const ORG = 'curtismu7'; // owner org (ping-sandbox became unreachable 2026-11; repos restored here)
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage']);
 const SOURCE_EXT = /\.(js|mjs|cjs|jsx|ts|tsx|html)$/;
 

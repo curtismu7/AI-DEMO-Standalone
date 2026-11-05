@@ -6,7 +6,7 @@
 #
 # Creates <target-owner>/<repo> (public) for every registered submodule + pushes
 # all branches and tags, then rewrites the meta-repo's submodule URLs.
-# Works for ANY owner (ping-sandbox, curtismu7, an org) — the same script either way.
+# Works for ANY owner (curtismu7, an org) — the same script either way. (ping-sandbox is gone, 2026-11.)
 set -euo pipefail
 
 target="${1:?usage: mirror-to-github.sh <target-owner> [--account <gh-account>]}"
@@ -30,7 +30,7 @@ while read -r sub; do
   else
     echo "exists: $name"
   fi
-done < <(git config -f .gitmodules --get-regexp '\.url' | awk '{print $2}' | sed 's|https://github.com/||; s|\.git$||' | sort -u | sed 's|ping-sandbox/||')
+done < <(git config -f .gitmodules --get-regexp '\.url' | awk '{print $2}' | sed 's|https://github.com/||; s|\.git$||' | sort -u)
 
 # 2. mirror-push every submodule (all branches + tags), then the meta-repo itself
 while read -r sub; do
@@ -54,4 +54,4 @@ gh repo create "$target/AI-DEMO-Standalone" --public > /dev/null 2>&1 || true
 git push --all mirror 2>&1 | tail -1
 git push --tags mirror 2>&1 | tail -1
 
-echo "Done. Submodule URLs still point at ping-sandbox — run with --rewrite-urls next (TODO) or update .gitmodules by hand."
+echo "Done."

@@ -49,7 +49,7 @@ for app in "$@"; do
   if [ ! -f "$r" ]; then say FAIL "README.md missing"; else
     head -1 "$r" | grep -q -E '^# .* LAB$' && say ok "title ends in LAB" || say FAIL "title does not end in LAB: $(head -1 "$r" | cut -c1-60)"
     grep -q -E '^Tier: (Demo|Tester|Tool)' "$r" && say ok "tier line" || say FAIL "no Tier: line"
-    grep -q -i -E '^Repo: https://github\.com/(ping-sandbox|curtismu7)/[a-z0-9._-]+-lab$' "$r" && say ok "repo URL under ping-sandbox/curtismu7" || say FAIL "no Repo: URL ending -LAB (owner org moved to curtismu7, 2026-11-01)"
+    grep -q -i -E '^Repo: https://github\.com/curtismu7/[a-z0-9._-]+-lab$' "$r" && say ok "repo URL under curtismu7" || say FAIL "no Repo: URL ending -LAB (owner org moved to curtismu7, 2026-11-01)"
     grep -q -i 'what to do if the port is taken' "$r" && say ok "port-taken section" || say FAIL "no port-taken section"
     grep -q -i 'run from a clone' "$r" && say ok "run-from-a-clone section" || say FAIL "no Run from a clone section"
     grep -q -i -E 'doctor' "$r" && say ok "mentions doctor" || say note "README does not mention doctor"
