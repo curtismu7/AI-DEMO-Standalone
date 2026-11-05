@@ -18,7 +18,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=12
+STEP_TOTAL=13
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""
@@ -256,6 +256,26 @@ else
     step_warn "could not add (no sudo)"
     step_detail "Add this line yourself (sudo tee -a /etc/hosts):\n  127.0.0.1 local.ping-devops.com\nApps still work directly (cd standalone/<app> && npm start) without it."
   }
+fi
+
+# ---- 5b. TLS certs for the launcher -----------------------------------------
+step "TLS certs"
+tls_dir="$root/shared/tls"
+cert="$tls_dir/local.ping-devops.com-wild.pem"
+key="$tls_dir/local.ping-devops.com-wild-key.pem"
+if [ -s "$cert" ] && [ -s "$key" ]; then
+  step_ok "present"
+else
+  mkdir -p "$tls_dir"
+  if openssl req -x509 -newkey rsa:2048 -keyout "$key" -out "$cert" -days 825 -nodes \
+      -subj "/CN=*.local.ping-devops.com" \
+      -addext "subjectAltName=DNS:local.ping-devops.com,DNS:*.local.ping-devops.com" > /dev/null 2>&1; then
+    chmod 600 "$key"
+    step_ok "generated self-signed wildcard for local.ping-devops.com (browsers show a warning once; accept to continue)"
+  else
+    step_warn "could not generate TLS certs — the launcher needs them; install openssl or copy the pems from another machine"
+    step_detail "Expected files:\n  $cert\n  $key"
+  fi
 fi
 
 # ---- 6. PingOne environment -------------------------------------------------
