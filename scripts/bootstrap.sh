@@ -215,7 +215,9 @@ if ! docker info > /dev/null 2>&1; then
   fi
 fi
 docker info > /dev/null 2>&1 || step_fail "Docker is not running. Start OrbStack (or Docker Desktop) and re-run."
-step_ok "$(docker --context orbstack version --format '{{.Server.Version}}' 2>/dev/null || docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'running')"
+docker_engine="OrbStack"
+docker --context orbstack info > /dev/null 2>&1 || docker info > /dev/null 2>&1 && { docker --context orbstack info > /dev/null 2>&1 || docker_engine="Docker (existing engine)"; }
+step_ok "$docker_engine ($(docker version --format '{{.Server.Version}}' 2>/dev/null || echo running))"
 
 # ---- 5. /etc/hosts ----------------------------------------------------------
 step "hosts entry"

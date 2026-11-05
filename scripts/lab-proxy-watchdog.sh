@@ -7,9 +7,12 @@
 set -u
 PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-docker_ctx="orbstack"
-
+# Prefer OrbStack; fall back to whatever Docker engine answers (Docker Desktop, etc.).
+docker_ctx="${DOCKER_CONTEXT:-orbstack}"
 docker_ok() { docker --context "$docker_ctx" info >/dev/null 2>&1; }
+if ! docker_ok && docker info >/dev/null 2>&1; then
+  docker_ctx="default"
+fi
 
 # SHELF_URL for the labs' compose files (the header "Shelf" button): the one shared settings file is the source.
 env_file="${STANDALONE_ENV:-$HOME/Development/.env}"
