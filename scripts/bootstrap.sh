@@ -186,7 +186,7 @@ fi
 gh auth setup-git
 ghuser="$(gh api user --jq .login 2>/dev/null || true)"
 [ -n "$ghuser" ] || step_fail "gh is signed in but the API call failed; check: gh auth status"
-# Gate on the meta-repo's OWN origin (works for any owner: ping-sandbox, curtismu7, an org fork).
+# Gate on the meta-repo's OWN origin (works for any owner: curtismu7, an org fork).
 meta_repo="$(git -C "$root" config --get remote.origin.url | sed 's|\.git$||; s|^https://github.com/||')"
 if [ -z "$meta_repo" ]; then
   step_detail "This script must run from inside the family checkout (a git repo with an origin).\nFrom nothing, run:\n  curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/scripts/install.sh | bash\nOr:\n  git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone"
@@ -268,8 +268,17 @@ if [ -n "$BOOTSTRAP_APP" ]; then
   run_quiet "submodule init" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP"
   step_ok "$BOOTSTRAP_APP"
 else
+  shelf_pin_before="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
   run_quiet "submodule init" git -C "$root" submodule update --init --recursive
   step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs"
+  # If the shelf pin moved during this run and a shelf container is already up,
+  # restart it so users actually get the new banner/notes code.
+  shelf_pin_after="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
+  if [ "$shelf_pin_before" != "$shelf_pin_after" ] && docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
+    (cd "$root/standalone/demo-shelf-LAB" && npm run docker > /dev/null 2>&1) \
+      && step_detail "Shelf restarted with the new code (update banner + release notes)." \
+      || step_detail "Shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker)"
+  fi
 fi
 
 step "Shelf + installs"

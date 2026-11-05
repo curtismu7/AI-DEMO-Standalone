@@ -61,7 +61,21 @@ case "$sub" in
     echo "Updating $root ..."
     git -C "$root" pull --ff-only origin main || { echo "(meta-repo could not fast-forward — resolve by hand)"; exit 1; }
     git -C "$root" submodule sync --recursive
+    # Restart the shelf if its pin moved (it serves the update banner/notes — it
+    # must run the new code for users to see them).
+    shelf_pin_before=$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')
     git -C "$root" submodule update --init --recursive
+    shelf_pin_after=$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')
+    if [ -d "$root/standalone/demo-shelf-LAB" ]; then
+      if [ "$shelf_pin_before" != "$shelf_pin_after" ] || ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
+        echo "Shelf changed or not running — restarting it (this serves the update banner and release notes)..."
+        (cd "$root/standalone/demo-shelf-LAB" && npm run docker > /dev/null 2>&1) \
+          && echo "  shelf restarted with the new code" \
+          || echo "  shelf restart failed — run: (cd standalone/demo-shelf-LAB && npm run docker)"
+      else
+        echo "  shelf unchanged and running."
+      fi
+    fi
     echo "Done. All submodules at their recorded pins."
     echo "Next: scripts/setup.sh --skip-install to re-verify, or --start <lab>."
     exit 0
