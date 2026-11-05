@@ -47,6 +47,16 @@ case "$sub" in
     shift
     exec "$root/scripts/pingone-setup.sh" "$@"
     ;;
+  update)
+    # Bring an existing deployment current: meta-repo + every submodule, fast-forward only.
+    echo "Updating $root ..."
+    git -C "$root" pull --ff-only origin main || { echo "(meta-repo could not fast-forward — resolve by hand)"; exit 1; }
+    git -C "$root" submodule sync --recursive
+    git -C "$root" submodule update --init --recursive
+    echo "Done. All submodules at their recorded pins."
+    echo "Next: scripts/setup.sh --skip-install to re-verify, or --start <lab>."
+    exit 0
+    ;;
   -h|--help|help)
     cat <<'USAGE'
 setup.sh — the one command for the standalone labs family.
@@ -63,6 +73,8 @@ Usage:
   scripts/setup.sh teardown [--dry-run]  Delete the PingOne demo environment
                                          (reads the admin creds saved by setup;
                                          --dry-run shows what it would delete).
+  scripts/setup.sh update                Pull the latest meta-repo + all lab pins
+                                         (fast-forward only, never discards).
 
 After setup, open the shelf: https://local.ping-devops.com:8443
 USAGE
