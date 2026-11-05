@@ -21,6 +21,14 @@ if [ -d "$canonical/.git" ]; then
   echo "Found existing checkout at $canonical — updating (fast-forward only)."
   git -C "$canonical" pull --ff-only origin main 2>/dev/null || \
     echo "(could not fast-forward — continuing with the local state)"
+elif [ -d "$canonical" ] && [ -n "$(ls -A "$canonical" 2>/dev/null)" ]; then
+  echo "ERROR: $canonical exists but is not a git checkout, and it is not empty."
+  echo "The installer never deletes your files. Either:"
+  echo "  1. move the folder aside:  mv $canonical $canonical.old"
+  echo "     then re-run this installer, or"
+  echo "  2. if the folder is a real clone, run its setup instead:"
+  echo "     $canonical/scripts/setup.sh"
+  exit 1
 else
   mkdir -p "$HOME/Development"
   echo "Installing the standalone labs family to $canonical ..."
