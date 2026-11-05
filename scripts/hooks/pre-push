@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# pre-push: refuse to push meta-repo commits whose submodule pins reference
+# commits that are not on the submodule's remote ("not our ref" breaks every
+# consumer machine). Zero-copy check: git ls-remote per changed submodule.
+remote="$1"
+z40=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$z40" ] && continue
+  range="$remote_sha..$local_sha"
+  for c in $(git rev-list "$range" 2>/dev/null); do
+    git diff-tree -r --no-commit-id "$c" standalone shared 2>/dev/null | while read -r mode type sha name; do
+      [ "$type" = "commit" ] || continue
+      sub="$(git config -f .gitmodules --get "submodule.$name.url" 2>/dev/null || git -C "$name" remote get-url origin 2>/dev/null)"
+      [ -n "$sub" ] || continue
+      if ! git ls-remote --heads "$sub" 2>/dev/null | grep -q "$sha"; then
+        echo "BLOCKED: pin for $name at ${sha:0:8} is not on $sub — push that submodule first (or re-pin to its pushed head)."
+        exit 1
+      fi
+    done
+    # propagate a subshell failure (the while runs in a pipeline subshell)
+    if [ ${PIPESTATUS[0]:-0} -ne 0 ] 2>/dev/null; then exit 1; fi
+  done
+done
+exit 0
