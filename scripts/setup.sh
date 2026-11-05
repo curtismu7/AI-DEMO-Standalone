@@ -9,7 +9,26 @@
 # exists and stays runnable by hand; this wrapper just means nobody has to
 # remember more than one entry point.
 set -eu
-root="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Canonical location: ~/Development/AI-DEMO-Standalone. Run from anywhere —
+# if this script lives elsewhere, install/refresh the canonical clone and
+# re-exec setup from there. Never deletes an existing checkout.
+canonical="$HOME/Development/AI-DEMO-Standalone"
+here="$(cd "$(dirname "$0")/.." && pwd)"
+if [ "$here" != "$canonical" ]; then
+  if [ -d "$canonical/.git" ]; then
+    echo "Canonical checkout found at $canonical — switching to it."
+    git -C "$canonical" pull --ff-only origin main 2>/dev/null || \
+      echo "(could not fast-forward the canonical checkout; using it as-is)"
+    exec "$canonical/scripts/setup.sh" "$@"
+  else
+    mkdir -p "$HOME/Development"
+    echo "Installing the family to $canonical ..."
+    git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git "$canonical"
+    exec "$canonical/scripts/setup.sh" "$@"
+  fi
+fi
+root="$canonical"
 
 sub="${1:-}"
 case "$sub" in
