@@ -18,7 +18,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=11
+STEP_TOTAL=12
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""
@@ -288,7 +288,24 @@ else
   step_ok
 fi
 
-# ---- 9. UI standard + env + launcher ----------------------------------------
+# ---- 9. Shelf URL + UI standard + env + launcher -----------------------------
+step "Shelf URL"
+# Every app serves the "Shelf" button from GET /api/shelf, which reads SHELF_URL from the
+# shared settings file. Save it here once, so all apps find it (rulebook lesson: one .env).
+env_file="${STANDALONE_ENV:-$HOME/Development/.env}"
+mkdir -p "$(dirname "$env_file")"
+shelf_default="https://local.ping-devops.com:8443"
+if [ ! -f "$env_file" ]; then
+  touch "$env_file" && chmod 600 "$env_file" 2>/dev/null || true
+fi
+if grep -q "^SHELF_URL=" "$env_file" 2>/dev/null; then
+  step_ok "already set in $(basename "$env_file")"
+else
+  printf '\n# Demo shelf (launcher) URL — read by every app for the header "Shelf" button\nSHELF_URL=%s\n' "$shelf_default" >> "$env_file" \
+    && step_ok "$shelf_default" \
+    || { step_warn "could not write SHELF_URL to $env_file"; step_detail "Add it by hand:\n  echo 'SHELF_URL=$shelf_default' >> $env_file"; }
+fi
+
 step "UI standard + env"
 ui_out="$("$root/scripts/check-ui-standard.sh" 2>&1)" || step_detail "$ui_out"
 # The shared settings file lives at ~/Development/.env (the family convention). Make sure
