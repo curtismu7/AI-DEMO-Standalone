@@ -35,6 +35,16 @@ sync_to_origin() {
 
 if [ -d "$canonical/.git" ]; then
   echo "Found existing checkout at $canonical — updating."
+  # If the checkout points at a stale/different remote (e.g. the old
+  # ping-sandbox meta-repo, frozen before the migration), re-point it here —
+  # otherwise every fetch keeps landing on an ancient commit.
+  current_origin="$(git -C "$canonical" remote get-url origin 2>/dev/null || true)"
+  if [ "$current_origin" != "$repo" ]; then
+    echo "  origin was $current_origin — re-pointing to $repo"
+    git -C "$canonical" remote set-url origin "$repo"
+    git -C "$canonical" fetch origin main 2>/dev/null
+    git -C "$canonical" branch --set-upstream-to=origin/main main > /dev/null 2>&1 || true
+  fi
   sync_to_origin
 elif [ -d "$canonical" ] && [ -n "$(ls -A "$canonical" 2>/dev/null)" ]; then
   echo "ERROR: $canonical exists but is not a git checkout, and it is not empty."
