@@ -5,10 +5,10 @@ Parent repo for the standalone SE demo apps. Each app is its own repo (under the
 ```sh
 git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone
 cd ~/Development/AI-DEMO-Standalone
-scripts/bootstrap.sh
+scripts/setup.sh
 ```
 
-Then PingOne: `scripts/bootstrap.sh` itself asks for the worker client ID, client
+Then PingOne: `scripts/setup.sh` itself asks for the worker client ID, client
 secret and Administrators environment ID (Real mode — mock mode: pass `--no-pingone`),
 or run `scripts/pingone-setup.sh` on its own / with flags.
 
@@ -28,7 +28,7 @@ you provide: a GitHub account with access to the repos under `curtismu7` (or the
 To init just one lab instead of all 64 submodules:
 
 ```sh
-scripts/bootstrap.sh --app id-jag-standalone-LAB --skip-install
+scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 ```
 
 | App | Tier | Repo |
@@ -65,7 +65,7 @@ All apps are reached through ONE domain, already in `/etc/hosts` - never `127.0.
 - `https://local.ping-devops.com:8443` - the shelf (launcher)
 - `https://local.ping-devops.com:8443/<app>/` - each app, e.g. `/pingone-lab/`, `/ciba-hitl-lab/`
 
-The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; it joins a network per app, so an app only appears once its compose stack is up. `scripts/bootstrap.sh` starts it when possible. Adding an app to the proxy = one entry location + two cookie-map lines + its compose network in `shared/lab-proxy/`.
+The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; it joins a network per app, so an app only appears once its compose stack is up. `scripts/setup.sh` starts it when possible. Adding an app to the proxy = one entry location + two cookie-map lines + its compose network in `shared/lab-proxy/`.
 
 ## Ports, and what to do if a port is taken
 

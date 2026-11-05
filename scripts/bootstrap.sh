@@ -1,5 +1,6 @@
 #!/bin/bash
-# First-time setup for the standalone apps. Usage: scripts/bootstrap.sh [options]
+# First-time setup for the standalone apps. Users should call scripts/setup.sh (same
+# flags, plus `teardown`); this script is the implementation setup.sh delegates to.
 set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 skip_install=0
@@ -60,9 +61,9 @@ for arg in "$@"; do
   case "$arg" in
     -h|--help)
       cat <<'USAGE'
-AI-DEMO-Standalone first-time setup.
+AI-DEMO-Standalone first-time setup (called via scripts/setup.sh).
 
-Usage: scripts/bootstrap.sh [options]
+Usage: scripts/setup.sh [options]
 
 Options:
   (none)           Full setup: prerequisites, submodules, shelf, lab-proxy,
@@ -379,7 +380,7 @@ printf "            ${C_B}https://local.ping-devops.com:8443${C_0}\n"
 printf "\n"
 printf "  Next:\n"
 printf "    Open the shelf in a browser:  ${C_B}https://local.ping-devops.com:8443${C_0}\n"
-printf "    Or start one lab:             ${C_B}scripts/bootstrap.sh --start <lab-dir>${C_0}\n"
+printf "    Or start one lab:             ${C_B}scripts/setup.sh --start <lab-dir>${C_0}\n"
 printf "    List labs: ${C_DIM}ls standalone/${C_0}   Status/drift: ${C_DIM}scripts/check-drift.sh${C_0}\n"
 if [ "$mode" != "${mode#mock}" ]; then
   printf "    For live mode later: ${C_DIM}scripts/pingone-setup.sh${C_0}\n"
