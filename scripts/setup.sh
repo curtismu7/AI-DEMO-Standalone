@@ -30,6 +30,13 @@ if [ "$here" != "$canonical" ]; then
 fi
 root="$canonical"
 
+# Keep the canonical checkout current (unless the user pinned something or is offline).
+if git -C "$root" remote get-url origin > /dev/null 2>&1; then
+  if ! git -C "$root" pull --ff-only origin main > /dev/null 2>&1; then
+    echo "(could not fast-forward from origin/main — continuing with the local state)"
+  fi
+fi
+
 sub="${1:-}"
 case "$sub" in
   teardown)
