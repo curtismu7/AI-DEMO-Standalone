@@ -9,10 +9,13 @@ set -eu
 canonical="$HOME/Development/AI-DEMO-Standalone"
 repo="https://github.com/curtismu7/AI-DEMO-Standalone.git"
 
-command -v git > /dev/null || {
-  echo "git is required. On macOS run:  xcode-select --install"
-  exit 1
-}
+if ! command -v git > /dev/null; then
+  echo "git missing — installing the Xcode Command Line Tools (a popup will appear; click Install)."
+  xcode-select --install 2>/dev/null || true
+  echo "Waiting for the tools to finish (this can take a few minutes)..."
+  until command -v git > /dev/null; do sleep 10; done
+  echo "Command Line Tools ready."
+fi
 
 if [ -d "$canonical/.git" ]; then
   echo "Found existing checkout at $canonical — updating (fast-forward only)."
