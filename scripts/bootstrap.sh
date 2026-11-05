@@ -103,14 +103,14 @@ gh auth setup-git
 ghuser="$(gh api user --jq .login 2>/dev/null || true)"
 if [ -z "$ghuser" ]; then echo "gh is signed in but the API call failed; check gh auth status"; exit 1; fi
 # Gate on the meta-repo's OWN origin (works for any owner: ping-sandbox, curtismu7, an org fork).
-meta_origin="$(git config --get remote.origin.url | sed 's|\.git$||')"
-if ! gh api "repos/$meta_origin" --jq .full_name > /dev/null 2>&1; then
+meta_repo="$(git config --get remote.origin.url | sed 's|\.git$||; s|^https://github.com/||')"
+if ! gh api "repos/$meta_repo" --jq .full_name > /dev/null 2>&1; then
   echo "Signed in as $ghuser but the meta-repo origin is not reachable with this account:"
-  echo "  $meta_origin"
+  echo "  $meta_repo"
   echo "The labs live under the same owner: your account needs access to that owner's repos."
   exit 1
 fi
-echo "gh OK ($ghuser, $meta_origin reachable)"
+echo "gh OK ($ghuser, $meta_repo reachable)"
 
 echo "== Docker"
 if ! command -v docker > /dev/null; then
