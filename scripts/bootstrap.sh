@@ -305,6 +305,9 @@ else
     && step_ok "$shelf_default" \
     || { step_warn "could not write SHELF_URL to $env_file"; step_detail "Add it by hand:\n  echo 'SHELF_URL=$shelf_default' >> $env_file"; }
 fi
+# Export for this run: the labs' compose files pass SHELF_URL into their containers.
+shellGREP="$(grep -E "^SHELF_URL=" "$env_file" | tail -1 | cut -d= -f2-)"
+export SHELF_URL="${SHELF_URL:-$shellGREP}"
 
 step "UI standard + env"
 ui_out="$("$root/scripts/check-ui-standard.sh" 2>&1)" || step_detail "$ui_out"

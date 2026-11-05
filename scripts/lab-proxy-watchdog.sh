@@ -11,6 +11,13 @@ docker_ctx="orbstack"
 
 docker_ok() { docker --context "$docker_ctx" info >/dev/null 2>&1; }
 
+# SHELF_URL for the labs' compose files (the header "Shelf" button): the one shared settings file is the source.
+env_file="${STANDALONE_ENV:-$HOME/Development/.env}"
+if [ -z "${SHELF_URL:-}" ] && grep -q "^SHELF_URL=" "$env_file" 2>/dev/null; then
+  SHELF_URL="$(grep -E "^SHELF_URL=" "$env_file" | tail -1 | cut -d= -f2-)"
+  export SHELF_URL
+fi
+
 if ! docker_ok; then
   # OrbStack starts on demand; give it one nudge and a short wait.
   open -a OrbStack 2>/dev/null || true
