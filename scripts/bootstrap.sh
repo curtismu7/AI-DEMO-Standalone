@@ -267,11 +267,20 @@ if [ -s "$cert" ] && [ -s "$key" ]; then
   step_ok "present"
 else
   mkdir -p "$tls_dir"
-  if openssl req -x509 -newkey rsa:2048 -keyout "$key" -out "$cert" -days 825 -nodes \
+  # mkcert gives a TRUSTED cert (its local CA is installed in the user's keychain,
+  # so browsers show no warning). Fall back to a self-signed cert when mkcert is
+  # unavailable — that one shows a one-time browser warning.
+  command -v mkcert > /dev/null || brew install mkcert > /dev/null 2>&1
+  if command -v mkcert > /dev/null && mkcert -install > /dev/null 2>&1 \
+      && mkcert -key-file "$key" -cert-file "$cert" \
+        "local.ping-devops.com" "*.local.ping-devops.com" > /dev/null 2>&1; then
+    chmod 600 "$key"
+    step_ok "trusted cert via mkcert (local CA installed in your keychain — no browser warning)"
+  elif openssl req -x509 -newkey rsa:2048 -keyout "$key" -out "$cert" -days 825 -nodes \
       -subj "/CN=*.local.ping-devops.com" \
       -addext "subjectAltName=DNS:local.ping-devops.com,DNS:*.local.ping-devops.com" > /dev/null 2>&1; then
     chmod 600 "$key"
-    step_ok "generated self-signed wildcard for local.ping-devops.com (browsers show a warning once; accept to continue)"
+    step_ok "self-signed wildcard generated (browsers show a warning once; accept to continue)"
   else
     step_warn "could not generate TLS certs — the launcher needs them; install openssl or copy the pems from another machine"
     step_detail "Expected files:\n  $cert\n  $key"
