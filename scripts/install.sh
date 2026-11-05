@@ -17,10 +17,25 @@ if ! command -v git > /dev/null; then
   echo "Command Line Tools ready."
 fi
 
+# Make the checkout match origin/main. Fast-forward when possible; when the
+# local branch diverged (stale machines), stash stray changes and hard-reset —
+# consumers have no authored work to lose, and the stash keeps strays safe.
+sync_to_origin() {
+  if git -C "$canonical" fetch origin main 2>/dev/null && \
+     git -C "$canonical" rev-parse origin/main > /dev/null 2>&1; then
+    if git -C "$canonical" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+      git -C "$canonical" merge --ff-only origin/main 2>/dev/null || git -C "$canonical" reset --hard origin/main
+    else
+      echo "  local checkout diverged from GitHub — resetting to origin/main (stray changes stashed)"
+      git -C "$canonical" stash push -m "auto-stash before sync $(date +%F)" > /dev/null 2>&1 || true
+      git -C "$canonical" reset --hard origin/main
+    fi
+  fi
+}
+
 if [ -d "$canonical/.git" ]; then
-  echo "Found existing checkout at $canonical — updating (fast-forward only)."
-  git -C "$canonical" pull --ff-only origin main 2>/dev/null || \
-    echo "(could not fast-forward — continuing with the local state)"
+  echo "Found existing checkout at $canonical — updating."
+  sync_to_origin
 elif [ -d "$canonical" ] && [ -n "$(ls -A "$canonical" 2>/dev/null)" ]; then
   echo "ERROR: $canonical exists but is not a git checkout, and it is not empty."
   echo "The installer never deletes your files. Either:"

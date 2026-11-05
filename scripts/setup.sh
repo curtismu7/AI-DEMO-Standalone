@@ -15,13 +15,28 @@ set -eu
 # re-exec setup from there. Never deletes an existing checkout.
 canonical="$HOME/Development/AI-DEMO-Standalone"
 here="$(cd "$(dirname "$0")/.." && pwd)"
+
+sync_to_origin() {
+  # Make the checkout match origin/main; hard-reset (with a stash) when the
+  # local branch diverged — a stale machine must never silently stay stale.
+  if git -C "$root" fetch origin main 2>/dev/null && \
+     git -C "$root" rev-parse origin/main > /dev/null 2>&1; then
+    if ! git -C "$root" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+      echo "(local checkout diverged from GitHub — resetting to origin/main; stray changes stashed)"
+      git -C "$root" stash push -m "auto-stash before sync $(date +%F)" > /dev/null 2>&1 || true
+      git -C "$root" reset --hard origin/main
+    else
+      git -C "$root" merge --ff-only origin/main 2>/dev/null || git -C "$root" reset --hard origin/main
+    fi
+  fi
+}
 # The canonical dir must be a real git checkout — an empty/partial leftover dir
 # is treated as absent (git clone accepts cloning into an empty dir).
 if [ "$here" != "$canonical" ] || [ ! -d "$canonical/.git" ]; then
   if [ -d "$canonical/.git" ]; then
     echo "Canonical checkout found at $canonical — switching to it."
-    git -C "$canonical" pull --ff-only origin main 2>/dev/null || \
-      echo "(could not fast-forward the canonical checkout; using it as-is)"
+    root="$canonical"
+    sync_to_origin
     exec "$canonical/scripts/setup.sh" "$@"
   else
     mkdir -p "$HOME/Development"
@@ -30,6 +45,21 @@ if [ "$here" != "$canonical" ] || [ ! -d "$canonical/.git" ]; then
     exec "$canonical/scripts/setup.sh" "$@"
   fi
 fi
+sync_to_origin() {
+  # Make the checkout match origin/main; hard-reset (with a stash) when the
+  # local branch diverged — a stale machine must never silently stay stale.
+  if git -C "$root" fetch origin main 2>/dev/null && \
+     git -C "$root" rev-parse origin/main > /dev/null 2>&1; then
+    if ! git -C "$root" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+      echo "(local checkout diverged from GitHub — resetting to origin/main; stray changes stashed)"
+      git -C "$root" stash push -m "auto-stash before sync $(date +%F)" > /dev/null 2>&1 || true
+      git -C "$root" reset --hard origin/main
+    else
+      git -C "$root" merge --ff-only origin/main 2>/dev/null || git -C "$root" reset --hard origin/main
+    fi
+  fi
+}
+
 root="$canonical"
 # Running from the canonical path but somehow not a git repo — refuse clearly
 # instead of failing later with an empty origin.
@@ -39,12 +69,9 @@ if ! git -C "$root" rev-parse --git-dir > /dev/null 2>&1; then
   exit 1
 fi
 
-# Keep the canonical checkout current (unless the user pinned something or is offline).
-if git -C "$root" remote get-url origin > /dev/null 2>&1; then
-  if ! git -C "$root" pull --ff-only origin main > /dev/null 2>&1; then
-    echo "(could not fast-forward from origin/main — continuing with the local state)"
-  fi
-fi
+# Keep the canonical checkout current; recover from divergence instead of
+# staying stale (the Air's repeated 'not our ref' failures came from this).
+sync_to_origin
 
 sub="${1:-}"
 case "$sub" in
