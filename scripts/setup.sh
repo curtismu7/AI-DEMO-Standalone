@@ -15,7 +15,9 @@ set -eu
 # re-exec setup from there. Never deletes an existing checkout.
 canonical="$HOME/Development/AI-DEMO-Standalone"
 here="$(cd "$(dirname "$0")/.." && pwd)"
-if [ "$here" != "$canonical" ]; then
+# The canonical dir must be a real git checkout — an empty/partial leftover dir
+# is treated as absent (git clone accepts cloning into an empty dir).
+if [ "$here" != "$canonical" ] || [ ! -d "$canonical/.git" ]; then
   if [ -d "$canonical/.git" ]; then
     echo "Canonical checkout found at $canonical — switching to it."
     git -C "$canonical" pull --ff-only origin main 2>/dev/null || \
@@ -29,6 +31,13 @@ if [ "$here" != "$canonical" ]; then
   fi
 fi
 root="$canonical"
+# Running from the canonical path but somehow not a git repo — refuse clearly
+# instead of failing later with an empty origin.
+if ! git -C "$root" rev-parse --git-dir > /dev/null 2>&1; then
+  echo "ERROR: $root is not a git checkout (missing .git)."
+  echo "Fix: rm -rf \"$root\" && bash <this-script>   # or re-run from a real clone"
+  exit 1
+fi
 
 # Keep the canonical checkout current (unless the user pinned something or is offline).
 if git -C "$root" remote get-url origin > /dev/null 2>&1; then
