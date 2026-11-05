@@ -58,7 +58,7 @@ scripts/setup.sh --verbose              # show all tool output (brew, npm)
 - **A lab won't start** → `cd standalone/<lab-name>` and run `npm start` or `docker compose up -d` there to see the real error.
 - **A lab's header has no "Shelf" button** → the lab was built before `SHELF_URL` existed: `cd standalone/<lab-name> && SHELF_URL=$(grep ^SHELF_URL= ~/Development/.env | cut -d= -f2) docker compose up -d --build`. `scripts/setup.sh --start <lab>` passes it automatically.
 - **Launcher down after a reboot** → the launchd watchdog restarts it every 5 minutes, or run `scripts/lab-proxy-watchdog.sh`.
-- **Deleting the demo PingOne environment** → `scripts/setup.sh teardown --dry-run` first, then without `--dry-run`. Credentials are read from `~/Documents/.env` (no prompts).
+- **Deleting the demo PingOne environment** → `scripts/setup.sh teardown --dry-run` first, then without `--dry-run`. Credentials are read from `~/.config/demo-kit/provisioning.json` (no prompts).
 - **Stuck on a red step** → send the output; each step prints its own failure reason and next action.
 
 ## What setup does

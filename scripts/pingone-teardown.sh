@@ -35,9 +35,9 @@ err()  { echo "${RED}✗${RESET} $*" >&2; }
 fatal() { err "$*"; exit 1; }
 
 ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
-# The admin (org worker) credentials live in ~/Documents/.env, written by
+# The admin (org worker) credentials live in ~/.config/demo-kit/provisioning.json, written by
 # pingone-setup.sh. Source it so the prompts below are skipped when present.
-CRED_FILE="${STANDALONE_CRED_FILE:-$HOME/Documents/.env}"
+CRED_FILE="${STANDALONE_CRED_FILE:-$HOME/.config/demo-kit/provisioning.json}"
 if [[ -f "$CRED_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
@@ -53,7 +53,7 @@ Deletes the dedicated demo PingOne environment and cleans up ~/Development/.env.
 
 Usage: scripts/setup.sh teardown [options]
 
-Admin credentials are read from ~/Documents/.env (written by pingone-setup.sh) —
+Admin credentials are read from ~/.config/demo-kit/provisioning.json (written by pingone-setup.sh) —
 no prompts when it exists. Override with flags or STANDALONE_CRED_FILE.
 
 Target environment (first match wins):

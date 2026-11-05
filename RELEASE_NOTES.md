@@ -14,7 +14,7 @@ heading here — so always add a NEW heading at the top; never edit an old one.
 **Shelf**
 - Update notices: the shelf shows a banner when the family publishes updates, with a copyable update command.
 - One-command lifecycle: `scripts/setup.sh` now handles setup, updates (`setup update`), starting labs (`--start`, `--start-all`), and PingOne teardown.
-- PingOne teardown runs without prompts (admin credentials saved to `~/Documents/.env` at setup time).
+- PingOne teardown runs without prompts (admin credentials saved to `~/.config/demo-kit/provisioning.json` at setup time).
 
 **Setup**
 - `install.sh` one-liner works on a completely blank Mac (auto-installs the Xcode Command Line Tools).
