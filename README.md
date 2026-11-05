@@ -1,6 +1,14 @@
-# AI-DEMO-Standalone
+# Ping Identity — Standalone Demo Labs
 
-**New user? Read [SETUP.md](SETUP.md) — one command to install everything.**
+63 self-contained demo apps (AI gateway, OAuth labs, MCP tooling, PingFederate/PingOne scenarios), each runnable on a Mac in minutes.
+
+**Set up everything with one command** (full guide: [SETUP.md](SETUP.md)):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/scripts/install.sh | bash
+```
+
+Then open the launcher: **https://local.ping-devops.com:8443**
 
 Parent repo for the standalone SE demo apps. Each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`), added as a git submodule under `standalone/`.
 
