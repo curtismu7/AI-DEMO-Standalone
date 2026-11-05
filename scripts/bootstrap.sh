@@ -285,15 +285,33 @@ out="$(node "$root/scripts/check-authorize-policy.mjs" 2>&1)" && step_ok "policy
 
 # ---- 8. Submodules + shelf + installs ---------------------------------------
 step "Submodules"
+# submodules_init <path-args...>: try the update; on "not our ref" style failure,
+# re-fetch origin (the meta push and the lab push can land seconds apart when
+# several sessions publish at once) and repair locally, then retry — up to 3 tries.
+submodules_init() {
+  local attempt=1 max=3 rc=1
+  while [ "$attempt" -le "$max" ]; do
+    if git -C "$root" submodule update --init --recursive "$@" > /dev/null 2>&1; then
+      return 0
+    fi
+    rc=1
+    git -C "$root" fetch origin main > /dev/null 2>&1 || true
+    if git -C "$root" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+      git -C "$root" merge --ff-only origin/main > /dev/null 2>&1 || true
+    fi
+    repair_pins
+    attempt=$((attempt + 1))
+  done
+  git -C "$root" submodule update --init --recursive "$@" 2>&1 | tail -4 | sed 's/^/    /'
+  return 1
+}
 if [ -n "$BOOTSTRAP_APP" ]; then
-  run_quiet "submodule init" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP" \
-    || { repair_pins; run_quiet "submodule init (after pin repair)" git -C "$root" submodule update --init --recursive "standalone/$BOOTSTRAP_APP"; }
-  step_ok "$BOOTSTRAP_APP"
+  submodules_init "standalone/$BOOTSTRAP_APP" && step_ok "$BOOTSTRAP_APP" \
+    || { step_detail "submodule init kept failing after retries — see the lines above."; step_fail "$BOOTSTRAP_APP did not initialize"; }
 else
   shelf_pin_before="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
-  run_quiet "submodule init" git -C "$root" submodule update --init --recursive \
-    || { repair_pins; run_quiet "submodule init (after pin repair)" git -C "$root" submodule update --init --recursive; }
-  step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs"
+  submodules_init && step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs" \
+    || { step_detail "submodule init kept failing after retries — see the lines above."; step_fail "submodules did not initialize"; }
   # If the shelf pin moved during this run and a shelf container is already up,
   # restart it so users actually get the new banner/notes code.
   shelf_pin_after="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
