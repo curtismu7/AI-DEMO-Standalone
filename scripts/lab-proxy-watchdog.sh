@@ -7,6 +7,13 @@
 set -u
 PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 root="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Keep the shelf's start agent alive too: Start/Stop buttons in the shelf need it
+# (the containerised shelf cannot run docker on the host by itself). Loopback only.
+agent_dir="$root/standalone/demo-shelf-LAB"
+if [ -d "$agent_dir" ] && ! lsof -iTCP:4405 -sTCP:LISTEN > /dev/null 2>&1; then
+  (cd "$agent_dir" && nohup npm run agent > /tmp/standalone-demo-shelf-agent.log 2>&1 &)
+fi
 # Prefer OrbStack; fall back to whatever Docker engine answers (Docker Desktop, etc.).
 docker_ctx="${DOCKER_CONTEXT:-orbstack}"
 docker_ok() { docker --context "$docker_ctx" info >/dev/null 2>&1; }
