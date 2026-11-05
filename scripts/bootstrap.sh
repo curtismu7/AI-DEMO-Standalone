@@ -308,7 +308,8 @@ else
     if (cd "$root/standalone/demo-shelf-LAB" && npm install --no-audit --no-fund > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1); then
       step_detail "Shelf started (the launcher now serves it)."
     else
-      step_detail "Shelf did not start — the launcher will 404 until it is up. Fix by hand: cd standalone/demo-shelf-LAB && npm run docker"
+      step_detail "Shelf did not start — the launcher will 404 until it is up. Fix by hand: cd standalone/demo-shelf-LAB && npm run docker  (run it WITHOUT silencing to see the real error)"
+      step_warn "shelf not running — run the fix command above"
     fi
   fi
 fi
