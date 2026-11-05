@@ -1,5 +1,7 @@
 # AI-DEMO-Standalone
 
+**New user? Read [SETUP.md](SETUP.md) — one command to install everything.**
+
 Parent repo for the standalone SE demo apps. Each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`), added as a git submodule under `standalone/`.
 
 ```sh
