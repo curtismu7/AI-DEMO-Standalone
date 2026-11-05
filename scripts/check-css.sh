@@ -20,6 +20,18 @@ js_files() {
     -not -name '*.test.*' -not -name 'vitest.config.*' 2>/dev/null
 }
 
+check_filtered() {  # $1 label, $2 regex, $3 extra filter pipeline, $4 "fail" or "report"
+  local label="$1" pattern="$2" extra="$3" mode="$4" hits
+  hits="$(for f in "${files[@]}"; do grep -n -E "$pattern" "$f" 2>/dev/null | sed "s|^|$f:|"; done | eval "$extra")"
+  if [ -n "$hits" ]; then
+    echo "$hits" | head -20 | sed 's/^/    /'
+    n=$(echo "$hits" | wc -l | tr -d ' ')
+    if [ "$mode" = "fail" ]; then echo "  FAIL  $label ($n)"; fail=1; else echo "  note  $label ($n)"; fi
+  else
+    echo "  ok    $label"
+  fi
+}
+
 check() {  # $1 label, $2 regex, $3 "fail" or "report"
   local label="$1" pattern="$2" mode="$3" hits
   hits="$(for f in "${files[@]}"; do grep -n -E "$pattern" "$f" 2>/dev/null | sed "s|^|$f:|"; done)"
@@ -38,7 +50,11 @@ for app in "${apps[@]}"; do
   files=()
   while IFS= read -r f; do files+=("$f"); done < <(css_files "$app")
   if [ ${#files[@]} -eq 0 ]; then echo "  (no CSS files)"; continue; fi
-  check "colour literals (use tokens)" '#[0-9a-fA-F]{3,8}([^0-9a-fA-F]|$)|rgba?\(|hsla?\(' fail
+  # Colour literals are allowed on a token DEFINITION line (--x: #hex in :root); the rule is
+  # "use tokens", and the shared stylesheet itself defines its tokens this way. The grep -v
+  # drops definition lines; what remains is a literal used directly in a rule.
+  hits_filter="grep -v -E '^[^:]+:[0-9]+:[[:space:]]*--[a-z0-9-]+:[[:space:]]*(var\(|#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|linear-gradient)'"
+  check_filtered "colour literals (use tokens)" '#[0-9a-fA-F]{3,8}([^0-9a-fA-F]|$)|rgba?\(|hsla?\(' "$hits_filter" fail
   check "no prefers-color-scheme outside the shared file" '@media[^{]*prefers-color-scheme' fail
   check "no !important outside the shared file" '!important' fail
   check "no italics" 'font-style:[[:space:]]*italic' fail

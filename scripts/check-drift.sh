@@ -49,12 +49,13 @@ for app in "$@"; do
   if [ ! -f "$r" ]; then say FAIL "README.md missing"; else
     head -1 "$r" | grep -q -E '^# .* LAB$' && say ok "title ends in LAB" || say FAIL "title does not end in LAB: $(head -1 "$r" | cut -c1-60)"
     grep -q -E '^Tier: (Demo|Tester|Tool)' "$r" && say ok "tier line" || say FAIL "no Tier: line"
-    grep -q -E '^Repo: https://github\.com/(ping-sandbox|curtismu7)/[A-Za-z0-9._-]+-LAB' "$r" && say ok "repo URL under ping-sandbox/curtismu7" || say FAIL "no Repo: URL ending -LAB (owner org moved to curtismu7, 2026-11-01)"
+    grep -q -i -E '^Repo: https://github\.com/(ping-sandbox|curtismu7)/[a-z0-9._-]+-lab$' "$r" && say ok "repo URL under ping-sandbox/curtismu7" || say FAIL "no Repo: URL ending -LAB (owner org moved to curtismu7, 2026-11-01)"
     grep -q -i 'what to do if the port is taken' "$r" && say ok "port-taken section" || say FAIL "no port-taken section"
     grep -q -i 'run from a clone' "$r" && say ok "run-from-a-clone section" || say FAIL "no Run from a clone section"
     grep -q -i -E 'doctor' "$r" && say ok "mentions doctor" || say note "README does not mention doctor"
     grep -q -i -E 'api/health' "$r" && say ok "mentions /api/health" || say note "README does not mention /api/health"
-    if grep -q -i -E 'ping-devops|cmuir' "$r"; then say FAIL "README mentions an internal host or personal name"; else say ok "no internal names in README"; fi
+    # lab-proxy host (owner rule 2026-11-03: labs are reached by DOMAIN) is public to demo users; other ping-devops hosts and personal names are not.
+    if grep -v 'local\.ping-devops\.com:8443' "$r" | grep -q -i -E 'ping-devops|cmuir'; then say FAIL "README mentions an internal host or personal name"; else say ok "no internal names in README"; fi
   fi
   [ -f "$app/CLAUDE.md" ] && say ok "CLAUDE.md present" || say FAIL "CLAUDE.md missing"
 
