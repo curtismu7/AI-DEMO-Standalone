@@ -54,10 +54,10 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | diagram-studio-LAB | Tool | standalone/diagram-studio-LAB |
 | agent-registry-demo-LAB | Demo | standalone/agent-registry-demo-LAB |
 | agent-kill-switch-LAB | Demo | standalone/agent-kill-switch-LAB |
-| intent-par-inspector-LAB | Tester | standalone/intent-par-inspector-LAB |
-| ping-gateway-route-LAB | Tester | standalone/ping-gateway-route-LAB |
+| intent-par-inspector-LAB | Demo | standalone/intent-par-inspector-LAB |
+| ping-gateway-route-LAB | Demo | standalone/ping-gateway-route-LAB |
 | pingone-LAB | Demo | standalone/pingone-LAB |
-| jev-lab-LAB | Tester | standalone/jev-lab-LAB |
+| jev-lab-LAB | Demo | standalone/jev-lab-LAB |
 | obo-lab-LAB | Demo | standalone/obo-lab-LAB |
 | jit-lab-LAB | Demo | standalone/jit-lab-LAB |
 | ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
