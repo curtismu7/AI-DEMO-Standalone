@@ -10,17 +10,16 @@ curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/s
 
 Then open the launcher: **https://local.ping-devops.com:8443**
 
-Parent repo for the standalone SE demo apps. Each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`), added as a git submodule under `standalone/`.
+## How it works
 
-```sh
-git clone --recurse-submodules https://github.com/curtismu7/AI-DEMO-Standalone.git ~/Development/AI-DEMO-Standalone
-cd ~/Development/AI-DEMO-Standalone
-scripts/setup.sh
-```
+One command does everything on a new machine — even a bare Mac: it installs Homebrew if missing
+(which brings the Xcode tools and git), then brew-installs anything missing (Node 26, gh, OrbStack),
+runs `gh auth login --web` if you are not signed in, downloads all 63 demo app repos as submodules,
+builds the demo shelf, and starts the launcher. The only things you provide: your Mac password,
+a GitHub account (any account — the repos are public), and, for live mode, PingOne credentials.
 
-Then PingOne: `scripts/setup.sh` itself asks for the worker client ID, client
-secret and Administrators environment ID (Real mode — mock mode: pass `--no-pingone`),
-or run `scripts/pingone-setup.sh` on its own / with flags.
+**Live mode (optional)**: `scripts/setup.sh` asks for the worker client ID, client
+secret and Administrators environment ID (mock mode: pass `--no-pingone`).
 
 In the PingOne console's **Administrators** environment, create a **Worker** app
 (Applications → + → Worker, Client Secret Basic, enabled, Organization Admin role), then enter
@@ -29,13 +28,8 @@ script asks. It creates a dedicated SANDBOX environment (SSO, MFA, DaVinci, Auth
 per-environment worker, and writes `~/Development/.env` (mode 600) — the one settings file every
 lab reads. No other console work.
 
-Bootstrap does the rest on a new machine — even a bare Mac: it installs Homebrew if missing
-(which brings the Xcode tools and git), then brew-installs anything missing (Node 26, gh, orbstack),
-runs `gh auth login --web` if you are not signed in, wires gh as git's credential helper, starts
-Docker, and adds the `/etc/hosts` entry (sudo prompt) for the one-domain launcher. The only thing
-you provide: a GitHub account with access to the repos under `curtismu7` (or the fork owner).
-
-To init just one lab instead of all 64 submodules:
+**Structure**: each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`),
+added as a git submodule under `standalone/`. Init just one lab instead of all 63:
 
 ```sh
 scripts/setup.sh --app id-jag-standalone-LAB --skip-install
