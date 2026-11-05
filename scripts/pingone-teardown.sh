@@ -103,9 +103,11 @@ PYEOF
   [[ -z "${TARGET_ENV_ID:-}" && -z "${TARGET_NAME:-}" ]] && TARGET_ENV_ID="$(file_value PINGONE_ENVIRONMENT_ID)"
 fi
 
+CREDS_FROM_FILE=0
+
 ask() { # ask <prompt> <var>
   local prompt="$1" var="$2" answer=""
-  if [[ -n "${!var:-}" ]]; then info "$prompt (from settings)"; return 0; fi
+  if [[ -n "${!var:-}" ]]; then CREDS_FROM_FILE=1; return 0; fi
   if [[ -n "${DRY_RUN:-}" ]]; then fatal "dry run makes no prompts but $var is missing — set it, pass --region/--admin-env-id/--client-id/--client-secret, or let pingone-setup.sh write $CRED_FILE."; fi
   if [[ -t 0 ]]; then read -r -p "$prompt" answer
   elif [[ -r /dev/tty ]]; then read -r -p "$prompt" answer </dev/tty
@@ -115,7 +117,7 @@ ask() { # ask <prompt> <var>
 }
 ask_secret() {
   local prompt="$1" var="$2" answer=""
-  if [[ -n "${!var:-}" ]]; then info "$prompt (from settings)"; return 0; fi
+  if [[ -n "${!var:-}" ]]; then CREDS_FROM_FILE=1; return 0; fi
   if [[ -n "${DRY_RUN:-}" ]]; then fatal "dry run makes no prompts but $var is missing — set it, pass --client-secret, or let pingone-setup.sh write $CRED_FILE."; fi
   if [[ -t 0 ]]; then read -rs -p "$prompt" answer; echo
   elif [[ -r /dev/tty ]]; then read -rs -p "$prompt" answer </dev/tty; echo
@@ -127,11 +129,15 @@ ask_secret() {
 echo ""
 echo "${BOLD}Standalone labs — PingOne environment teardown${RESET}"
 echo "─────────────────────────────────────────────────"
-ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
-PINGONE_REGION="${PINGONE_REGION:-com}"
-ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
-ask "Org worker client ID: " PINGONE_ADMIN_CLIENT_ID
-ask_secret "Org worker client secret: " PINGONE_ADMIN_CLIENT_SECRET
+if [[ -n "${PINGONE_ADMIN_ENV_ID:-}" && -n "${PINGONE_ADMIN_CLIENT_SECRET:-}" ]]; then
+  ok "using saved admin credentials (${CRED_FILE})"
+else
+  ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
+  PINGONE_REGION="${PINGONE_REGION:-com}"
+  ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
+  ask "Org worker client ID: " PINGONE_ADMIN_CLIENT_ID
+  ask_secret "Org worker client secret: " PINGONE_ADMIN_CLIENT_SECRET
+fi
 
 api="https://api.pingone.${PINGONE_REGION}/v1"
 auth="https://auth.pingone.${PINGONE_REGION}"
