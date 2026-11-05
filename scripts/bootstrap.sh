@@ -72,7 +72,10 @@ repair_pins() {
     git update-index --cacheinfo "160000,$remote_main,$d" && fixed=$((fixed + 1))
   done < <(git -C "$root" ls-tree HEAD standalone/ shared/ 2>/dev/null)
   if [ "$fixed" -gt 0 ]; then
-    git -C "$root" commit -q -m "pins: auto-repair — advance pins whose commits are missing on their remotes"
+    # A fresh machine may have no git identity — the repair commit is local
+    # bookkeeping, so provide one rather than failing.
+    git -C "$root" -c user.name="standalone-bootstrap" -c user.email="bootstrap@local" \
+      commit -q -m "pins: auto-repair — advance pins whose commits are missing on their remotes"
     echo "    (repaired $fixed stale pin(s) locally; they were not pushed — the owner machine reconciles)"
   fi
 }
@@ -295,6 +298,9 @@ submodules_init() {
       return 0
     fi
     rc=1
+    # backoff before re-fetching: the meta push and the lab push can land seconds
+    # apart when several sessions publish at once — give that gap time to close.
+    sleep $((attempt * 5))
     git -C "$root" fetch origin main > /dev/null 2>&1 || true
     if git -C "$root" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
       git -C "$root" merge --ff-only origin/main > /dev/null 2>&1 || true
