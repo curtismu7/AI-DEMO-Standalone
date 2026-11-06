@@ -137,6 +137,7 @@ Usage:
   scripts/setup.sh --app <lab-dir>       Set up only one lab.
   scripts/setup.sh --start <lab-dir>     Set up, then start one lab.
   scripts/setup.sh --start-all           Set up, then start every lab.
+  scripts/setup.sh --start-top <n>       Set up, then start the <n> most recently used labs.
   scripts/setup.sh --skip-install        Set up without npm install/build.
   scripts/setup.sh setup [flags]         Re-run PingOne setup alone
                                          (e.g. setup pingone --region com ...)

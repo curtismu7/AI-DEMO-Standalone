@@ -97,6 +97,8 @@ Options:
   --skip-install   Skip the npm install/build steps
   --start <app>    After setup, start one lab (docker compose up -d, else npm start)
   --start-all      After setup, start every lab that ships a docker-compose file
+  --start-top <n>  After setup, start the <n> most recently used labs (from the shelf's
+                   last-running.json; default order applies when that file is empty)
   --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
                    --pingone="--region com --admin-env-id ID --client-id ID --client-secret SECRET"
   --no-pingone     Skip PingOne entirely (mock mode)
@@ -117,6 +119,11 @@ USAGE
     --start) : ;;
     --start=*) start_app="${arg#--start=}" ;;
     --start-all) start_all=1 ;;
+    --start-top) : ;;
+    --start-top=*) start_top="${arg#--start-top=}" ;;
+    --start-top) prev="--start-top" ;;
+    -*) ;;
+    *) if [ "${prev:-}" = "--start-top" ]; then start_top="$arg"; prev=""; fi ;;
     --app) : ;; # value handled below
     --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
     *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"
@@ -127,6 +134,7 @@ USAGE
 done
 dry_run="${dry_run:-0}"
 start_all="${start_all:-0}"
+start_top="${start_top:-}"
 
 if [ "$dry_run" = 1 ]; then
   echo "${C_B}dry run — nothing will be changed${C_0}"
@@ -479,6 +487,55 @@ if [ "$start_all" = 1 ]; then
 elif [ -n "$start_app" ]; then
   echo "Starting $start_app:"
   start_one "$start_app"
+elif [ -n "${start_top:-}" ]; then
+  # Start the N most recently used labs from the shelf's last-running set (the shelf's
+  # start agent records every start/stop to .data/last-running.json). LRU-first order.
+  top="${start_top:-10}"
+  case "$top" in ''|*[!0-9]*) top=10 ;; esac
+  last_file="$root/standalone/demo-shelf-LAB/.data/last-running.json"
+  if [ ! -f "$last_file" ]; then
+    echo "No last-running set yet ($last_file missing) — start labs from the shelf and they will be remembered."
+  else
+    echo "Starting the $top most recently used labs:"
+    ids=$(node -e "
+      const d = JSON.parse(require('fs').readFileSync('$last_file', 'utf8'));
+      const ids = (d.demos || []).slice(0, $top).map((e) => e.id).reverse();
+      console.log(ids.join(' '));" 2>/dev/null)
+    for id in $ids; do
+      # registry id -> lab dir: the seed uses the repo minus -LAB, but demos.local.json may
+      # differ; resolve via the registry entry's composeFile path when present.
+      dir=$(node -e "
+        const fs = require('fs');
+        const d = JSON.parse(fs.readFileSync('$last_file', 'utf8'));
+        void d;
+        const reg = JSON.parse(fs.readFileSync('$root/standalone/demo-shelf-LAB/.data/demos.local.json', 'utf8'));
+        const demo = (reg.demos || []).find((x) => x.id === '$id');
+        if (demo && demo.composeFile) {
+          const p = demo.composeFile.startsWith('/') ? demo.composeFile : require('path').join('$root/standalone', demo.composeFile);
+          console.log(require('path').dirname(require('path').resolve(p)));
+        }" 2>/dev/null)
+      if [ -n "$dir" ] && [ -f "$dir/docker-compose.yml" ]; then
+        if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "$(basename "$dir")"; then
+          echo "  $id: already running"; continue
+        fi
+        (cd "$dir" && docker compose up -d > /dev/null 2>&1) && echo "  $id: started ($dir)" || echo "  $id: docker compose failed (run it there by hand)"
+      else
+        echo "  $id: no compose file found — start it from the shelf"
+      fi
+    done
+  fi
+fi
+
+# ---- network-pool headroom ---------------------------------------------------
+# Docker's default pool holds ~31 user networks; every compose project takes one. Warn before
+# the cryptic daemon error, and offer the prune.
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  nets=$(docker network ls --format '{{.Name}}' 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$nets" -ge 28 ]; then
+    echo "WARNING: docker network pool nearly full ($nets networks)."
+    echo "  Fix: docker network prune -f   (removes only unused networks)"
+    echo "  Or raise default-address-pools in the docker daemon settings."
+  fi
 fi
 
 # ---- what's new: labs added/removed since the last run ----------------------
