@@ -481,6 +481,29 @@ elif [ -n "$start_app" ]; then
   start_one "$start_app"
 fi
 
+# ---- what's new: labs added/removed since the last run ----------------------
+# Tell the user how many new apps arrived and their names BEFORE the browser
+# opens, so the update is visible in the console. Baseline is the pinned lab
+# list from origin/main as of the previous run (saved in .bootstrap-labs);
+# a first run has no baseline and just reports the total.
+new_labs_file="$root/.bootstrap-labs"
+if [ -f "$new_labs_file" ]; then
+  added="$(comm -13 <(sort "$new_labs_file") <(git -C "$root" submodule status | awk '{print $2}' | sort))"
+  removed="$(comm -23 <(sort "$new_labs_file") <(git -C "$root" submodule status | awk '{print $2}' | sort))"
+  added_n="$(printf '%s' "$added" | grep -c . || true)"
+  removed_n="$(printf '%s' "$removed" | grep -c . || true)"
+  if [ "$added_n" -gt 0 ]; then
+    printf "\n${C_B}  %s new app(s) in this update:${C_0}\n" "$added_n"
+    printf '%s\n' "$added" | sed 's/^/    + /'
+  fi
+  if [ "$removed_n" -gt 0 ]; then
+    printf "\n${C_Y}  %s app(s) removed:${C_0}\n" "$removed_n"
+    printf '%s\n' "$removed" | sed 's/^/    - /'
+  fi
+  [ "$added_n" = 0 ] && [ "$removed_n" = 0 ] && echo "  No new apps since the last run."
+fi
+git -C "$root" submodule status | awk '{print $2}' | sort > "$new_labs_file" 2>/dev/null || true
+
 # ---- open the shelf in the browser ------------------------------------------
 if [ "$dry_run" != 1 ]; then
   if [ "$(uname -s)" = "Darwin" ]; then
