@@ -199,3 +199,7 @@
 [submodule "standalone/diagram-prove-lab"]
 	path = standalone/diagram-prove-lab
 	url = https://github.com/curtismu7/diagram-prove-lab.git
+
+[submodule "standalone/mcp-gateway-lab-LAB"]
+	path = standalone/mcp-gateway-lab-LAB
+	url = https://github.com/curtismu7/mcp-gateway-lab-LAB.git
