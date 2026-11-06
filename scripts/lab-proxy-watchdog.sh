@@ -43,18 +43,38 @@ for c in $(docker --context "$docker_ctx" ps -a --format '{{.Names}}\t{{.Status}
 done
 [ "$started" -gt 0 ] && echo "lab-proxy-watchdog: started $started stopped container(s)"
 
+# 1b. attach the proxy to every running lab's compose network (idempotent): nginx
+# resolves lab container names through these networks; a recreated proxy loses them,
+# so this runs AFTER proxy_up below, and nginx reloads when anything was attached.
+proxy_net_attached() {  # proxy_net_attached <network> — is the proxy already on it?
+  docker --context "$docker_ctx" network inspect "$1" --format '{{range $k,$v := .Containers}}{{$v.Name}} {{end}}' 2>/dev/null | grep -qw lab-proxy-lab-proxy-1
+}
+attach_lab_networks() {
+  attached=0
+  for c in $(docker --context "$docker_ctx" ps --format '{{.Names}}'); do
+    net=$(docker --context "$docker_ctx" inspect "$c" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+    [ -z "$net" ] || [ "$net" = "bridge" ] && continue
+    proxy_net_attached "$net" && continue
+    docker --context "$docker_ctx" network connect "$net" lab-proxy-lab-proxy-1 >/dev/null 2>&1 && attached=$((attached + 1))
+  done
+  [ "$attached" -gt 0 ] && echo "lab-proxy-watchdog: attached proxy to $attached lab network(s)" && return 0
+  return 1
+}
+
 # 2. the proxy itself: up -d (no-op when healthy and config unchanged), recreate when the config changed
 proxy_up() {
-  docker --context "$docker_ctx" compose -p lab-proxy -f "$root/shared/lab-proxy/docker-compose.yml" up -d --force-recreate >/dev/null 2>&1
+  docker --context "$docker_ctx" compose -p lab-proxy -f "$root/shared/lab-proxy/docker-compose.yml" up -d >/dev/null 2>&1
 }
 proxy_ok() {
   curl -sk -o /dev/null --max-time 4 "https://local.ping-devops.com:8443/api/health" 2>/dev/null
 }
 
-# Even with compose up -d, nginx exits at boot if a lab's DNS misses. Force-recreate re-reads config
-# now that every lab container is running.
+# proxy_up: plain up -d — recreates only when config/image changed, so manual network
+# attaches (step 1b) survive a run where nothing changed.
 proxy_up
 if ! proxy_ok; then sleep 3; proxy_up; fi
+# New networks mean new DNS interfaces for nginx: reload when the attach pass added any.
+attach_lab_networks && docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 nginx -s reload >/dev/null 2>&1
 if proxy_ok; then
   echo "lab-proxy-watchdog: https://local.ping-devops.com:8443 is serving"
   exit 0
