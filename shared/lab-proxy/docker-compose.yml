@@ -32,6 +32,7 @@ services:
       - shelf
       - codingagents
       - mcpgwlab
+      - hitlmfa
 
 networks:
   pingone:
@@ -97,3 +98,6 @@ networks:
   mcpgwlab:
     external: true
     name: mcp-gateway-lab_default
+  hitlmfa:
+    external: true
+    name: hitl-mfa-lab_default
