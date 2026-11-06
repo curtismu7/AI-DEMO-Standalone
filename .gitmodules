@@ -187,3 +187,12 @@
 [submodule "standalone/gateway-suite-LAB"]
 	path = standalone/gateway-suite-LAB
 	url = https://github.com/curtismu7/gateway-suite-LAB.git
+[submodule "standalone/agent-preferences-lab"]
+	path = standalone/agent-preferences-lab
+	url = https://github.com/curtismu7/agent-preferences-lab.git
+[submodule "standalone/idjag-runner-LAB"]
+	path = standalone/idjag-runner-LAB
+	url = https://github.com/curtismu7/idjag-runner-LAB.git
+[submodule "standalone/demo-field-guide-LAB"]
+	path = standalone/demo-field-guide-LAB
+	url = https://github.com/curtismu7/demo-field-guide-LAB.git
