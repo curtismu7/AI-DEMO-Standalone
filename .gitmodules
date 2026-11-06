@@ -196,3 +196,6 @@
 [submodule "standalone/demo-field-guide-LAB"]
 	path = standalone/demo-field-guide-LAB
 	url = https://github.com/curtismu7/demo-field-guide-LAB.git
+[submodule "standalone/diagram-prove-lab"]
+	path = standalone/diagram-prove-lab
+	url = https://github.com/curtismu7/diagram-prove-lab.git
