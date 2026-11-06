@@ -53,3 +53,10 @@ jobs:
           echo "history hits: $hist"
           echo "tree files with hits: $tree_count"
           test "$hist" = "0" && test "$tree_count" = "0"
+
+  lab-proxy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Lab-proxy config guard
+        run: shared/lab-proxy/check-config.sh
