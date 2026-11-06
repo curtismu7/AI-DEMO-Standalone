@@ -31,6 +31,7 @@ services:
       - gatewaysuite
       - shelf
       - codingagents
+      - mcpgwlab
 
 networks:
   pingone:
@@ -93,3 +94,6 @@ networks:
   codingagents:
     external: true
     name: coding-agents-lab_default
+  mcpgwlab:
+    external: true
+    name: mcp-gateway-lab_default
