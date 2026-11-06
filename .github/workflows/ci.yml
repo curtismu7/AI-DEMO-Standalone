@@ -34,6 +34,25 @@ jobs:
       - name: Scan history
         run: ./gitleaks detect --source . --redact --no-banner
 
+  gh-labs-drift:
+    # Every *-LAB repo under the owner must be a submodule of the meta-repo.
+    # Needs a token that can list the owner's repos; falls back to the
+    # checkout's own token (fine for curtismu7, the repo owner).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - name: Install gh CLI
+        run: (type -p gh || (sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/etc/apt/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && sudo apt update && sudo apt install -y gh)) >/dev/null
+      - name: Check lab repos are submodules
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add url "https://x-access-token:${GH_TOKEN}@github.com/".insteadOf https://github.com/ 2>/dev/null || true
+          bash scripts/check-gh-labs.sh --ci
+
   forbidden-strings:
     runs-on: ubuntu-latest
     steps:
