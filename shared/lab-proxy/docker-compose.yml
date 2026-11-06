@@ -30,6 +30,7 @@ services:
       - agentcore
       - gatewaysuite
       - shelf
+      - codingagents
 
 networks:
   pingone:
@@ -89,3 +90,6 @@ networks:
   shelf:
     external: true
     name: demo-shelf-lab_default
+  codingagents:
+    external: true
+    name: coding-agents-lab_default
