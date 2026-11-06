@@ -203,3 +203,6 @@
 [submodule "standalone/mcp-gateway-lab-LAB"]
 	path = standalone/mcp-gateway-lab-LAB
 	url = https://github.com/curtismu7/mcp-gateway-lab-LAB.git
+[submodule "standalone/hitl-mfa-lab-LAB"]
+	path = standalone/hitl-mfa-lab-LAB
+	url = https://github.com/curtismu7/hitl-mfa-lab-LAB.git
