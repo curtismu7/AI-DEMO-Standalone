@@ -59,3 +59,11 @@ Another agent session landed `delegation-lab-LAB` (UC1/UC9/UC9A/UC21, catalog D1
 2. Per repo touched: build + suite green (Air for full suites), pushed, `git log origin/<branch>..HEAD` empty.
 3. URL claims: paste real `curl -sk https://local.ping-devops.com:8443/<app>/api/health` JSON.
 4. Never trust piped exit codes; inspect output.
+
+### Personal Agent (muse-LAB) sign-in — closed out 2026-11-07
+- pi.flow Sign in dialog merged (muse-LAB PRs #4, #5, #6): main agent, "Sign in as Sam", and the ChatGPT/Claude/Codex connector sign-in. Pin at `db1dc32`.
+- Verified headless with the demo user: dialog, code swap, agent token, both exchanges, and the local PingGateway call (steps 7/8/9 = 200, "4,500 points (Gold)"). The connector flows return gateway steps [[7,200],[8,200],[9,200]] for all three assistants.
+- Root cause of the earlier 403: PingOne Authorize `HasValidActorChain` did not list the four acting apps (Personal Agent, ChatGPT, Claude, Codex). Fixed by a console import of a snapshot with the four ids added. Committed to the repo in AI-DEMO2 PR #3423 so a later import cannot drop them.
+- The snapshot must be generated with `PINGONE_AI_AGENT_ACTOR_CLIENT_ID` / `PINGONE_A2A_*_AGENT_CLIENT_ID`, never `PINGONE_WORKLOAD_AGENT_CLIENT_IDS` (that also exempts the agent from the user-consent rules).
+- Parity gate `verifyAuthorizeCloudParity.js` now covers `no_user_consent` and `may_act_mismatch`: 10/10 live.
+- Not provable: whether the import overwrote a console-only edit elsewhere in the policy (no pre-import export exists). Parity, A2A (11/11) and snapshot-parity checks all pass.
