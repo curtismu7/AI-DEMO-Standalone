@@ -1,6 +1,6 @@
 # Standalone Labs — Setup for Yourself
 
-One command. Everything (git, Node, Docker, GitHub CLI, all 63 demo apps, the launcher) installs itself.
+One command. Everything (git, Node, Docker, GitHub CLI, all 69 demo apps, the launcher) installs itself.
 
 ## Setup
 
@@ -72,7 +72,7 @@ Eleven steps, one status line each (`[n/11] Step ..... OK`), a summary box at th
 5. **hosts entry** — adds `local.ping-devops.com` to `/etc/hosts` (one domain for everything, no more hosts edits ever)
 6. **PingOne** — creates the demo environment and writes `~/Development/.env` (live mode); skipped if already configured
 7. **Authorize snapshot** — checks the PingOne Authorize policy needed by live mode (mock mode needs none)
-8. **Submodules** — downloads all 63 demo app repos
+8. **Submodules** — downloads all 69 demo app repos
 9. **Shelf + installs** — builds the demo shelf and installs the four main labs' npm dependencies
 10. **UI standard + env** — runs the family's quick consistency checks
 11. **Launcher** — starts the lab-proxy at `https://local.ping-devops.com:8443` and installs a launchd agent so it survives reboots

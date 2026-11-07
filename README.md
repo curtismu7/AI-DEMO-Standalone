@@ -1,6 +1,6 @@
 # Ping Identity — Standalone Demo Labs
 
-63 self-contained demo apps (AI gateway, OAuth labs, MCP tooling, PingFederate/PingOne scenarios), each runnable on a Mac in minutes.
+69 self-contained demo apps (AI gateway, OAuth labs, MCP tooling, PingFederate/PingOne scenarios), each runnable on a Mac in minutes.
 
 **Set up everything with one command** (full guide: [SETUP.md](SETUP.md)):
 
@@ -14,7 +14,7 @@ Then open the launcher: **https://local.ping-devops.com:8443**
 
 One command does everything on a new machine — even a bare Mac: it installs Homebrew if missing
 (which brings the Xcode tools and git), then brew-installs anything missing (Node 26, gh, OrbStack),
-runs `gh auth login --web` if you are not signed in, downloads all 63 demo app repos as submodules,
+runs `gh auth login --web` if you are not signed in, downloads all 69 demo app repos as submodules,
 builds the demo shelf, and starts the launcher. The only things you provide: your Mac password,
 a GitHub account (any account — the repos are public), and, for live mode, PingOne credentials.
 
@@ -29,7 +29,7 @@ per-environment worker, and writes `~/Development/.env` (mode 600) — the one s
 lab reads. No other console work.
 
 **Structure**: each app is its own repo (under the owner of this meta-repo, e.g. `curtismu7`),
-added as a git submodule under `standalone/`. Init just one lab instead of all 63:
+added as a git submodule under `standalone/`. Init just one lab instead of all 69:
 
 ```sh
 scripts/setup.sh --app id-jag-standalone-LAB --skip-install
@@ -60,8 +60,6 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | jev-lab-LAB | Demo | standalone/jev-lab-LAB |
 | obo-lab-LAB | Demo | standalone/obo-lab-LAB |
 | jit-lab-LAB | Demo | standalone/jit-lab-LAB |
-| ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
-
 | mcp-resource-server-LAB | Tool | standalone/mcp-resource-server-LAB |
 | mcp-tools-LAB | Tester | standalone/mcp-tools-LAB |
 | hostile-mcp-LAB | Demo | standalone/hostile-mcp-LAB |
@@ -95,12 +93,20 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | stolen-token-LAB | Demo | standalone/stolen-token-LAB |
 | mcp-elicitation-LAB | Demo | standalone/mcp-elicitation-LAB |
 | agentcore-pingone-demo-LAB | Demo | standalone/agentcore-pingone-demo-LAB |
-| muse | Demo | standalone/muse-LAB |
+| muse-LAB | Demo | standalone/muse-LAB |
 | meridian-a2a-hop-LAB | Demo | standalone/meridian-a2a-hop-LAB |
 | ping-services-stub-LAB | Tester | standalone/ping-services-stub-LAB |
 | demo-shelf-LAB | Demo | standalone/demo-shelf-LAB |
 | ciba-hitl-lab | Demo | standalone/ciba-hitl-lab |
 | gateway-suite-LAB | Demo | standalone/gateway-suite-LAB |
+| agent-preferences-lab | Demo | standalone/agent-preferences-lab |
+| delegation-lab-LAB | Demo | standalone/delegation-lab-LAB |
+| demo-field-guide-LAB | Tool | standalone/demo-field-guide-LAB |
+| diagram-prove-lab | Tool | standalone/diagram-prove-lab |
+| hitl-mfa-lab-LAB | Demo | standalone/hitl-mfa-lab-LAB |
+| idjag-runner-LAB | Tester | standalone/idjag-runner-LAB |
+| mcp-gateway-lab-LAB | Demo | standalone/mcp-gateway-lab-LAB |
+| ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
 
 ## One domain for demo users (lab-proxy)
 
@@ -123,6 +129,8 @@ Each app sets its own ports. Ranges and variables are in each app's README:
 - id-jag-standalone-LAB: 4720-4723 (`PORT`, and the Docker `HOST_PORT`, `AS_HOST_PORT`, `MCP_HOST_PORT`)
 - agentcore-pingone-demo-LAB: 7601 (`HOST_PORT`; 7601-7649 is the lab's range)
 - gateway-suite-LAB: 5750 (`HOST_PORT`; 5750-5759 is the lab's range)
+- delegation-lab-LAB: 7690-7699 (the lab's range)
+- diagram-prove-lab: 7710
 
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
