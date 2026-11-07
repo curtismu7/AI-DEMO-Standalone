@@ -20,6 +20,15 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.3 (2026-11-07)
+
+**Shelf**
+- A Help button in the header opens a drawer listing every way to start a demo: Start on a card, "Restore last set" after a restart, the `scripts/setup.sh` commands (`--start`, `--start-top=10`, `--start-all`), and what to do when Start does nothing.
+
+**Setup**
+- `scripts/setup.sh --start-all` now warns on a Mac with under 16 GB of RAM and points to `--start-top=10` or `--start <lab-dir>`.
+- The setup summary tells you where to lower OrbStack's memory if many labs are running.
+
 ## 2.2 (2026-11-06)
 
 **Shelf**
