@@ -34,6 +34,8 @@ services:
       - mcpgwlab
       - hitlmfa
       - delegation
+      - agentprefs
+      - fieldguide
       - provelab
 
 networks:
@@ -112,3 +114,9 @@ networks:
   a2a:
     external: true
     name: a2a-lab_default
+  agentprefs:
+    external: true
+    name: agent-preferences-lab_default
+  fieldguide:
+    external: true
+    name: demo-field-guide-lab_default

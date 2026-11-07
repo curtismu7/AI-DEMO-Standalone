@@ -6,7 +6,7 @@
 # Usage: ./check-config.sh [nginx.conf]
 set -e
 CONF="${1:-$(dirname "$0")/nginx.conf}"
-BAD=$(grep -nE 'proxy_pass\s+http://[A-Za-z0-9._-]+:' "$CONF" | grep -vE 'proxy_pass\s+http://\$|host\.docker\.internal|127\.0\.0\.1|localhost' || true)
+BAD=$(grep -nE 'proxy_pass\s+http://[A-Za-z0-9._-]+:' "$CONF" | grep -vE 'proxy_pass\s+http://(\$|host\.docker\.internal|127\.0\.0\.1|localhost)' || true)
 if [ -n "$BAD" ]; then
   echo "FAIL: static proxy_pass to a container name (nginx will not start while that container is down):" >&2
   echo "$BAD" >&2
