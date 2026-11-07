@@ -35,13 +35,30 @@ if ! docker_ok; then
 fi
 if ! docker_ok; then echo "lab-proxy-watchdog: Docker (OrbStack) is not running"; exit 1; fi
 
+# Skip list: container-name globs (one per line, # comments) that step 1 never auto-starts, so a
+# lab you stopped on purpose stays stopped. No file = no skips (the default for every user).
+# Only step 1 reads it: the proxy (step 2) and the shelf start agent are always kept up.
+skip_file="${WATCHDOG_SKIP_FILE:-$HOME/.config/demo-kit/watchdog-skip}"
+is_skipped() {  # is_skipped <container> — does it match a pattern in the skip file?
+  [ -r "$skip_file" ] || return 1
+  while IFS= read -r pat || [ -n "$pat" ]; do
+    pat=$(printf '%s' "${pat%%#*}" | tr -d '[:space:]')
+    [ -z "$pat" ] && continue
+    case "$1" in $pat) return 0 ;; esac
+  done < "$skip_file"
+  return 1
+}
+
 # 1. every lab container that exited starts again (only ones with a compose label: never stray containers)
 started=0
+skipped=0
 for c in $(docker --context "$docker_ctx" ps -a --format '{{.Names}}\t{{.Status}}' | awk '$2 ~ /Exited/ {print $1}'); do
+  if is_skipped "$c"; then skipped=$((skipped + 1)); continue; fi
   labels=$(docker --context "$docker_ctx" inspect "$c" --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null)
   [ -n "$labels" ] && docker --context "$docker_ctx" start "$c" >/dev/null 2>&1 && started=$((started + 1))
 done
 [ "$started" -gt 0 ] && echo "lab-proxy-watchdog: started $started stopped container(s)"
+[ "$skipped" -gt 0 ] && echo "lab-proxy-watchdog: left $skipped stopped container(s) alone (skip list: $skip_file)"
 
 # 1b. attach the proxy to every running lab's compose network (idempotent): nginx
 # resolves lab container names through these networks; a recreated proxy loses them,
