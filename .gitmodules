@@ -206,3 +206,6 @@
 [submodule "standalone/hitl-mfa-lab-LAB"]
 	path = standalone/hitl-mfa-lab-LAB
 	url = https://github.com/curtismu7/hitl-mfa-lab-LAB.git
+[submodule "standalone/delegation-lab-LAB"]
+	path = standalone/delegation-lab-LAB
+	url = https://github.com/curtismu7/delegation-lab-LAB.git
