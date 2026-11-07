@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.2** — theme picker in the labs, four new labs (MCP gateway, agent preferences, HITL + MFA, delegation), a dark-mode button fix, and a sturdier lab proxy. Run the update command below to get them.
+**Version 2.3** — a Help button on the shelf that explains every way to start a demo, and a memory warning when you start every lab on a small Mac. Run the update command below to get them.
