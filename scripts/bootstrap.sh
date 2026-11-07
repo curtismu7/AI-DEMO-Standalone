@@ -473,6 +473,15 @@ start_one() {
   fi
 }
 if [ "$start_all" = 1 ]; then
+  # Every lab at once is heavy: warn on small-RAM Macs and point at the lighter option.
+  if [ "$(uname -s)" = "Darwin" ]; then
+    ram_gb=$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 ))
+    if [ "$ram_gb" -gt 0 ] && [ "$ram_gb" -lt 16 ]; then
+      echo "WARNING: this Mac has ${ram_gb} GB RAM; starting every lab at once may slow it down or run out of memory."
+      echo "  Lighter: scripts/setup.sh --start-top 10   (your 10 most recently used labs)"
+      echo "  Or start one: scripts/setup.sh --start <lab-dir>"
+    fi
+  fi
   echo "Starting all labs (skipping ones already running):"
   for d in "$root"/standalone/*/; do
     app="$(basename "$d")"
@@ -591,6 +600,7 @@ printf "  Next:\n"
 printf "    Open the shelf in a browser:  ${C_B}https://local.ping-devops.com:8443${C_0}\n"
 printf "    Or start one lab:             ${C_B}scripts/setup.sh --start <lab-dir>${C_0}\n"
 printf "    List labs: ${C_DIM}ls standalone/${C_0}   Status/drift: ${C_DIM}scripts/check-drift.sh${C_0}\n"
+printf "    ${C_DIM}Many labs running? Lower OrbStack's memory in Settings > System.${C_0}\n"
 if [ "$mode" != "${mode#mock}" ]; then
   printf "    For live mode later: ${C_DIM}scripts/pingone-setup.sh${C_0}\n"
 fi
