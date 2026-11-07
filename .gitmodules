@@ -212,3 +212,6 @@
 [submodule "standalone/a2a-lab-LAB"]
 	path = standalone/a2a-lab-LAB
 	url = https://github.com/curtismu7/a2a-lab-LAB.git
+[submodule "standalone/observability-LAB"]
+	path = standalone/observability-LAB
+	url = https://github.com/curtismu7/observability-LAB.git

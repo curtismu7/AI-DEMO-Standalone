@@ -34,6 +34,7 @@ services:
       - mcpgwlab
       - hitlmfa
       - delegation
+      - observability
       - agentprefs
       - fieldguide
       - provelab
@@ -108,6 +109,9 @@ networks:
   delegation:
     external: true
     name: delegation-lab_default
+  observability:
+    external: true
+    name: observability-lab_default
   provelab:
     external: true
     name: diagram-prove-lab_default
