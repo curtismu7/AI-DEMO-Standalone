@@ -197,6 +197,8 @@ Each app sets its own ports; ranges and variables are in each app's README. Defa
 
 Two apps share a default: **agent-audit-trail-LAB and meridian-a2a-hop-LAB both use 6600**, so they cannot run together unless one is started with another `HOST_PORT`.
 
+New apps get one port each from 7800-7999: run `npm run ports -- --next` in demo-shelf-LAB, then register the app in its `data/demos.json`. Existing apps keep the ports in the table above.
+
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
 ## Is every app on the standard? (fleet check)
