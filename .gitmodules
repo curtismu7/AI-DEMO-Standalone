@@ -156,21 +156,21 @@
 	url = https://github.com/curtismu7/pingone-LAB.git
 [submodule "standalone/jev-lab-LAB"]
 	path = standalone/jev-lab-LAB
-	url = https://github.com/curtismu7/jev-lab.git
+	url = https://github.com/curtismu7/jev-lab-LAB.git
 [submodule "standalone/obo-lab-LAB"]
 	path = standalone/obo-lab-LAB
-	url = https://github.com/curtismu7/obo-lab.git
+	url = https://github.com/curtismu7/obo-lab-LAB.git
 [submodule "standalone/jit-lab-LAB"]
 	path = standalone/jit-lab-LAB
-	url = https://github.com/curtismu7/jit-lab.git
+	url = https://github.com/curtismu7/jit-lab-LAB.git
 [submodule "shared/ping-shared"]
 	path = shared/ping-shared
 	url = https://github.com/curtismu7/ping-shared.git
 [submodule "standalone/agentcore-pingone-demo-LAB"]
 	path = standalone/agentcore-pingone-demo-LAB
 	url = https://github.com/curtismu7/agentcore-pingone-demo-LAB
-[submodule "standalone/muse"]
-	path = standalone/muse
+[submodule "standalone/muse-LAB"]
+	path = standalone/muse-LAB
 	url = https://github.com/curtismu7/muse-LAB.git
 [submodule "standalone/meridian-a2a-hop-LAB"]
 	path = standalone/meridian-a2a-hop-LAB
