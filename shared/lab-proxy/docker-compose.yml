@@ -34,6 +34,7 @@ services:
       - mcpgwlab
       - hitlmfa
       - delegation
+      - provelab
 
 networks:
   pingone:
@@ -105,3 +106,6 @@ networks:
   delegation:
     external: true
     name: delegation-lab_default
+  provelab:
+    external: true
+    name: diagram-prove-lab_default
