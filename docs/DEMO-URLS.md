@@ -5,7 +5,7 @@ Everything runs on this machine. Two doorways:
 - **Domain doorway** — `https://local.ping-devops.com:8443/<route>/` — served by the shared lab-proxy; works in any browser on this Mac, no `/etc/hosts` entries.
 - **AI-DEMO2** — `https://local.ping-devops.com:4000/...` — the main Super Banking demo (sign in as `demouser` / `Baseball123!` unless noted).
 
-Status column: ✅ verified answering during the last sweep (2026-11-06), ⚠️ route exists but the lab refused a plain probe (Host check / stopped container / needs its own sign-in) — open it in the browser before assuming it is down.
+Status column: ✅ verified answering during the last sweep (2026-11-06), ❌ proxied but nothing is listening (502), ⚠️ route exists but the lab refused a plain probe (Host check / stopped container / needs its own sign-in) — open it in the browser before assuming it is down.
 
 ---
 
@@ -85,6 +85,20 @@ Status column: ✅ verified answering during the last sweep (2026-11-06), ⚠️
 | `https://local.ping-devops.com:4000` | **Super Banking demo** — the full reference implementation (PingOne + PingFederate + MCP + agents). Sign in `demouser` / `Baseball123!`. |
 | `https://local.ping-devops.com:4000/pingfederate-id-jag/runner` | (see ID-JAG path above) |
 | `http://127.0.0.1:16686` | Jaeger — distributed traces for the AI-DEMO2 stack. |
+
+## Privilege, gateway and MCP labs (added 2026-11-06 sweep)
+
+| URL | What it is |
+|---|---|
+| ✅ `https://local.ping-devops.com:8443/mcp-gateway-lab/` | **MCP Gateway Lab** — a third-party weather MCP server scoped at the gateway with a live, admin-editable state-scope policy; the backend never sees the restriction. |
+| ✅ `https://local.ping-devops.com:8443/privilege-a2a/` | **Privilege A2A** (Anthropic) — main agent, worker agent and MCP server in one compose; the Access Review demo. |
+| ✅ `https://local.ping-devops.com:8443/mcp-demo-client/` | **MCP Demo Client for Privilege** — chat client that drives a Privilege-fronted MCP server (offline mode by default). |
+| ✅ `https://local.ping-devops.com:8443/privilege-demo/` | **Privilege demo** — a policy enforcement point: an agent's MCP tool calls are checked against Cedar policies and allowed, denied or held for approval. |
+| ⚠️ `https://local.ping-devops.com:8443/privilege-map/` | **Privilege Map** — ReactFlow diagrams and feature cards for Federated Identity (agent access keys, the five gateway checks). Answered 421 (Host check) on the probe. |
+| ⚠️ `https://local.ping-devops.com:8443/mcp-discovery/` | **MCP Discovery** — read-only discovery of MCP servers, tool-metadata probing, poisoned-metadata flags, scan diff. Answered 421 (Host check) on the probe. |
+| ✅ `https://local.ping-devops.com:8443/jev-lab/` | **JEV Decision Model** (D113). |
+| ✅ `https://local.ping-devops.com:8443/jit-lab/` | **JIT Ephemeral Credentials** (D112). |
+| ❌ `https://local.ping-devops.com:8443/triton/` | Triton — proxied to host port 8597; answered 502 (nothing listening). Start it before opening. |
 
 ## Tools / infrastructure
 
