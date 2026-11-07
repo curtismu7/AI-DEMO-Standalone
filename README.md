@@ -120,18 +120,82 @@ The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each ap
 
 ## Ports, and what to do if a port is taken
 
-Each app sets its own ports. Ranges and variables are in each app's README:
-- ai-gateway-client-LAB: 6880 (`PORT`)
-- mcp-demo-client-privilege-LAB: 6884 (`PORT`)
-- privilege-a2a-anthropic-demo-LAB: 6881-6883 (`MAIN_AGENT_PORT`, `WORKER_AGENT_PORT`, `MCP_SERVER_PORT`)
-- privilege-demo-LAB: 4510 (`PORT`)
-- privilege-map-LAB: 5300 dev, 5301 Docker (`PORT`, `HOST_PORT`)
-- agent-mcp-door-demo-LAB: 6850-6879 (`PORT`)
-- id-jag-standalone-LAB: 4720-4723 (`PORT`, and the Docker `HOST_PORT`, `AS_HOST_PORT`, `MCP_HOST_PORT`)
-- agentcore-pingone-demo-LAB: 7601 (`HOST_PORT`; 7601-7649 is the lab's range)
-- gateway-suite-LAB: 5750 (`HOST_PORT`; 5750-5759 is the lab's range)
-- delegation-lab-LAB: 7690-7699 (the lab's range)
-- diagram-prove-lab: 7710
+Each app sets its own ports; ranges and variables are in each app's README. Default host ports (from the shelf registry and each app's compose file):
+
+| App | Default port | Variable / notes |
+| --- | --- | --- |
+| a2a-lab-LAB | 7700 | `HOST_PORT` |
+| agent-audit-trail-LAB | 6600 | `HOST_PORT`; range 6600-6649. **Same default as meridian-a2a-hop-LAB** |
+| agent-gateway-inspector-LAB | 5850 | see the app README |
+| agent-governance-LAB | 7300 | see the app README |
+| agent-kill-switch-LAB | 6550 | see the app README |
+| agent-mcp-door-demo-LAB | 6850-6879 | `PORT` |
+| agent-preferences-lab | 7660 | see the app README |
+| agent-registry-demo-LAB | 5010 | see the app README |
+| agentcore-pingone-demo-LAB | 7601 | `HOST_PORT`; range 7601-7649 |
+| ai-gateway-client-LAB | 6880 | `PORT` |
+| ai-guard-sidecar-LAB | 6500 | see the app README |
+| ai-policies-LAB | 7500 | see the app README |
+| attack-gallery-LAB | 5181 | see the app README |
+| chatgpt-mcp-flow-LAB | 6650 | see the app README |
+| ciba-hitl-lab | 7580 | see the app README |
+| cimd-LAB | 5250 | see the app README |
+| coding-agents-LAB | 7150 | see the app README |
+| customer-agent-LAB | 5600 | see the app README |
+| data-protection-LAB | 7200 | see the app README |
+| delegation-lab-LAB | 7690 | `HOST_PORT`; range 7690-7699 |
+| demo-field-guide-LAB | 7590 | see the app README |
+| demo-shelf-LAB | 4400 | see the app README |
+| deploy-test-LAB | 5590 | see the app README |
+| diagram-prove-lab | 7710 | `HOST_PORT` |
+| diagram-studio-LAB | 6001 | see the app README |
+| federated-identity-LAB | 7400 | see the app README |
+| gateway-claims-LAB | 5150 | see the app README |
+| gateway-suite-LAB | 5750 | `HOST_PORT`; range 5750-5759 |
+| hitl-mfa-lab-LAB | 7680 | `HOST_PORT`; range 7680-7689 |
+| hostile-a2a-LAB | 4750 | see the app README |
+| hostile-mcp-LAB | 4701 | see the app README |
+| id-jag-standalone-LAB | 4720-4723 | `PORT`; Docker `HOST_PORT`, `AS_HOST_PORT`, `MCP_HOST_PORT` |
+| idjag-runner-LAB | 4780 | `HOST_PORT` |
+| intent-par-inspector-LAB | 4771 | see the app README |
+| intent-purpose-behaviour-LAB | 7100 | see the app README |
+| jev-lab-LAB | 7550 | see the app README |
+| jit-lab-LAB | 7570 | see the app README |
+| mcp-auth-conformance-LAB | 4901 | see the app README |
+| mcp-demo-client-privilege-LAB | 6884 | `PORT` |
+| mcp-discovery-LAB | 5310 | see the app README |
+| mcp-elicitation-LAB | 6800 | see the app README |
+| mcp-gateway-lab-LAB | 7670 | `HOST_PORT`; range 7670-7679 |
+| mcp-resource-server-LAB | 8081 | see the app README |
+| mcp-surface-LAB | 7350 | see the app README |
+| mcp-tools-LAB | 4810 | also serves mcp-scanner |
+| meridian-a2a-hop-LAB | 6600 | `HOST_PORT`. **Same default as agent-audit-trail-LAB** |
+| mock-authorize-LAB | 4850 | see the app README |
+| muse-LAB | 5100 | see the app README |
+| no-tool-no-promise-LAB | 5350 | see the app README |
+| obo-lab-LAB | 7560 | see the app README |
+| p1-third-party-exchange-LAB | 5200 | see the app README |
+| p1az-inspector-LAB | 4840 | see the app README |
+| personal-agent-demo-LAB | 6900 | see the app README |
+| ping-gateway-route-LAB | 5050 | see the app README |
+| ping-services-stub-LAB | 6300 | see the app README |
+| pingfederate-LAB | 5400 | see the app README |
+| pingone-LAB | 5500 | see the app README |
+| pingone-mcp-inspector-LAB | 5201 | see the app README |
+| pingone-signin-LAB | 6171 | see the app README |
+| poppy-agent-tester-LAB | 5450 | see the app README |
+| privilege-a2a-anthropic-demo-LAB | 6881-6883 | `MAIN_AGENT_PORT`, `WORKER_AGENT_PORT`, `MCP_SERVER_PORT` |
+| privilege-demo-LAB | 4510 | `PORT` |
+| privilege-map-LAB | 5300 dev, 5301 Docker | `PORT`, `HOST_PORT` |
+| progressive-trust-ladder-LAB | 6211 | see the app README |
+| saas-access-LAB | 7250 | see the app README |
+| secrets-vault-LAB | 7450 | see the app README |
+| session-LAB | 6890 | see the app README |
+| stolen-token-LAB | 4950 | see the app README |
+| token-workbench-LAB | 5910 | see the app README |
+| worker-demo-LAB | 6700 | see the app README |
+
+Two apps share a default: **agent-audit-trail-LAB and meridian-a2a-hop-LAB both use 6600**, so they cannot run together unless one is started with another `HOST_PORT`.
 
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
