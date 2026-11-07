@@ -129,6 +129,15 @@ Each app sets its own ports. Ranges and variables are in each app's README:
 - id-jag-standalone-LAB: 4720-4723 (`PORT`, and the Docker `HOST_PORT`, `AS_HOST_PORT`, `MCP_HOST_PORT`)
 - agentcore-pingone-demo-LAB: 7601 (`HOST_PORT`; 7601-7649 is the lab's range)
 - gateway-suite-LAB: 5750 (`HOST_PORT`; 5750-5759 is the lab's range)
+- demo-field-guide-LAB: 7590
+- agent-preferences-lab: 7660 (`HOST_PORT`; 7660-7669)
+- mcp-gateway-lab-LAB: 7670 (`HOST_PORT`; 7670-7679)
+- hitl-mfa-lab-LAB: 7680 (`HOST_PORT`; 7680-7689)
+- delegation-lab-LAB: 7690 (`HOST_PORT`; 7690-7699)
+- diagram-prove-lab: 7710 (`HOST_PORT`)
+- idjag-runner-LAB: 4780 (`HOST_PORT`)
+
+The full list for every app, with clash warnings, is generated from the shelf registry: [demo-shelf-LAB docs/ports.md](https://github.com/curtismu7/demo-shelf-LAB/blob/main/docs/ports.md).
 
 If a port is taken: find the process with `lsof -iTCP:<port> -sTCP:LISTEN -n -P`. Stop it if it is an old copy of the app (`kill <PID>`). Otherwise start the app on another port, using the variable above.
 
