@@ -209,3 +209,6 @@
 [submodule "standalone/delegation-lab-LAB"]
 	path = standalone/delegation-lab-LAB
 	url = https://github.com/curtismu7/delegation-lab-LAB.git
+[submodule "standalone/a2a-lab-LAB"]
+	path = standalone/a2a-lab-LAB
+	url = https://github.com/curtismu7/a2a-lab-LAB.git
