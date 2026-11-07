@@ -95,7 +95,7 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | stolen-token-LAB | Demo | standalone/stolen-token-LAB |
 | mcp-elicitation-LAB | Demo | standalone/mcp-elicitation-LAB |
 | agentcore-pingone-demo-LAB | Demo | standalone/agentcore-pingone-demo-LAB |
-| muse | Demo | standalone/muse |
+| muse | Demo | standalone/muse-LAB |
 | meridian-a2a-hop-LAB | Demo | standalone/meridian-a2a-hop-LAB |
 | ping-services-stub-LAB | Tester | standalone/ping-services-stub-LAB |
 | demo-shelf-LAB | Demo | standalone/demo-shelf-LAB |
