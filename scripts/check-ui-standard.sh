@@ -7,7 +7,7 @@ canonical="$root/shared/standalone-ui.css"
 status=0
 found=0
 # -prune (not -not -path): -not -path still WALKS node_modules/dist/.git, which hangs for minutes with ~65 labs under load.
-for copy in $(find "$root/standalone" "$root/id-jag-kit-wip" \
+for copy in $(find "$root/standalone" \
     \( -name node_modules -o -name dist -o -name .git \) -prune -o -name standalone-ui.css -print 2>/dev/null | sort); do
   rel=${copy#"$root/"}
   found=1

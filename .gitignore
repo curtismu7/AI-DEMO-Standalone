@@ -2,5 +2,3 @@ standalone/demo-shelf-LAB/
 # per-machine bootstrap state (what's-new baseline) — never shared
 .bootstrap-labs
 .DS_Store
-# work-in-progress dirs (not part of the family)
-id-jag-kit-wip/
