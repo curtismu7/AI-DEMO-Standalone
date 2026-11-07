@@ -20,6 +20,30 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.2 (2026-11-06)
+
+**Shelf**
+- Theme picker (Auto / Light / Dark) in the header of the labs.
+- The shelf remembers which labs were running: "Restore last set" brings them back after a restart, and `scripts/setup.sh --start-top <n>` starts the most recently used.
+- Ping products dropdown with product tags on every card.
+
+**New labs**
+- mcp-gateway-lab (D116): a third-party weather MCP server scoped at the gateway with a live, editable policy.
+- agent-preferences-lab (D117).
+- hitl-mfa-lab (D119): human consent, MFA step-up and out-of-band CIBA approval for an agent moving money.
+- delegation-lab (D120): delegated token chain, group entitlement and tiered capabilities.
+
+**Fixes**
+- Data Protection and Intent / Purpose labs: the "Run the same text through live Privilege" button is readable in dark mode (it was white on white).
+- Privilege A2A and the MCP demo client now run in Docker behind the shared lab proxy.
+- The lab proxy no longer goes down when one lab is stopped.
+- Coding Agents lab: agent skins keep their client colours, now defined once as variables.
+- Diagram Studio library holds all 33 diagrams, including the ID-JAG Runner flow.
+
+**Infrastructure**
+- Style-guard checksums refreshed across the fleet and CI fixed in cimd, agent-kill-switch, ping-gateway-route, pingone-signin and id-jag-standalone.
+- docs/DEMO-URLS.md lists every lab route on this machine.
+
 ## 2.1 (2026-11-05)
 
 **Shelf**
