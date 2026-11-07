@@ -33,6 +33,7 @@ services:
       - codingagents
       - mcpgwlab
       - hitlmfa
+      - delegation
 
 networks:
   pingone:
@@ -101,3 +102,6 @@ networks:
   hitlmfa:
     external: true
     name: hitl-mfa-lab_default
+  delegation:
+    external: true
+    name: delegation-lab_default
