@@ -6,8 +6,9 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 canonical="$root/shared/standalone-ui.css"
 status=0
 found=0
-for copy in $(find "$root/standalone" "$root/id-jag-kit-wip" -name standalone-ui.css \
-    -not -path "*/node_modules/*" -not -path "*/dist/*" -not -path "*/.git/*" 2>/dev/null | sort); do
+# -prune (not -not -path): -not -path still WALKS node_modules/dist/.git, which hangs for minutes with ~65 labs under load.
+for copy in $(find "$root/standalone" "$root/id-jag-kit-wip" \
+    \( -name node_modules -o -name dist -o -name .git \) -prune -o -name standalone-ui.css -print 2>/dev/null | sort); do
   rel=${copy#"$root/"}
   found=1
   if cmp -s "$canonical" "$copy"; then
