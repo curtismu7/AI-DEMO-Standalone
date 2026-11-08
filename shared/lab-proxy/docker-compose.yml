@@ -35,6 +35,7 @@ services:
       - hitlmfa
       - delegation
       - observability
+      - pingeventslab
       - agentprefs
       - fieldguide
       - provelab
@@ -112,6 +113,9 @@ networks:
   observability:
     external: true
     name: observability-lab_default
+  pingeventslab:
+    external: true
+    name: pingone-events-lab_default
   provelab:
     external: true
     name: diagram-prove-lab_default
