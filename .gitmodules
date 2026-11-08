@@ -221,3 +221,6 @@
 [submodule "standalone/pingone-events-LAB"]
 	path = standalone/pingone-events-LAB
 	url = https://github.com/curtismu7/pingone-events-LAB.git
+[submodule "standalone/aggregate-entitlement-LAB"]
+	path = standalone/aggregate-entitlement-LAB.git
+	url = https://github.com/curtismu7/aggregate-entitlement-LAB.git
