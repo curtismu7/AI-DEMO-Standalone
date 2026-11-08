@@ -26,10 +26,13 @@ known_old=(
   35708386d7e5eef3c371bef06906d0445dfe8c74
 )
 
+self_coauthor='^[C]o-authored-by:[^<]*<([0-9]+\+)?curtismu7@users\.noreply\.github\.com>[[:space:]]*$'
 bad=0
 for h in $(git log --all --since="$rule_date" --format=%H 2>/dev/null); do
   case " ${known_old[*]} " in *" $h "*) continue ;; esac
-  if git log -1 --format=%B "$h" | grep -qiE "$pat"; then bad=$((bad+1)); echo "  commit ${h:0:7}"; fi
+  # A co-author trailer naming the owner's own GitHub noreply address is not an AI credit: GitHub's squash merge adds one when
+  # a commit's author name differs from the profile name. A trailer naming anyone else (e.g. an AI) still fails.
+  if git log -1 --format=%B "$h" | grep -viE "$self_coauthor" | grep -qiE "$pat"; then bad=$((bad+1)); echo "  commit ${h:0:7}"; fi
 done
 echo "commits since $rule_date with an AI-attribution credit: $bad"
 [ "$bad" != "0" ] && status=1
