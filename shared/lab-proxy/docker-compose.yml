@@ -4,6 +4,7 @@
 services:
   lab-proxy:
     image: nginx:alpine
+    restart: unless-stopped   # comes back when OrbStack starts
     ports:
       - "127.0.0.1:8443:8443"
     volumes:
