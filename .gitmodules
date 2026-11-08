@@ -224,3 +224,6 @@
 [submodule "standalone/aggregate-entitlement-LAB"]
 	path = standalone/aggregate-entitlement-LAB
 	url = https://github.com/curtismu7/aggregate-entitlement-LAB.git
+[submodule "standalone/field-notes-LAB"]
+	path = standalone/field-notes-LAB
+	url = https://github.com/curtismu7/field-notes-LAB.git

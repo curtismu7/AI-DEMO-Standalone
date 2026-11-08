@@ -1,0 +1,295 @@
+# ping-log-collector: Vector 0.50.0
+# Reads PingFederate + PingGateway container stdout and the Privilege gateway
+# cyonproxy.log, normalises to the ping-logs common fields, masks secrets,
+# and bulk-creates into Elasticsearch index ping-logs-<ping_product>.
+#
+# Note: Vector interpolates environment variables everywhere in this file
+# (comments too), so a literal dollar sign in VRL (regex capture refs) is
+# written doubled.
+#
+# The container names come from the environment (PING_PF_CONTAINER,
+# PING_GATEWAY_CONTAINER, PING_PRIVILEGE_GW_CONTAINER; see .env.example).
+
+data_dir: /var/lib/vector
+
+sources:
+  # PingFederate has its own source so only it gets multiline joining.
+  # A server.log record can span several lines (request parameter dumps,
+  # stack traces); every line keeps the "/opt/out/instance/log/<file>:  "
+  # prefix, and only the first line of a record has PF's own timestamp.
+  # A line with that timestamp (or a line without the prefix) starts a new
+  # event; the lines after it are joined to it with newlines.
+  ping_pf:
+    type: docker_logs
+    docker_host: unix:///var/run/docker.sock
+    include_containers:
+      - "${PING_PF_CONTAINER}"
+    multiline:
+      start_pattern: '^(?:/opt/out/instance/log/[A-Za-z0-9._-]+:\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}|[^/])'
+      condition_pattern: '^(?:/opt/out/instance/log/[A-Za-z0-9._-]+:\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}|[^/])'
+      mode: halt_before
+      timeout_ms: 1000
+
+  ping_docker:
+    type: docker_logs
+    docker_host: unix:///var/run/docker.sock
+    include_containers:
+      - "${PING_GATEWAY_CONTAINER}"
+
+  privilege_gateway_file:
+    type: file
+    include:
+      - /procyon-logs/cyonproxy.log
+    read_from: end
+    max_line_bytes: 262144
+    offset_key: offset
+
+transforms:
+  normalize:
+    type: remap
+    inputs: [ping_pf, ping_docker, privilege_gateway_file]
+    source: |
+      raw = string(.message) ?? ""
+      container = string(.container_name) ?? ""
+      ts = .timestamp
+      # The source's own timestamp (Docker's per-line time for docker_logs),
+      # kept for the document id because ts is overwritten by parsed times.
+      src_ts = .timestamp
+      src_file = string(.file) ?? ""
+      src_offset = to_string(.offset) ?? ""
+
+      # Strip ANSI colour codes (PingGateway logback) and mask secrets
+      # BEFORE any parsing, so parsed fields inherit the masking.
+      m = replace(raw, r'\x1b\[[0-9;]*m', "")
+      # A joined PingFederate record: drop the file prefix from the
+      # continuation lines (the first line's prefix is parsed below).
+      m = replace(m, r'\n/opt/out/instance/log/[A-Za-z0-9._-]+: {1,2}', "\n")
+      # Parameter dumps ("name:" then the value on the following indented
+      # line or lines): replace every value line.
+      m = replace(m, r'(?i)(\b(?:client_secret|password|client_assertion|refresh_token|access_token|id_token|subject_token|actor_token|code|code_verifier|assertion|authorization)[ \t]*:[ \t]*)(?:\n[ \t]+[^\n]*)+', "$${1}\n    ***")
+      # Same-line "name: value", "name=value", JSON "name":"value".
+      m = replace(m, r'(?i)\b(client_secret|password|client_assertion|refresh_token|access_token|id_token|subject_token|actor_token|assertion)(["\x27]?[ \t]*[:=][ \t]*["\x27]?)[^\s"\x27&,;}\]]+', "$${1}$${2}***")
+      # "code" only as a query or form parameter or a JSON key, so ordinary
+      # text like "status code: 404" stays readable.
+      m = replace(m, r'(?im)(^|[?&"\x27])(code|code_verifier)(["\x27]?[ \t]*[:=][ \t]*["\x27]?)[^\s"\x27&,;}\]]+', "$${1}$${2}$${3}***")
+      # Header-style "name: [scheme] value" (also JSON "name":["value"]).
+      m = replace(m, r'(?i)\b(proxy-authorization|authorization|set-cookie|cookie|x-api-key)("?\s*[:=]\s*\[?\s*"?)(?:(?:bearer|basic|apikey|dpop|negotiate)\s+)?[^\s"\x27,;}\]\[{]+', "$${1}$${2}[REDACTED]")
+      m = replace(m, r'(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+', "Bearer [REDACTED]")
+      m = replace(m, r'(?i)\bbasic\s+[A-Za-z0-9+/=]{8,}', "Basic [REDACTED]")
+      m = replace(m, r'sk-[A-Za-z0-9_-]{6,}', "sk-[REDACTED]")
+      m = replace(m, r'eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*', "[REDACTED_JWT]")
+      m = replace(m, r'(?i)\bcookie\{[^}]*\}', "Cookie{[REDACTED]}")
+
+      out = {
+        "environment": "local",
+        "event_kind": "runtime"
+      }
+
+      if container == "${PING_PF_CONTAINER}" {
+        out.ping_product = "pingfederate"
+        out.host = container
+        out.ping_component = "server"
+        # The image tails several log files to stdout as "<path>:  <line>".
+        p = parse_regex(m, r'(?s)^/opt/out/instance/log/(?P<file>[A-Za-z0-9._-]+):\s+(?P<rest>.*)$') ?? null
+        if p != null {
+          out.log_file = p.file
+          m = string!(p.rest)
+          if p.file == "admin.log" { out.ping_component = "admin" }
+          if p.file == "admin-api.log" { out.ping_component = "admin-api" }
+          if p.file == "audit.log" { out.ping_component = "audit" }
+        }
+        if out.ping_component == "admin" || out.ping_component == "admin-api" {
+          out.event_kind = "admin"
+        }
+        # The container runs in UTC (verified), so PF's local times are UTC.
+        if out.ping_component == "audit" {
+          # audit.log, pipe-delimited: time| tid| trackingId| event| subject| ip| | clientId| protocol| host| role| status| | description| responseMs
+          f = split(m, "|")
+          if length(f) >= 14 {
+            t = parse_timestamp(strip_whitespace(string!(f[0])), "%Y-%m-%d %H:%M:%S,%3f") ?? null
+            if t != null { ts = t }
+            out.request_id = strip_whitespace(string!(f[2]))
+            out.event_type = strip_whitespace(string!(f[3]))
+            u = strip_whitespace(string!(f[4]))
+            if u != "" { out.user = u }
+            out.source_ip = strip_whitespace(string!(f[5]))
+            c = strip_whitespace(string!(f[7]))
+            if c != "" { out.client_id = c }
+            out.protocol = strip_whitespace(string!(f[8]))
+            out.role = strip_whitespace(string!(f[10]))
+            out.outcome = downcase(strip_whitespace(string!(f[11])))
+            d = strip_whitespace(string!(f[13]))
+            if d != "" { out.reason = d }
+            if length(f) >= 15 { out.response_ms = to_int(strip_whitespace(string!(f[14]))) ?? null }
+          }
+        } else if out.ping_component == "admin-api" {
+          # admin-api.log: time| user| authType| ip| agent| method| path| status
+          f = split(m, "|")
+          if length(f) >= 8 {
+            t = parse_timestamp(strip_whitespace(string!(f[0])), "%Y-%m-%d %H:%M:%S,%3f") ?? null
+            if t != null { ts = t }
+            out.user = strip_whitespace(string!(f[1]))
+            out.auth_type = strip_whitespace(string!(f[2]))
+            out.source_ip = strip_whitespace(string!(f[3]))
+            out.http_method = strip_whitespace(string!(f[5]))
+            out.resource = strip_whitespace(string!(f[6]))
+            st = strip_whitespace(string!(f[7]))
+            out.status_code = st
+            out.outcome = if starts_with(st, "2") { "success" } else { "failure" }
+            out.event_type = "ADMIN_API " + string!(out.http_method)
+          }
+        } else if out.ping_component == "admin" {
+          # admin.log: time | user | roles | ip | | component | action | | host
+          f = split(m, "|")
+          if length(f) >= 7 {
+            t = parse_timestamp(strip_whitespace(string!(f[0])), "%Y-%m-%d %H:%M:%S,%3f") ?? null
+            if t != null { ts = t }
+            out.user = strip_whitespace(string!(f[1]))
+            out.roles = strip_whitespace(string!(f[2]))
+            out.source_ip = strip_whitespace(string!(f[3]))
+            out.resource = strip_whitespace(string!(f[5]))
+            out.action = strip_whitespace(string!(f[6]))
+            out.event_type = string!(out.resource) + " " + string!(out.action)
+          }
+        } else {
+          # server.log: "2026-11-08 03:22:48,573 [tid:abc] LEVEL [logger] text"
+          s = parse_regex(m, r'(?s)^(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\s+(?:tid:(?P<tid>\S*)\s+)?(?P<level>[A-Z]+)\s+\[(?P<logger>[^\]]+)\]\s?(?P<msg>.*)$') ?? null
+          if s != null {
+            t = parse_timestamp(string!(s.ts), "%Y-%m-%d %H:%M:%S,%3f") ?? null
+            if t != null { ts = t }
+            out.level = downcase(string!(s.level))
+            out.logger = s.logger
+            if s.tid != null && s.tid != "" { out.request_id = s.tid }
+            m = string!(s.msg)
+          }
+        }
+      } else if container == "${PING_GATEWAY_CONTAINER}" {
+        out.ping_product = "pinggateway"
+        out.host = container
+        out.ping_component = "server"
+        # logback: "[thread] LEVEL logger @route - text"
+        s = parse_regex(m, r'^\[(?P<thread>[^\]]+)\]\s+(?P<level>[A-Z]+)\s+(?P<logger>\S+)\s+@(?P<route>\S+)\s+-\s+(?P<msg>.*)$') ?? null
+        if s != null {
+          out.level = downcase(string!(s.level))
+          out.logger = s.logger
+          out.thread = s.thread
+          out.route = s.route
+          m = string!(s.msg)
+        }
+      } else {
+        out.ping_product = "privilege-gateway"
+        out.host = "${PING_PRIVILEGE_GW_CONTAINER}"
+        out.ping_component = "gateway"
+        out.log_file = "cyonproxy.log"
+        # logrus: time="..." level=info msg="..." func="..." file="..."
+        kv = parse_logfmt(m) ?? null
+        if is_object(kv) && exists(kv.msg) {
+          if exists(kv.level) { out.level = downcase(string(kv.level) ?? "") }
+          t = parse_timestamp(string(kv.time) ?? "", "%+") ?? null
+          if t != null { ts = t }
+          m = string(kv.msg) ?? m
+        }
+        # Every 30s the local single-node gateway compares its own mesh node
+        # record with itself (setupLinksToCluster, mesh.go:37) and logs this
+        # error. Known and harmless here: keep it, but tag it as noise.
+        if out.level == "error" && contains(m, "has same NodeURL - this happens because of misconfigured Node") {
+          out.noise = true
+          out.noise_reason = "privilege-gateway self NodeURL check (single local node, repeats every 30s, harmless)"
+        }
+        # The control plane closes the gateway's config watch streams
+        # (controller/model/*/generated/watcher.Watch*) 60 minutes after they
+        # open; each watcher logs this once and reopens about 1s later, so
+        # about 27 lines arrive together once an hour. Keep them, tag as noise.
+        if out.level == "error" && starts_with(m, "Error receiving from the stream: rpc error: code = Unavailable") && is_object(kv) && contains(string(kv.func) ?? "", "/generated/watcher.Watch") {
+          out.noise = true
+          out.noise_reason = "privilege-gateway hourly control-plane watch stream recycle (watchers reconnect in about 1s, harmless)"
+        }
+      }
+
+      # JSON audit lines (if a product ever writes them to these streams).
+      if starts_with(m, "{") {
+        j = parse_json(m) ?? null
+        if is_object(j) {
+          out.audit = j
+          if exists(j.eventName) { out.event_type = j.eventName }
+          if exists(j.transactionId) { out.request_id = j.transactionId }
+          if exists(j.userId) { out.user = j.userId }
+          t = parse_timestamp(string(j.timestamp) ?? "", "%+") ?? null
+          if t != null { ts = t }
+          if exists(j.client.ip) { out.source_ip = j.client.ip }
+          if exists(j.http.request.method) { out.http_method = j.http.request.method }
+          if exists(j.http.request.path) { out.resource = j.http.request.path } else if exists(j.client.path) { out.resource = j.client.path }
+          if exists(j.response.statusCode) { out.status_code = j.response.statusCode }
+          if exists(j.response.status) {
+            st = downcase(string(j.response.status) ?? "")
+            out.outcome = if st == "failed" { "failure" } else if st == "successful" { "success" } else { st }
+          }
+          if exists(j.response.elapsedTime) { out.response_ms = j.response.elapsedTime }
+          if exists(j.ig.routeName) { out.route = j.ig.routeName }
+          if exists(j.internalError) { out.internal_error = j.internalError }
+          if exists(j.trackingIds) { out.trace_id = j.trackingIds }
+          if out.ping_product == "pinggateway" {
+            topic = downcase(string(j.topic) ?? (string(j.eventName) ?? ""))
+            if contains(topic, "mcp") {
+              out.ping_component = "mcp-audit"
+            } else if contains(topic, "access") {
+              out.ping_component = "access-audit"
+            }
+          }
+          if out.ping_product == "pingfederate" && out.ping_component == "server" {
+            out.ping_component = "audit"
+          }
+        }
+      }
+
+      out."@timestamp" = ts
+      out.message = m
+      # Stable id (create on an existing id is refused, not duplicated). The same text can be two
+      # real events (PingGateway logback lines have no time; PF logs identical AdminRequestLogger
+      # lines in the same millisecond), so the id takes the source's own time: Docker's per-line
+      # timestamp, or the file and byte offset for the file source. Re-reading the same line gives
+      # the same id. Exception: when PF starts, its tail replays the last lines of admin.log,
+      # admin-api.log, audit.log and init.log (about 23 lines, measured 2026-11-08; server.log is
+      # not replayed), with new Docker times, so those files keep the content-only id to dedupe it.
+      pf_replayed = container == "${PING_PF_CONTAINER}" && out.log_file != null && out.log_file != "server.log"
+      id_src = ""
+      if container == "" {
+        id_src = "file|" + src_file + "|" + src_offset + "|" + raw
+      } else if pf_replayed {
+        id_src = container + "|" + raw
+      } else {
+        id_src = container + "|" + (format_timestamp(src_ts, "%Y-%m-%dT%H:%M:%S%.9fZ") ?? "") + "|" + raw
+      }
+      out.doc_id = sha2(id_src, variant: "SHA-256")
+      . = out
+
+  # PingFederate server.log DEBUG lines (heartbeat, locale, cookie and
+  # request-id chatter) were about 60% of PF volume; drop them.
+  drop_pf_debug:
+    type: filter
+    inputs: [normalize]
+    condition: '!(.ping_product == "pingfederate" && .log_file == "server.log" && .level == "debug")'
+
+sinks:
+  elasticsearch:
+    type: elasticsearch
+    inputs: [drop_pf_debug]
+    endpoints:
+      - "${PING_LOGS_ES_URL}"
+    api_version: v8
+    mode: bulk
+    bulk:
+      action: create
+      index: "ping-logs-{{ ping_product }}"
+    id_key: doc_id
+    encoding:
+      except_fields: [doc_id]
+    request:
+      headers:
+        Authorization: "ApiKey ${PING_LOGS_ES_APIKEY}"
+    healthcheck:
+      enabled: false
+    buffer:
+      type: disk
+      max_size: 268435488   # Vector's minimum disk buffer (~256 MiB)
+      when_full: block
