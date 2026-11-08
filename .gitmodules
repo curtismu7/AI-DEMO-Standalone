@@ -218,3 +218,6 @@
 [submodule "standalone/privilege-logging-LAB"]
 	path = standalone/privilege-logging-LAB
 	url = https://github.com/curtismu7/privilege-logging-LAB.git
+[submodule "standalone/pingone-events-LAB"]
+	path = standalone/pingone-events-LAB
+	url = https://github.com/curtismu7/pingone-events-LAB.git
