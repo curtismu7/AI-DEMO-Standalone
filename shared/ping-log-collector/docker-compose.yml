@@ -1,0 +1,29 @@
+name: ping-log-collector
+
+services:
+  vector:
+    image: timberio/vector:0.50.0-alpine
+    command: ["--config", "/etc/vector/vector.yaml"]
+    restart: unless-stopped
+    read_only: true
+    environment:
+      PING_LOGS_ES_URL: ${PING_LOGS_ES_URL:?set PING_LOGS_ES_URL in .env}
+      PING_LOGS_ES_APIKEY: ${PING_LOGS_ES_APIKEY:?set PING_LOGS_ES_APIKEY in .env}
+      PING_PF_CONTAINER: ${PING_PF_CONTAINER:?set PING_PF_CONTAINER in .env}
+      PING_GATEWAY_CONTAINER: ${PING_GATEWAY_CONTAINER:?set PING_GATEWAY_CONTAINER in .env}
+      PING_PRIVILEGE_GW_CONTAINER: ${PING_PRIVILEGE_GW_CONTAINER:?set PING_PRIVILEGE_GW_CONTAINER in .env}
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Privilege gateway /var/log/procyon (volume named by PING_PRIVILEGE_GW_LOG_VOLUME)
+      - privilege-gw-logs:/procyon-logs:ro
+      # Checkpoints + disk buffer (the only writable path)
+      - vector-data:/var/lib/vector
+    tmpfs:
+      - /tmp
+
+volumes:
+  privilege-gw-logs:
+    external: true
+    name: ${PING_PRIVILEGE_GW_LOG_VOLUME:?set PING_PRIVILEGE_GW_LOG_VOLUME in .env}
+  vector-data:
