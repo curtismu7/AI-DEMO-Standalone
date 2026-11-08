@@ -20,6 +20,19 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.4 (2026-11-08)
+
+**New labs: the eight created in the last 48 hours**
+Created 2026-11-06 to 2026-11-08 (UTC). Each has a card on the shelf.
+- **HITL MFA Lab** (D119, port 7680, created 2026-11-06; first listed in 2.2): an agent's money movement gated by amount bands. PERMIT, human consent, MFA step-up or DENY, with CIBA approval by mock phone or email and single-use receipts.
+- **Delegation Lab** (D120, port 7690, created 2026-11-07; first listed in 2.2): consent mints a delegated token with `act={agent}`. The gateway validates the chain and reads the directory groups on every decision.
+- **A2A Lab** (D122, port 7700, created 2026-11-07): a generalist agent hands off to a specialist through two RFC 8693 exchanges. An unregistered specialist is denied.
+- **Observability Lab** (D123, port 7800, created 2026-11-07): follow a log line from PingOne, PingFederate and Ping Gateway to a searchable, alertable store. Mock uses seeded logs; Real reads one loopback Loki.
+- **Privilege Logging Lab** (port 7801, created 2026-11-07): drive each Privilege gateway use case and see what gets logged, scored on user, agent, tool and policy decision. Mock replays 17 transactions measured on 2026-11-07.
+- **Field Notes** (port 7804, created 2026-11-08): a library of pages about our apps and what we learned, one Markdown file each.
+- **PingOne Events Lab** (D124, port 7803, created 2026-11-08): what PingOne delivers through a webhook subscription, delivery health, and optional forwarding to Elasticsearch.
+- **Aggregate entitlement lab** (D125, port 7802, created 2026-11-08): an MCP aggregate lists only the tools each caller may use and refuses the rest by name. Six checks, guided steps and a diagram. Mock simulates the Ping release claim, which is unverified on our tenant.
+
 ## 2.3 (2026-11-07)
 
 **Shelf**
