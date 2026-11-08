@@ -227,3 +227,6 @@
 [submodule "standalone/field-notes-LAB"]
 	path = standalone/field-notes-LAB
 	url = https://github.com/curtismu7/field-notes-LAB.git
+[submodule "standalone/env-map-LAB"]
+	path = standalone/env-map-LAB
+	url = https://github.com/curtismu7/env-map-LAB.git
