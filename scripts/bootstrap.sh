@@ -18,7 +18,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=13
+STEP_TOTAL=14
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""
@@ -81,7 +81,8 @@ repair_pins() {
 }
 
 # ---- argument parsing -------------------------------------------------------
-for arg in "$@"; do
+while [ "$#" -gt 0 ]; do
+  arg="$1"; shift
   case "$arg" in
     -h|--help)
       cat <<'USAGE'
@@ -90,13 +91,15 @@ AI-DEMO-Standalone first-time setup (called via scripts/setup.sh).
 Usage: scripts/setup.sh [options]
 
 Options:
-  (none)           Full setup: prerequisites, submodules, shelf, lab-proxy,
-                   and PingOne setup (asks for worker client-id, client-secret,
-                   admin environment ID when no ~/Development/.env exists)
+  (none)           Full setup: prerequisites, submodules, shelf, shared services
+                   (every shared/<svc>/docker-compose.yml), lab-proxy, and PingOne
+                   setup (asks for worker client-id, client-secret, admin
+                   environment ID when no ~/Development/.env exists)
   --app <lab-dir>  Init only one lab's submodule, e.g. --app id-jag-standalone-LAB
   --skip-install   Skip the npm install/build steps
   --start <app>    After setup, start one lab (docker compose up -d, else npm start)
-  --start-all      After setup, start every lab that ships a docker-compose file
+  --start-all      After setup, start every lab (docker compose, using the same compose
+                   file as the shelf's Start button; already-running labs are skipped)
   --start-top <n>  After setup, start the <n> most recently used labs (from the shelf's
                    last-running.json; default order applies when that file is empty)
   --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
@@ -116,21 +119,22 @@ USAGE
     --pingone) run_pingone=1 ;;
     --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
     --no-pingone) run_pingone=0 ;;
-    --start) : ;;
-    --start=*) start_app="${arg#--start=}" ;;
     --start-all) start_all=1 ;;
-    --start-top) : ;;
+    --start=*) start_app="${arg#--start=}" ;;
     --start-top=*) start_top="${arg#--start-top=}" ;;
-    --start-top) prev="--start-top" ;;
-    -*) ;;
-    *) if [ "${prev:-}" = "--start-top" ]; then start_top="$arg"; prev=""; fi ;;
-    --app) : ;; # value handled below
     --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
-    *) if [ "${prev:-}" = "--app" ]; then BOOTSTRAP_APP="$arg"
-       elif [ "${prev:-}" = "--start" ]; then start_app="$arg"
-       else echo "Unknown argument: $arg (see --help)"; exit 2; fi ;;
+    --start|--start-top|--app)
+      # value flags: the next argument is the value (--start-top defaults to 10 when none follows)
+      if [ "$#" -gt 0 ] && [ "${1#-}" = "$1" ]; then val="$1"; shift
+      elif [ "$arg" = "--start-top" ]; then val=10
+      else echo "$arg needs a value (see --help)"; exit 2; fi
+      case "$arg" in
+        --start) start_app="$val" ;;
+        --start-top) start_top="$val" ;;
+        --app) BOOTSTRAP_APP="$val" ;;
+      esac ;;
+    *) echo "Unknown argument: $arg (see --help)"; exit 2 ;;
   esac
-  prev="$arg"
 done
 dry_run="${dry_run:-0}"
 start_all="${start_all:-0}"
@@ -422,6 +426,29 @@ mkdir -p "$HOME/Development"
 env_out="$("$root/scripts/check-env.sh" 2>&1)" || step_detail "$env_out"
 [ -n "$(printf '%s' "$ui_out$env_out")" ] && step_warn "issues found (details below)" || step_ok
 
+step "Shared services"
+# Every shared/<svc>/docker-compose.yml is per-host infra the labs reuse (rule 20: ping-shared's
+# network + cimd-doc-server, the log collector, ...). Bring each one up so a new service ships
+# by adding its folder. lab-proxy is the watchdog's job (next step). A service whose compose
+# demands settings (${VAR:?...}) waits until its own .env exists — never a half-configured start.
+svc_up=""; svc_skip=""; svc_fail=""
+for f in "$root"/shared/*/docker-compose.yml; do
+  [ -f "$f" ] || continue
+  svc_dir="$(dirname "$f")"; svc="$(basename "$svc_dir")"
+  [ "$svc" = "lab-proxy" ] && continue
+  # compose itself says whether every required setting resolves (from .env or the shell)
+  if ! (cd "$svc_dir" && docker compose config -q > /dev/null 2>&1); then svc_skip="$svc_skip $svc"; continue; fi
+  if [ "$dry_run" = 1 ]; then echo "    would run: docker compose -f shared/$svc/docker-compose.yml up -d"; svc_up="$svc_up $svc"; continue; fi
+  if (cd "$svc_dir" && perl -e 'alarm 300; exec @ARGV' docker compose up -d > "/tmp/standalone-shared-$svc.log" 2>&1); then
+    svc_up="$svc_up $svc"
+  else
+    svc_fail="$svc_fail $svc"
+  fi
+done
+[ -n "$svc_skip" ] && step_detail "Not configured yet (fill in .env from .env.example in each, then re-run):$(for s in $svc_skip; do printf '\n  shared/%s' "$s"; done)"
+[ -n "$svc_fail" ] && step_detail "Failed to start (log: /tmp/standalone-shared-<name>.log):$svc_fail"
+if [ -n "$svc_fail" ]; then step_warn "up:${svc_up:- none}"; else step_ok "up:${svc_up:- none}${svc_skip:+ (skipped:$svc_skip)}"; fi
+
 step "Launcher"
 # All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.
 #   https://local.ping-devops.com:8443            -> the shelf (launcher)
@@ -436,10 +463,44 @@ else
 fi
 
 # ---- --start: bring labs up -------------------------------------------------
+# lab_compose_file <lab-dir>: the compose file that deploys a lab, as an absolute path. Same
+# source as the shelf's Start button — the shelf seed's composeFile (relative to standalone/) —
+# so a new lab deploys as soon as its shelf entry lands; falls back to the usual spots in the dir.
+lab_compose_file() {
+  local app="$1" seed="$root/standalone/demo-shelf-LAB/data/demos.json" f
+  if [ -f "$seed" ]; then
+    f="$(node -e '
+      const [seed, app] = process.argv.slice(1);
+      const d = JSON.parse(require("fs").readFileSync(seed, "utf8"));
+      const hit = (d.demos || d).find((x) => (x.composeFile || "").split("/")[0] === app);
+      if (hit) console.log(hit.composeFile);' "$seed" "$app" 2>/dev/null)"
+    [ -n "$f" ] && [ -f "$root/standalone/$f" ] && { echo "$root/standalone/$f"; return 0; }
+  fi
+  for f in docker-compose.yml compose.yml deploy/docker-compose.yml; do
+    [ -f "$root/standalone/$app/$f" ] && { echo "$root/standalone/$app/$f"; return 0; }
+  done
+  return 1
+}
+# Compose files of the projects running now (one per line), so "already up" is exact, not a name guess.
+running_compose_files() {
+  docker compose ls --format json 2>/dev/null \
+    | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{for(const p of JSON.parse(s||"[]"))for(const f of String(p.ConfigFiles||"").split(","))console.log(f)})' 2>/dev/null || true
+}
 start_one() {
-  local app="$1" dir="$root/standalone/$1" script
+  local app="$1" dir="$root/standalone/$1" script compose
   if [ ! -d "$dir" ]; then echo "  no such lab dir: standalone/$1"; return 1; fi
-  # Prefer the lab's own documented start script (it knows its env/compose wiring).
+  # Docker first (rulebook: every lab ships a local Docker standalone). Run compose from the
+  # file's own folder, exactly like the shelf does, so relative paths and .env resolve the same.
+  if [ "$app" != "demo-shelf-LAB" ] && compose="$(lab_compose_file "$app")"; then
+    if [ "$dry_run" = 1 ]; then echo "  $1: would run docker compose -f ${compose#"$root/"} up -d"; return 0; fi
+    if (cd "$(dirname "$compose")" && perl -e 'alarm 600; exec @ARGV' docker compose -f "$compose" up -d > "/tmp/standalone-$1.log" 2>&1); then
+      echo "  $1: docker compose up (${compose#"$root/standalone/"})"
+    else
+      echo "  $1: docker compose failed — log: /tmp/standalone-$1.log"
+    fi
+    return 0
+  fi
+  # No compose file: the lab's own start script (the shelf has `npm run docker`, its compose wrapper).
   for script in docker docker:up start; do
     if [ -f "$dir/package.json" ] && node -e "const p=require('$dir/package.json'); process.exit(p.scripts && p.scripts['$script'] ? 0 : 1)" 2>/dev/null; then
       if [ "$dry_run" = 1 ]; then echo "  $1: would run npm run $script"; return 0; fi
@@ -483,14 +544,14 @@ if [ "$start_all" = 1 ]; then
     fi
   fi
   echo "Starting all labs (skipping ones already running):"
+  up_files="$(running_compose_files)"
   for d in "$root"/standalone/*/; do
     app="$(basename "$d")"
-    [ "$app" = "muse" ] && continue  # muse has no compose entry in this family
-    # already running? (container name convention: <app> or <app>-*)
-    short="${app%-LAB}"   # containers are usually named after the repo minus -LAB suffix
-    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "$short"; then
+    # already running? match the lab's compose file against `docker compose ls`
+    if compose="$(lab_compose_file "$app")" && printf '%s\n' "$up_files" | grep -qxF "$compose"; then
       echo "  $app: already running"; continue
     fi
+    [ "$app" = "demo-shelf-LAB" ] && docker ps --format '{{.Names}}' 2>/dev/null | grep -qi shelf && { echo "  $app: already running"; continue; }
     start_one "$app"
   done
 elif [ -n "$start_app" ]; then
