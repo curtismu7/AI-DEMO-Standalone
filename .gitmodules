@@ -230,3 +230,6 @@
 [submodule "standalone/env-map-LAB"]
 	path = standalone/env-map-LAB
 	url = https://github.com/curtismu7/env-map-LAB.git
+[submodule "standalone/pingcli-LAB"]
+	path = standalone/pingcli-LAB
+	url = https://github.com/curtismu7/pingcli-LAB.git
