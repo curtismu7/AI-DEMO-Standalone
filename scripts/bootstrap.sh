@@ -330,10 +330,17 @@ step "Authorize snapshot"
 # whether the tenant already has it, and says what to do if not. Mock mode (the default in every app) needs no snapshot
 # and no tenant. It never blocks the setup. The file is policy/README.md's placeholder-host copy, safe to share.
 snapshot="${P1AZ_SNAPSHOT_FILE:-$root/policy/ai-demo-p1az.standalone.snapshot.json}"
-out="$(node "$root/scripts/check-authorize-policy.mjs" 2>&1)" && step_ok "policy present" || {
+# Exit 0 imported, 1 not imported, 2 cannot check. "No live worker settings" is the normal case for a
+# new user (mock mode needs no snapshot), so that is a quiet skip, not a warning.
+auth_rc=0; out="$(node "$root/scripts/check-authorize-policy.mjs" 2>&1)" || auth_rc=$?
+if [ "$auth_rc" = 0 ]; then
+  step_ok "policy present"
+elif [ "$auth_rc" = 2 ] && printf '%s' "$out" | grep -q "no live PingOne worker settings"; then
+  step_skip "mock mode needs none (live mode: import $(basename "$snapshot") once)"
+else
   step_detail "$out\nImport once (live mode): PingOne console -> Authorize -> Trust Framework -> Import ->\n  $snapshot"
-  step_warn "check could not confirm (mock mode is unaffected)"
-}
+  step_warn "$( [ "$auth_rc" = 1 ] && echo "policy not imported in your tenant" || echo "live check failed") (mock mode is unaffected)"
+fi
 
 # ---- 8. Submodules + shelf + installs ---------------------------------------
 step "Submodules"
@@ -427,12 +434,23 @@ shellGREP="$(grep -E "^SHELF_URL=" "$env_file" | tail -1 | cut -d= -f2-)"
 export SHELF_URL="${SHELF_URL:-$shellGREP}"
 
 step "UI standard + env"
-ui_out="$("$root/scripts/check-ui-standard.sh" 2>&1)" || step_detail "$ui_out"
+# Stylesheet drift (a lab carrying an older copy of shared/standalone-ui.css) is cosmetic and a maintainer
+# job, so users get one line; --verbose (or scripts/check-ui-standard.sh) lists the labs.
+ui_out="$("$root/scripts/check-ui-standard.sh" 2>&1)" || true
+ui_drift="$(printf '%s\n' "$ui_out" | grep -c '^DRIFT' || true)"
+[ "$verbose" = 1 ] && [ "$ui_drift" -gt 0 ] && printf '%s\n' "$ui_out" | grep '^DRIFT' | sed 's/^/    /'
 # The shared settings file lives at ~/Development/.env (the family convention). Make sure
 # the folder exists even if the repo was cloned elsewhere.
 mkdir -p "$HOME/Development"
-env_out="$("$root/scripts/check-env.sh" 2>&1)" || step_detail "$env_out"
-[ -n "$(printf '%s' "$ui_out$env_out")" ] && step_warn "issues found (details below)" || step_ok
+# check-env.sh prints an OK line per key; only its failing lines matter, and only when it fails.
+env_rc=0; env_out="$("$root/scripts/check-env.sh" 2>&1)" || env_rc=$?
+ui_note=""; [ "$ui_drift" -gt 0 ] && ui_note="$ui_drift lab(s) use an older shared stylesheet (cosmetic)"
+if [ "$env_rc" != 0 ]; then
+  step_detail "$(printf '%s\n' "$env_out" | grep -v '^OK')"
+  step_warn "settings file needs attention (below)${ui_note:+; $ui_note}"
+else
+  step_ok "$ui_note"
+fi
 
 step "Shared services"
 # Every shared/<svc>/docker-compose.yml is per-host infra the labs reuse (rule 20: ping-shared's
@@ -571,7 +589,8 @@ grep -q "^PINGONE_ENVIRONMENT_ID=" "${STANDALONE_ENV:-$HOME/Development/.env}" 2
 proxy="up"
 curl -sk --max-time 2 https://local.ping-devops.com:8443/api/health > /dev/null 2>&1 || proxy="starting (retries every 5 min)"
 labs="$(git -C "$root" submodule status | wc -l | tr -d ' ')"
-running="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -ci "lab\|shelf" || true)"
+# Labs of THIS checkout that are up: running compose files under standalone/<lab>/ (the shelf not counted).
+running="$(running_compose_files | sed -n "s|^$root/standalone/\([^/]*\)/.*|\1|p" | grep -vx demo-shelf-LAB | sort -u | grep -c . || true)"
 
 printf "\n${C_B}"
 printf '  ──────────────────────────────────────────────────────\n'
@@ -579,7 +598,7 @@ printf '  Setup complete\n'
 printf '  ──────────────────────────────────────────────────────\n'
 printf "${C_0}"
 printf "  Mode      %s\n" "$mode"
-printf "  Labs      %s initialized, ~%s containers running\n" "$labs" "$running"
+printf "  Labs      %s initialized, %s running\n" "$labs" "$running"
 printf "  Launcher  %s\n" "$proxy"
 [ "${browser_opened:-0}" = "1" ] && printf "  Browser   shelf opened in your browser\n"
 printf "            ${C_B}https://local.ping-devops.com:8443${C_0}\n"
