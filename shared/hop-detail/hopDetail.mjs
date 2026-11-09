@@ -91,7 +91,8 @@ export function factFor(hop, entry) {
   if (hop.verdict === 'deny') return 'denied';
   if (hop.verdict === 'held') return 'held';
   if (hop.verdict === 'obligation') return 'needs approval';
-  return entry?.fact ?? (hop.verdict === 'skip' ? 'not in this path' : 'done');
+  if (hop.verdict === 'skip') return 'not in this path'; // a hop that did not run never claims the catalog's "what happened" fact
+  return entry?.fact ?? 'done';
 }
 
 /**
