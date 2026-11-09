@@ -113,6 +113,18 @@ case "$sub" in
         echo "  shelf unchanged and running."
       fi
     fi
+    # Bring back what the user had running (the shelf's history), rebuilt so the new code is live.
+    # Nothing else starts here: an update never adds labs the user did not have up.
+    # shellcheck source=lib-labs.sh
+    dry_run=0; . "$root/scripts/lib-labs.sh"
+    restore="$(top_labs 10 history-only)"
+    if [ -n "$restore" ]; then
+      echo "Restarting the labs you had running, with the updated code:"
+      # shellcheck disable=SC2086
+      start_labs $restore
+    else
+      echo "  no labs in your history to restart (start them from the shelf, or: scripts/setup.sh)."
+    fi
     # The lab-proxy serves the labs over one domain; its nginx.conf lives in this repo,
     # so an update can change proxy behavior (forwarded headers, new lab routes). The
     # force-recreate is idempotent and also re-resolves DNS against now-running labs.
@@ -132,12 +144,14 @@ case "$sub" in
 setup.sh — the one command for the standalone labs family.
 
 Usage:
-  scripts/setup.sh                       First-time setup: prerequisites,
-                                         submodules, shelf, lab-proxy, PingOne.
+  scripts/setup.sh                       Setup: prerequisites, submodules, shelf,
+                                         lab-proxy, PingOne, then your last 10 labs
+                                         (filled from scripts/first-run-labs.txt).
   scripts/setup.sh --app <lab-dir>       Set up only one lab.
   scripts/setup.sh --start <lab-dir>     Set up, then start one lab.
   scripts/setup.sh --start-all           Set up, then start every lab.
-  scripts/setup.sh --start-top <n>       Set up, then start the <n> most recently used labs.
+  scripts/setup.sh --start-top <n>       Like the default, with <n> labs instead of 10.
+  scripts/setup.sh --no-start            Set up only; start no labs.
   scripts/setup.sh --skip-install        Set up without npm install/build.
   scripts/setup.sh setup [flags]         Re-run PingOne setup alone
                                          (e.g. setup pingone --region com ...)
@@ -145,7 +159,8 @@ Usage:
                                          (reads the admin creds saved by setup;
                                          --dry-run shows what it would delete).
   scripts/setup.sh update                Pull the latest meta-repo + all lab pins
-                                         (fast-forward only, never discards).
+                                         (fast-forward only, never discards), then
+                                         rebuild and restart only the labs you had running.
 
 After setup, open the shelf: https://local.ping-devops.com:8443
 USAGE

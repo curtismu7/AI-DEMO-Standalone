@@ -1,0 +1,14 @@
+# First-run labs: what a plain `scripts/setup.sh` starts on a machine with no history.
+# One lab folder (under standalone/) per line, in priority order. The user's own history
+# (the shelf's .data/last-running.json) always comes first; these fill up to 10.
+# Owner's picks, 2026-11-09 (~/Development/FIRST-RUN-TOP10-PICK.md).
+mcp-demo-client-privilege-LAB
+privilege-a2a-anthropic-demo-LAB
+id-jag-standalone-LAB
+privilege-demo-LAB
+pingone-LAB
+pingfederate-LAB
+cimd-LAB
+gateway-claims-LAB
+hostile-a2a-LAB
+data-protection-LAB
