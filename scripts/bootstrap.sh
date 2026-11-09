@@ -3,6 +3,8 @@
 # flags, plus `teardown`); this script is the implementation setup.sh delegates to.
 set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-labs.sh
+. "$root/scripts/lib-labs.sh"   # lab start + submodule helpers (needs $root; $dry_run is read at call time)
 skip_install=0
 verbose=0
 start_app=""
@@ -350,7 +352,7 @@ step "Submodules"
 submodules_init() {
   local attempt=1 max=3 rc=1
   while [ "$attempt" -le "$max" ]; do
-    if git -C "$root" submodule update --init --recursive "$@" > /dev/null 2>&1; then
+    if GIT_TERMINAL_PROMPT=0 git -C "$root" submodule update --init --recursive "$@" > /dev/null 2>&1; then
       return 0
     fi
     rc=1
@@ -364,19 +366,38 @@ submodules_init() {
     repair_pins
     attempt=$((attempt + 1))
   done
-  git -C "$root" submodule update --init --recursive "$@" 2>&1 | tail -4 | sed 's/^/    /'
+  GIT_TERMINAL_PROMPT=0 git -C "$root" submodule update --init --recursive "$@" 2>&1 | tail -4 | sed 's/^/    /'
   return 1
 }
 if [ -n "$BOOTSTRAP_APP" ]; then
   submodules_init "standalone/$BOOTSTRAP_APP" && step_ok "$BOOTSTRAP_APP" \
     || { step_detail "submodule init kept failing after retries — see the lines above."; step_fail "$BOOTSTRAP_APP did not initialize"; }
 else
-  shelf_pin_before="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
-  submodules_init && step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs" \
-    || { step_detail "submodule init kept failing after retries — see the lines above."; step_fail "submodules did not initialize"; }
+  # The shelf folder's checked-out commit, not the meta-repo pin: setup.sh pulled the meta-repo before
+  # calling this script, so the pin had already moved and a pin comparison never saw the change.
+  shelf_pin_before="$(git -C "$root/standalone/demo-shelf-LAB" rev-parse HEAD 2>/dev/null)"
+  # One pass for everything; if that fails, one lab at a time. Labs whose repo this GitHub account
+  # cannot see (private) are skipped with a note: they must never stop a user's whole install.
+  no_access_paths=""
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$root" submodule update --init --recursive > /dev/null 2>&1; then
+    # shellcheck disable=SC2046
+    split_by_access $(submodules_each)
+    if [ -n "$broken_paths" ]; then
+      # shellcheck disable=SC2086
+      submodules_init $broken_paths \
+        || { step_detail "submodule init kept failing after retries — see the lines above."; step_fail "submodules did not initialize"; }
+    fi
+  fi
+  skipped_n="$(echo $no_access_paths | wc -w | tr -d ' ')"
+  if [ "$skipped_n" -gt 0 ]; then
+    step_detail "Skipped (their GitHub repos are not visible to $ghuser):$(for p in $no_access_paths; do printf '\n  %s' "$p"; done)\nAsk the owner for access, then re-run scripts/setup.sh."
+    step_warn "$(git -C "$root" submodule status | grep -vc '^-') labs; $skipped_n skipped (no access)"
+  else
+    step_ok "$(git -C "$root" submodule status | wc -l | tr -d ' ') labs"
+  fi
   # If the shelf pin moved during this run and a shelf container is already up,
   # restart it so users actually get the new banner/notes code.
-  shelf_pin_after="$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')"
+  shelf_pin_after="$(git -C "$root/standalone/demo-shelf-LAB" rev-parse HEAD 2>/dev/null)"
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
     if [ "$shelf_pin_before" != "$shelf_pin_after" ]; then
       (cd "$root/standalone/demo-shelf-LAB" && npm run build > /dev/null 2>&1 && npm run docker > /dev/null 2>&1) \
@@ -491,8 +512,6 @@ fi
 # ---- start labs ---------------------------------------------------------------
 # Default (no --start* flag, no --app, no --no-start): the user's last 10 labs from the shelf's
 # history, filled from scripts/first-run-labs.txt (the owner's first-run picks). See lib-labs.sh.
-# shellcheck source=lib-labs.sh
-. "$root/scripts/lib-labs.sh"
 if [ "$start_all" = 1 ]; then
   # Every lab at once is heavy: warn on small-RAM Macs and point at the lighter option.
   if [ "$(uname -s)" = "Darwin" ]; then
