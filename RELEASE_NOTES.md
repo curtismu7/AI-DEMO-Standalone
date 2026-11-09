@@ -20,6 +20,20 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.4 (2026-11-09)
+
+**New labs**
+- pingcli (D126): watch an admin automate PingOne with Ping CLI — 14 read-only commands streamed to the browser, an install, init, auth and run guide, and an easy-read table. Mock plays canned output; Real runs pingcli 1.2.0 against your own environment.
+- observability (D123): follow a log line from PingOne, PingFederate and Ping Gateway to a searchable, alertable store, with seeded logs, a query box and three alert rules.
+- pingone-events (D124): see what PingOne delivers through a webhook subscription, with delivery health and optional forwarding to Elasticsearch.
+- aggregate-entitlement (D125): see how an MCP aggregate lists only the tools each caller may use and refuses the rest by name.
+- privilege-logging: drive each Privilege gateway use case and see what gets logged for user, agent, tool and policy decision.
+- field-notes: a library of pages about our apps and what we learned, one Markdown file each.
+- env-map: a map of where software runs (your Mac, Kubernetes, SaaS) as a movable diagram and a table, with a what-if view.
+
+**Setup**
+- Every new lab is on the shelf and reachable at `https://local.ping-devops.com:8443/<lab>/`; `scripts/setup.sh --start <lab-dir>` starts one.
+
 ## 2.3 (2026-11-07)
 
 **Shelf**

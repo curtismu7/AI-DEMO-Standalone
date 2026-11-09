@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.3** — a Help button on the shelf that explains every way to start a demo, and a memory warning when you start every lab on a small Mac. Run the update command below to get them.
+**Version 2.4** — seven new labs on the shelf: PingCLI, Observability, PingOne Events, Aggregate Entitlement, Privilege Logging, Field Notes and Env Map. Run the update command below to get them.
