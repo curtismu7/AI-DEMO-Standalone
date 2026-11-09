@@ -92,6 +92,19 @@ proxy_ok() {
 # attaches (step 1b) survive a run where nothing changed.
 proxy_up
 if ! proxy_ok; then sleep 3; proxy_up; fi
+# nginx.conf is a single-file bind mount, which pins the file the container started with. git replaces
+# the file on every update, so a running proxy kept serving the old routes (or found no config at all)
+# until it was recreated. Restart it whenever the config inside differs from the one on disk.
+proxy_conf_current() {
+  local inside ondisk
+  inside="$(docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 cat /etc/nginx/conf.d/default.conf 2>/dev/null | shasum | cut -d' ' -f1)"
+  ondisk="$(shasum < "$root/shared/lab-proxy/nginx.conf" | cut -d' ' -f1)"
+  [ "$inside" = "$ondisk" ]
+}
+if ! proxy_conf_current; then
+  docker --context "$docker_ctx" restart lab-proxy-lab-proxy-1 > /dev/null 2>&1 && echo "lab-proxy-watchdog: restarted the proxy to load the updated nginx.conf"
+  sleep 2
+fi
 # New networks mean new DNS interfaces for nginx: reload when the attach pass added any.
 attach_lab_networks && docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 nginx -s reload >/dev/null 2>&1
 if proxy_ok; then
