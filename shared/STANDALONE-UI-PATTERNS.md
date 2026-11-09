@@ -102,6 +102,15 @@ banner patterns. Known convergence work for next PRs:
   CSS lives in each app's stylesheet for now; promote to the shared file when the
   second renderer converges (it already has, three times — next touch migrates).
 
+## 8c. Token-chain evidence: sequence view, movie reel, step detail (owner, 2026-11-08)
+
+Any lab that shows a chain of hops uses the shared evidence screens in `shared/evidence/` (vendored into `web/src/evidence/`) fed by `demo-hop/1` hops from `shared/hop-detail/`. Do not draw a new sequence diagram or filmstrip by hand.
+
+- Every box opens detail: actor tiles and lifeline boxes open the actor card; step rows and reel frames open the step detail (what happened, gateway filter chain, decision, what changed, request and response, why / what the spec requires / common failure mode).
+- Lane colours are the shared `--lane-*` tokens (browser blue, agent orange, tool and gateway green, identity amber, back-end pink). Borders and strokes only, never text colour.
+- The teaching text comes from the shared hop catalog; a lab adds catalog entries for its own hop kinds there first, then re-vendors.
+- Mock shows MOCK tokens raw; Real redacts on the server; secrets are always write-only.
+
 ## 9. Buttons and tabs
 
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.
