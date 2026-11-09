@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.5** — one new lab on the shelf: MCP Skills, a tester for the MCP Skills extension. Run the update command below to get it.
+**Version 2.6** — one new lab on the shelf: A2A Lab, a generalist agent handing off to a specialist through two token exchanges. Run the update command below to get it.

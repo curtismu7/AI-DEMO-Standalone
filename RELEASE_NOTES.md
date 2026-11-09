@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.6 (2026-11-09)
+
+**New labs**
+- a2a-lab (D122): a generalist agent hands off to a specialist through two RFC 8693 exchanges, and an unregistered specialist is denied.
+
 ## 2.5 (2026-11-09)
 
 **New labs**
