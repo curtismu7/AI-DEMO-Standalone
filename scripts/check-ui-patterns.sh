@@ -1,6 +1,6 @@
 #!/bin/bash
 # Checks an app's markup/CSS against shared/STANDALONE-UI-PATTERNS.md (the layout
-# patterns shown in shared/ui-standard-mock.html). Advisory: reports PASS / DRIFT /
+# patterns shown in shared/ui-standard-mock.html). Advisory: reports PASS / DRIFT / WARN /
 # INFO per pattern; exits 1 only on --strict.
 # Usage: scripts/check-ui-patterns.sh [app-dir ...] [--strict]
 set -u
@@ -91,6 +91,21 @@ for app in "${apps[@]}"; do
     fi
   else
     report "$name" "P7 status chips" "INFO" "none found"
+  fi
+
+  # P11 every modal is a FloatingDialog (owner 2026-11-09). Advisory WARN only: a hand-rolled role="dialog" /
+  # aria-modal in a file that does not use FloatingDialog. Never sets the DRIFT/strict failure.
+  hand=""
+  for f in $markup; do
+    case "$f" in *.test.jsx|*/FloatingDialog.jsx) continue ;; esac
+    grep -q -E 'role="dialog"|aria-modal' "$f" 2>/dev/null || continue
+    grep -q 'FloatingDialog' "$f" 2>/dev/null && continue
+    hand="$hand ${f#"$app"/}"
+  done
+  if [ -n "$hand" ]; then
+    report "$name" "P11 modals are FloatingDialog" "WARN" "hand-rolled dialog in:$hand"
+  else
+    report "$name" "P11 modals are FloatingDialog" "PASS"
   fi
 
   # Vendored shared stylesheet present and current

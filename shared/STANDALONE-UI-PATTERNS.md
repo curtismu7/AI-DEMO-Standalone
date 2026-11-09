@@ -111,7 +111,19 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 - The teaching text comes from the shared hop catalog; a lab adds catalog entries for its own hop kinds there first, then re-vendors.
 - Mock shows MOCK tokens raw; Real redacts on the server; secrets are always write-only.
 
-## 8d. Return link: the way back after a hand-off (2026-11-09)
+## 8d. Every modal is a FloatingDialog: movable, resizable, pop-out (owner 2026-11-09, from AI-DEMO2's DraggableModal)
+
+- Every dialog, modal, drawer or floating card renders inside `FloatingDialog` from `shared/floating-dialog/`
+  (vendored into `web/src/floating-dialog/`). Do not hand-roll `role="dialog"` / `aria-modal`.
+- It gives: drag by the title bar, resize from 8 edges and corners, keyboard move (arrows, Shift = farther) and resize
+  (Alt + arrows) from the focused title bar, pop-out to a real same-origin window that stays live, close button +
+  Escape, focus in on open and back to the opener on close, remembered position and size (`storageKey`).
+- Modal by default (backdrop, `aria-modal`, Tab held in). A card that floats beside the page uses `noBackdrop`.
+- At 600px and below it becomes a full-width bottom sheet; drag and resize are off.
+- First user: the evidence actor card (`shared/evidence/ActorCard.jsx`). `scripts/check-ui-patterns.sh` reports a
+  hand-rolled dialog as P11 WARN (advisory, never a failure) so apps converge when they next touch the page.
+
+## 8e. Return link: the way back after a hand-off (2026-11-09)
 
 An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
 pinned by `return-link.sha256`).
