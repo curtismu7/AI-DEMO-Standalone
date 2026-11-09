@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.5 (2026-11-09)
+
+**New labs**
+- mcp-skills (D127): test how a host handles the MCP Skills extension (SEP-2640) — a skills server in Mock or Real (a folder you mount read-only), 23 hostile cases a correct host must catch, and a verifier that checks digests, sizes, frontmatter, approvals and origins. Simulated and unverified against a vendor gateway; nothing is executed.
+
 ## 2.4 (2026-11-09)
 
 **New labs**
