@@ -45,7 +45,7 @@ A hop is one arrow in the chain. The engine already fills the **raw** fields; `e
 
 ### Actors
 
-`browser`, `page`, `lab`, `agent`, `bff`, `idp`, `mcp-as`, `gateway`, `authorize`, `mcp`, `a2a`, `hitl`, `privilege`, `registry`, `credentials`. An app may add its own; the screens fall back to a neutral lane colour for an unknown id.
+`browser`, `page`, `lab`, `agent`, `llm` (the agent's model), `bff`, `idp`, `mcp-as`, `gateway`, `authorize`, `mcp`, `api` (the resource server behind a tool), `database`, `a2a`, `hitl`, `privilege`, `registry`, `credentials`. An app may add its own; the screens fall back to a neutral lane colour for an unknown id.
 
 ### Rules
 
@@ -53,3 +53,8 @@ A hop is one arrow in the chain. The engine already fills the **raw** fields; `e
 - Catalog text has no tenant ids, client ids, real hostnames or customer names. Hosts are `.example` or `.invalid`.
 - Secrets and keys are always `[write-only]`, in both modes: `client_secret`, `password`, `secret`, API keys (`api_key`, `x-api-key`), `private_key`, `code_verifier`, and Basic credentials. Keys match in any spelling (`clientSecret`, `client-secret`). JSON-string bodies, URL fragments and header pairs are walked too; the walk is depth-limited and cycle-safe. **Mock mode** keeps MOCK tokens raw, because the rulebook shows tokens raw for teaching (`enrichHop(hop, catalog, extra, { tokens: 'raw' })`). **Real mode** redacts: token-bearing keys (`access_token`, `id_token`, `refresh_token`, `subject_token`, `actor_token`, `assertion`, `client_assertion`, `authorization`, `cookie`, `set-cookie`) become `[redacted]`, any JWT-shaped string becomes `[redacted-jwt]`, `client_secret` and `password` become `[write-only]`. Decoded mock token claims are shown separately (and labelled MOCK).
 - `validateHop` returns a list of problems; an empty list means valid.
+- A hop the run did not take (AI-DEMO2's "not in this run" steps: step-up, intent binding, vault key, API-key swap, database) is listed after every hop that ran with `verdict: 'skip'`, a one-line `note` saying why, an empty `request` and `response`, and no `traceparent` (it never ran). Its `fact` is always "not in this path". The screens hide these behind "+N hops not in this run".
+
+### Reel order
+
+An agent run follows AI-DEMO2's `buildTraceSteps` order: `website`, `sign-in`, `prompt`, `agent-receive`, `tools-list-challenge`, `tools-list`, `llm-plan`, then the chain (agent token, exchange, `authorize-decision`, `tools-call-challenge`, `gateway-check`, `tool-dispatched`, `api-call`), then `agent-reply`, then the skipped kinds. A refused run stops at the refusal and a held run at the hold: neither replies.

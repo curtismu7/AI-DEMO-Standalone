@@ -18,7 +18,7 @@ import StepDetailPanel from "./evidence/StepDetailPanel";
 <StepDetailPanel hops={run.hops} selected={n} onSelect={setN} onClose={() => setN(null)} />
 ```
 
-All components are presentational and never fetch. Every actor tile, lifeline box, step row and reel frame is a button; arrow keys, Home and End move between steps; Escape closes the actor card and the step detail. Every status is a word, never colour alone.
+Hops with `verdict: 'skip'` (steps not in this run) are hidden by default behind a "+N hops not in this run" button (`aria-expanded`); shown, they are drawn faint after every hop that ran. Arrow keys, slow mode and the step detail's Prev / Next never land on a hidden one. All components are presentational and never fetch. Every actor tile, lifeline box, step row and reel frame is a button; arrow keys, Home and End move between steps; Escape closes the actor card and the step detail. Every status is a word, never colour alone.
 
 `evidence.test.jsx` and `fixtures.js` are the tests a copy must keep passing (vitest + Testing Library + jsdom).
 
