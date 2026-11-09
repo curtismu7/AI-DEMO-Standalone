@@ -114,7 +114,7 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 ## 8d. Every modal is a FloatingDialog: movable, resizable, pop-out (owner 2026-11-09, from AI-DEMO2's DraggableModal)
 
 - Every dialog, modal, drawer or floating card renders inside `FloatingDialog` from `shared/floating-dialog/`
-  (vendored into `web/src/floating-dialog/`). Do not hand-roll `role="dialog"` / `aria-modal`.
+  (vendored into `web/src/floating-dialog/` byte for byte, pinned by `floating-dialog.sha256`). Do not hand-roll `role="dialog"` / `aria-modal`.
 - It gives: drag by the title bar, resize from 8 edges and corners, keyboard move (arrows, Shift = farther) and resize
   (Alt + arrows) from the focused title bar, pop-out to a real same-origin window that stays live, close button +
   Escape, focus in on open and back to the opener on close, remembered position and size (`storageKey`).

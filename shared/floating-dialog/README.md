@@ -6,9 +6,12 @@ standalone UI standard. Vendored, never imported across repos.
 
 ## Vendor it
 
-1. Copy `FloatingDialog.jsx`, `useFloatingPanel.js`, `geometry.js`, `floating-dialog.css` and `floating-dialog.test.jsx`
-   into `web/src/floating-dialog/` unchanged, and put one header line at the top of each naming the source commit,
-   for example `// Vendored from AI-DEMO-Standalone shared/floating-dialog @ <commit>; edit there, not here.`
+1. Copy `FloatingDialog.jsx`, `useFloatingPanel.js`, `geometry.js`, `floating-dialog.css`, `floating-dialog.test.jsx` and
+   `floating-dialog.sha256` into `web/src/floating-dialog/` byte for byte (no header lines). The sha256 file pins them:
+   replace its first line with
+   `# vendored byte for byte from curtismu7/AI-DEMO-Standalone shared/floating-dialog at <commit> (main); re-vendor, do not edit.`
+   and add a pin test that checks the hashes (for example muse-LAB `web/src/floating-dialog.pin.test.js`). The same
+   convention as `shared/return-link`. Change the files here, re-pin, then re-vendor; never edit a lab's copy.
 2. Needs React 18 (`react-dom/client`), the shared `standalone-ui.css` tokens, and for the tests vitest + Testing
    Library + jsdom (the same setup as `shared/evidence`). `FloatingDialog.jsx` imports its own CSS.
 3. `shared/evidence/ActorCard.jsx` imports it as `../floating-dialog/FloatingDialog`, so vendor both folders side by side.
@@ -47,6 +50,9 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
 - `storageKey` remembers position and size in `localStorage` (guarded: a private window or blocked storage just
   forgets). A restored position is clamped into the current window.
 - At 600px and below it is a full-width bottom sheet: no drag, no resize handles, the title bar is not a move target.
+- Position and size go on the panel as custom properties `--fd-x`, `--fd-y`, `--fd-w`, `--fd-h` (`--fd-h: auto` until
+  a fitted-height dialog is resized); `floating-dialog.css` turns them into `left`/`top`/`width`/`height`, so the narrow
+  sheet overrides them with plain declarations (no `!important`, which `scripts/check-css.sh` fails in app CSS).
 
 ## Props
 
@@ -56,7 +62,7 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
 | `onClose` | | `() => void`; no close controls without it |
 | `title` | `"Panel"` | node in the title bar |
 | `ariaLabel` | `title` if a string | the dialog's accessible name |
-| `className`, `style` | | added to the panel and the popped-out layout |
+| `className`, `style` | | added to the panel and the popped-out layout; on the panel, `left`/`top`/`right`/`bottom`/`width`/`height` in `style` are ignored (the dialog owns its geometry) |
 | `footer` | `undefined` | `undefined` = a Close button, `null` = none, a node = that node |
 | `defaultWidth` / `defaultHeight` | `520` / `600` | `defaultHeight={null}` fits the content until resized |
 | `defaultX` / `defaultY` | `null` | `null` = from `placement` |
@@ -82,8 +88,9 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
   jsdom has no real second window: the lab's e2e drives a real popup in Chromium (stylesheets applied, placeholder,
   close restores, Escape in the popup). Runs in each lab that
   vendors the folder (first: customer-agent-LAB).
-- `../../test/floating-dialog.test.mjs` (this repo's `node --test`): the geometry, no literal colours in the CSS, and
-  the pop-out never opening a URL.
+- `../../test/floating-dialog.test.mjs` (this repo's `node --test`): the geometry, no literal colours and no
+  `!important` in the CSS, the pop-out never opening a URL, and `floating-dialog.sha256` matching the files (re-pin
+  after any change: the command is on the file's first line).
 
 ## Not ported from DraggableModal
 

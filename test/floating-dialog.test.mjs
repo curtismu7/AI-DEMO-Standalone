@@ -1,10 +1,12 @@
 // Runs in this repo's CI (node --test test/*.test.mjs, no dependencies). The React component tests
 // (shared/floating-dialog/floating-dialog.test.jsx, vitest + Testing Library) need a lab's web workspace and run where
-// the folder is vendored (customer-agent-LAB web/src/floating-dialog). Here: the pure geometry, and static guards.
+// the folder is vendored (customer-agent-LAB web/src/floating-dialog). Here: the pure geometry, static guards, and the
+// floating-dialog.sha256 pin of the files apps vendor (re-pin after any change to them).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { MARGIN, clampSize, clampToViewport, initialPosition, keyboardStep, resizeRect } from '../shared/floating-dialog/geometry.js';
 
@@ -74,4 +76,26 @@ test('pop-out opens a same-origin blank window, never a URL', () => {
   assert.equal(/window\.open\(\s*["'`]https?:/.test(src), false);
   assert.equal(/\balert\(/.test(src), false);
   assert.match(src, /fd_\$\{PAGE_ID\}_/); // unique per page load
+});
+
+test('floating-dialog.css has no !important: the narrow sheet overrides the --fd-* geometry with the same selector, later', () => {
+  const css = read('floating-dialog/floating-dialog.css');
+  assert.equal(css.includes('!important'), false);
+  const plain = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const geometry = plain.indexOf('.fd-panel[data-placement] { left: var(--fd-x); top: var(--fd-y); width: var(--fd-w); height: var(--fd-h); }');
+  const sheet = plain.indexOf('@media (max-width: 600px) {\n  .fd-panel[data-placement] {');
+  assert.ok(geometry >= 0 && sheet > geometry, 'geometry rule first, then the sheet with the same selector');
+  const src = read('floating-dialog/FloatingDialog.jsx');
+  assert.match(src, /"--fd-x": `\$\{pos\.x\}px`/);
+  assert.equal(/\bleft: pos\.x\b/.test(src), false); // no inline left/top any more
+});
+
+test('floating-dialog.sha256 pins every vendored file', () => {
+  const fd = path.join(dir, 'floating-dialog');
+  const lines = fs.readFileSync(path.join(fd, 'floating-dialog.sha256'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
+  const pinned = Object.fromEntries(lines.map((l) => l.split(/\s+/).reverse()));
+  assert.deepEqual(Object.keys(pinned).sort(), ['FloatingDialog.jsx', 'floating-dialog.css', 'floating-dialog.test.jsx', 'geometry.js', 'useFloatingPanel.js']);
+  for (const [f, h] of Object.entries(pinned)) {
+    assert.equal(createHash('sha256').update(fs.readFileSync(path.join(fd, f))).digest('hex'), h, f);
+  }
 });
