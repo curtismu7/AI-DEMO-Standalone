@@ -98,3 +98,24 @@ test('accepts the {demos:[...]} entry shape', () => {
   const s = setup({ demos: [ENTRY] });
   assert.equal(run(s.app), 'added');
 });
+
+test('stamps addedAt = now (ISO timestamp) on an entry it adds', () => {
+  const s = setup();
+  assert.equal(registerOnShelf({ appRoot: s.app, env: {}, log: () => {}, now: () => new Date('2026-11-09T14:00:00Z') }), 'added');
+  assert.equal(read(s.local).demos[0].addedAt, '2026-11-09T14:00:00.000Z');
+});
+
+test('keeps an addedAt the entry already carries', () => {
+  const s = setup({ ...ENTRY, addedAt: '2026-11-01' });
+  run(s.app);
+  assert.equal(read(s.local).demos[0].addedAt, '2026-11-01');
+});
+
+test('never rewrites the addedAt of an entry already on the shelf', () => {
+  const s = setup();
+  fs.mkdirSync(path.dirname(s.local), { recursive: true });
+  const before = JSON.stringify({ demos: [{ id: 'demo-a', addedAt: '2026-10-01T00:00:00.000Z' }, { id: 'other' }] });
+  fs.writeFileSync(s.local, before);
+  assert.equal(registerOnShelf({ appRoot: s.app, env: {}, log: () => {}, now: () => new Date('2026-11-09T14:00:00Z') }), 'present');
+  assert.equal(fs.readFileSync(s.local, 'utf8'), before);
+});
