@@ -29,7 +29,7 @@ line has a JSON `level` or a logfmt `level=` (never guessed from words). Documen
 
 The key in `PING_LOGS_ES_APIKEY` must be allowed to write `demo-logs-*` as well as `ping-logs-*`. Run `./make-write-key.sh` (you run it; it needs
 the Elasticsearch port-forward and the password of a user that may create keys, typed hidden or read from a cluster Secret) to make a
-write-only key for both families and save it in `.env`; then `docker --context orbstack compose up -d --force-recreate`. Reading is a separate,
+write-only key for both families and save it as `PING_LOGS_ES_APIKEY` in `~/Development/.env` (the shared settings file the collector gets its URL and key from); then recreate the collector with `docker --context orbstack compose --env-file $HOME/Development/.env --env-file .env up -d --force-recreate`. Reading is a separate,
 read-only key (observability-LAB's `scripts/make-read-key.sh`).
 
 ## What it writes
