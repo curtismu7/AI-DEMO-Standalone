@@ -94,14 +94,16 @@ Options:
   (none)           Full setup: prerequisites, submodules, shelf, shared services
                    (every shared/<svc>/docker-compose.yml), lab-proxy, and PingOne
                    setup (asks for worker client-id, client-secret, admin
-                   environment ID when no ~/Development/.env exists)
+                   environment ID when no ~/Development/.env exists), then start
+                   your last 10 labs (from the shelf's history), filled up to 10
+                   from scripts/first-run-labs.txt on a new machine
   --app <lab-dir>  Init only one lab's submodule, e.g. --app id-jag-standalone-LAB
   --skip-install   Skip the npm install/build steps
-  --start <app>    After setup, start one lab (docker compose up -d, else npm start)
+  --start <app>    After setup, start only this lab (docker compose up -d --build)
   --start-all      After setup, start every lab (docker compose, using the same compose
                    file as the shelf's Start button; already-running labs are skipped)
-  --start-top <n>  After setup, start the <n> most recently used labs (from the shelf's
-                   last-running.json; default order applies when that file is empty)
+  --start-top <n>  Like the default, with <n> labs instead of 10
+  --no-start       Set up only; start no labs
   --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
                    --pingone="--region com --admin-env-id ID --client-id ID --client-secret SECRET"
   --no-pingone     Skip PingOne entirely (mock mode)
@@ -120,6 +122,7 @@ USAGE
     --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
     --no-pingone) run_pingone=0 ;;
     --start-all) start_all=1 ;;
+    --no-start) no_start=1 ;;
     --start=*) start_app="${arg#--start=}" ;;
     --start-top=*) start_top="${arg#--start-top=}" ;;
     --app=*) BOOTSTRAP_APP="${arg#--app=}" ;;
@@ -139,6 +142,11 @@ done
 dry_run="${dry_run:-0}"
 start_all="${start_all:-0}"
 start_top="${start_top:-}"
+no_start="${no_start:-0}"
+# Default: bring back the last 10 labs (filled from the first-run picks), unless told otherwise.
+if [ "$start_all" != 1 ] && [ -z "$start_app" ] && [ -z "$start_top" ] && [ -z "$BOOTSTRAP_APP" ] && [ "$no_start" != 1 ]; then
+  start_top=10
+fi
 
 if [ "$dry_run" = 1 ]; then
   echo "${C_B}dry run — nothing will be changed${C_0}"
@@ -462,113 +470,24 @@ else
   step_warn "not serving yet — it retries every 5 min, or run scripts/lab-proxy-watchdog.sh"
 fi
 
-# ---- --start: bring labs up -------------------------------------------------
-# lab_compose_file <lab-dir>: the compose file that deploys a lab, as an absolute path. Same
-# source as the shelf's Start button — the shelf seed's composeFile (relative to standalone/) —
-# so a new lab deploys as soon as its shelf entry lands; falls back to the usual spots in the dir.
-lab_compose_file() {
-  local app="$1" seed="$root/standalone/demo-shelf-LAB/data/demos.json" f
-  if [ -f "$seed" ]; then
-    f="$(node -e '
-      const [seed, app] = process.argv.slice(1);
-      const d = JSON.parse(require("fs").readFileSync(seed, "utf8"));
-      const hit = (d.demos || d).find((x) => (x.composeFile || "").split("/")[0] === app);
-      if (hit) console.log(hit.composeFile);' "$seed" "$app" 2>/dev/null)"
-    [ -n "$f" ] && [ -f "$root/standalone/$f" ] && { echo "$root/standalone/$f"; return 0; }
-  fi
-  for f in docker-compose.yml compose.yml deploy/docker-compose.yml; do
-    [ -f "$root/standalone/$app/$f" ] && { echo "$root/standalone/$app/$f"; return 0; }
-  done
-  return 1
-}
-# Compose files of the projects running now (one per line), so "already up" is exact, not a name guess.
-running_compose_files() {
-  docker compose ls --format json 2>/dev/null \
-    | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{for(const p of JSON.parse(s||"[]"))for(const f of String(p.ConfigFiles||"").split(","))console.log(f)})' 2>/dev/null || true
-}
-# top_labs <n>: the lab dirs --start-top starts, one per line. The shelf's start agent records
-# every start/stop in .data/last-running.json (most recent first); those labs come first. With no
-# history (a fresh machine) or fewer than <n> recorded, the rest come in the shelf seed's order.
-top_labs() {
-  node -e '
-    const fs = require("fs"), path = require("path");
-    const [root, n] = [process.argv[1], Number(process.argv[2])];
-    const shelf = path.join(root, "standalone/demo-shelf-LAB");
-    const read = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
-    const list = (d) => (d && (d.demos || d)) || [];
-    const reg = [...list(read(path.join(shelf, ".data/demos.local.json"))), ...list(read(path.join(shelf, "data/demos.json")))];
-    // registry composeFile -> lab dir under standalone/ (seed paths are relative; local ones may be absolute)
-    const dirOf = (d) => {
-      const f = d && d.composeFile; if (!f) return null;
-      const rel = path.relative(path.join(root, "standalone"), path.resolve(path.join(root, "standalone"), f));
-      const dir = rel.split(path.sep)[0];
-      return dir && !dir.startsWith("..") && dir !== "demo-shelf-LAB" && fs.existsSync(path.join(root, "standalone", dir)) ? dir : null;
-    };
-    const out = [];
-    const add = (dir) => { if (dir && !out.includes(dir) && out.length < n) out.push(dir); };
-    for (const e of list(read(path.join(shelf, ".data/last-running.json")))) add(dirOf(reg.find((d) => d.id === e.id)));
-    for (const d of list(read(path.join(shelf, "data/demos.json")))) add(dirOf(d));
-    console.log(out.join("\n"));' "$root" "$1"
-}
-start_one() {
-  local app="$1" dir="$root/standalone/$1" script compose
-  if [ ! -d "$dir" ]; then echo "  no such lab dir: standalone/$1"; return 1; fi
-  # Docker first (rulebook: every lab ships a local Docker standalone). Run compose from the
-  # file's own folder, exactly like the shelf does, so relative paths and .env resolve the same.
-  if [ "$app" != "demo-shelf-LAB" ] && compose="$(lab_compose_file "$app")"; then
-    if [ "$dry_run" = 1 ]; then echo "  $1: would run docker compose -f ${compose#"$root/"} up -d"; return 0; fi
-    if (cd "$(dirname "$compose")" && perl -e 'alarm 600; exec @ARGV' docker compose -f "$compose" up -d > "/tmp/standalone-$1.log" 2>&1); then
-      echo "  $1: docker compose up (${compose#"$root/standalone/"})"
-    else
-      echo "  $1: docker compose failed — log: /tmp/standalone-$1.log"
-    fi
-    return 0
-  fi
-  # No compose file: the lab's own start script (the shelf has `npm run docker`, its compose wrapper).
-  for script in docker docker:up start; do
-    if [ -f "$dir/package.json" ] && node -e "const p=require('$dir/package.json'); process.exit(p.scripts && p.scripts['$script'] ? 0 : 1)" 2>/dev/null; then
-      if [ "$dry_run" = 1 ]; then echo "  $1: would run npm run $script"; return 0; fi
-      if [ "$script" = "start" ]; then
-        # npm start = long-running node server; run it detached so the server keeps
-        # living after this script returns, log to /tmp.
-        if [ "$dry_run" = 1 ]; then echo "  $1: would start detached (npm start)"; return 0; fi
-        (cd "$dir" && nohup npm start > "/tmp/standalone-$1.log" 2>&1 &)
-        sleep 3
-        if curl -sk --max-time 2 "http://localhost:${PORT:-3000}" > /dev/null 2>&1; then
-          echo "  $1: started detached (log: /tmp/standalone-$1.log)"
-        else
-          echo "  $1: launched detached (log: /tmp/standalone-$1.log)"
-        fi
-        return 0
-      fi
-      # npm run docker = compose wrapper that exits when done; cap at 3 min for safety.
-      if (cd "$dir" && perl -e 'alarm 180; exec @ARGV' npm run "$script" > /dev/null 2>&1); then
-        echo "  $1: npm run $script"
-      else
-        echo "  $1: npm run $script failed or timed out (cd standalone/$1 && npm run $script to see why)"
-      fi
-      return 0
-    fi
-  done
-  if [ -f "$dir/docker-compose.yml" ] || [ -f "$dir/compose.yml" ]; then
-    if [ "$dry_run" = 1 ]; then echo "  $1: would run docker compose up -d"; return 0; fi
-    (cd "$dir" && docker compose up -d > /dev/null 2>&1) && echo "  $1: docker compose up" || echo "  $1: docker compose failed (run it there by hand)"
-  else
-    echo "  $1: no start script or compose file — check its README"
-  fi
-}
+# ---- start labs ---------------------------------------------------------------
+# Default (no --start* flag, no --app, no --no-start): the user's last 10 labs from the shelf's
+# history, filled from scripts/first-run-labs.txt (the owner's first-run picks). See lib-labs.sh.
+# shellcheck source=lib-labs.sh
+. "$root/scripts/lib-labs.sh"
 if [ "$start_all" = 1 ]; then
   # Every lab at once is heavy: warn on small-RAM Macs and point at the lighter option.
   if [ "$(uname -s)" = "Darwin" ]; then
     ram_gb=$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 ))
     if [ "$ram_gb" -gt 0 ] && [ "$ram_gb" -lt 16 ]; then
       echo "WARNING: this Mac has ${ram_gb} GB RAM; starting every lab at once may slow it down or run out of memory."
-      echo "  Lighter: scripts/setup.sh --start-top 10   (your 10 most recently used labs)"
+      echo "  Lighter: scripts/setup.sh   (your last 10 labs, or the first-run 10)"
       echo "  Or start one: scripts/setup.sh --start <lab-dir>"
     fi
   fi
   echo "Starting all labs (skipping ones already running):"
   up_files="$(running_compose_files)"
+  to_start=""
   for d in "$root"/standalone/*/; do
     app="$(basename "$d")"
     # already running? match the lab's compose file against `docker compose ls`
@@ -576,29 +495,27 @@ if [ "$start_all" = 1 ]; then
       echo "  $app: already running"; continue
     fi
     [ "$app" = "demo-shelf-LAB" ] && docker ps --format '{{.Names}}' 2>/dev/null | grep -qi shelf && { echo "  $app: already running"; continue; }
-    start_one "$app"
+    to_start="$to_start $app"
   done
+  # shellcheck disable=SC2086
+  start_labs $to_start
 elif [ -n "$start_app" ]; then
   echo "Starting $start_app:"
-  start_one "$start_app"
+  start_labs "$start_app"
 elif [ -n "${start_top:-}" ]; then
-  # Start the N most recently used labs from the shelf's last-running set (the shelf's
-  # start agent records every start/stop to .data/last-running.json). LRU-first order.
   top="${start_top:-10}"
   case "$top" in ''|*[!0-9]*) top=10 ;; esac
   labs_to_start="$(top_labs "$top")"
-  if [ -f "$root/standalone/demo-shelf-LAB/.data/last-running.json" ]; then
-    echo "Starting the $top most recently used labs:"
+  history_n="$(top_labs "$top" history-only | grep -c . || true)"
+  if [ "$history_n" -ge "$top" ]; then
+    echo "Starting your last $top labs:"
+  elif [ "$history_n" -gt 0 ]; then
+    echo "Starting your last $history_n labs, plus first-run picks up to $top:"
   else
-    echo "Starting $top labs (no usage history yet, so the shelf's order):"
+    echo "Starting the $top first-run labs (no history yet):"
   fi
-  up_files="$(running_compose_files)"
-  for app in $labs_to_start; do
-    if compose="$(lab_compose_file "$app")" && printf '%s\n' "$up_files" | grep -qxF "$compose"; then
-      echo "  $app: already running"; continue
-    fi
-    start_one "$app"
-  done
+  # shellcheck disable=SC2086
+  start_labs $labs_to_start
 fi
 
 # Labs just started: attach the launcher to their networks now, not at the watchdog's next 5-min tick.
