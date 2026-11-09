@@ -69,10 +69,12 @@ proxy_net_attached() {  # proxy_net_attached <network> — is the proxy already 
 attach_lab_networks() {
   attached=0
   for c in $(docker --context "$docker_ctx" ps --format '{{.Names}}'); do
-    net=$(docker --context "$docker_ctx" inspect "$c" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
-    [ -z "$net" ] || [ "$net" = "bridge" ] && continue
-    proxy_net_attached "$net" && continue
-    docker --context "$docker_ctx" network connect "$net" lab-proxy-lab-proxy-1 >/dev/null 2>&1 && attached=$((attached + 1))
+    # a container can sit on several networks (e.g. its own + ping-shared): attach to each
+    for net in $(docker --context "$docker_ctx" inspect "$c" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null); do
+      case "$net" in bridge|host|none) continue ;; esac
+      proxy_net_attached "$net" && continue
+      docker --context "$docker_ctx" network connect "$net" lab-proxy-lab-proxy-1 >/dev/null 2>&1 && attached=$((attached + 1))
+    done
   done
   [ "$attached" -gt 0 ] && echo "lab-proxy-watchdog: attached proxy to $attached lab network(s)" && return 0
   return 1
