@@ -111,6 +111,19 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 - The teaching text comes from the shared hop catalog; a lab adds catalog entries for its own hop kinds there first, then re-vendors.
 - Mock shows MOCK tokens raw; Real redacts on the server; secrets are always write-only.
 
+## 8d. Return link: the way back after a hand-off (2026-11-09)
+
+An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
+pinned by `return-link.sha256`).
+
+- Opened with `?from=customer-agent&uc=<id>&vertical=<id>`: a strip at the top of the page (above the simulation banner),
+  "Opened from Customer Agent LAB · <uc>", with a **Back to Customer Agent LAB** button; the same button, compact
+  (`variant="header"`), in the shell bar's right side.
+- Back navigates the same tab. The target comes only from the fixed list in `returnTargets.js` (proxy path on the lab proxy,
+  direct loopback URL on the app's own port), never from the address bar. Unknown `from` or a bad id renders nothing.
+- Preselect the app's own scenario from `uc` / `vertical` only where it obviously maps; otherwise show the strip only.
+- Theme tokens only (the strip's left edge is `--focus`, not the accent, so it never reads as the simulation banner).
+
 ## 9. Buttons and tabs
 
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.
