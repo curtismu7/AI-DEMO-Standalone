@@ -233,3 +233,6 @@
 [submodule "standalone/pingcli-LAB"]
 	path = standalone/pingcli-LAB
 	url = https://github.com/curtismu7/pingcli-LAB.git
+[submodule "standalone/mcp-skills-LAB"]
+	path = standalone/mcp-skills-LAB
+	url = https://github.com/curtismu7/mcp-skills-LAB.git
