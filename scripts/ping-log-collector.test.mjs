@@ -59,6 +59,11 @@ const run = (es, file, input = 'pw"odd\\chars\n') => new Promise((resolve) => {
 });
 const tmpEnv = (text) => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'collector-')); const f = path.join(d, '.env'); fs.writeFileSync(f, text); return { d, f }; };
 
+test('make-write-key.sh: with no ENV_FILE it writes to the shared settings file, ~/Development/.env', () => {
+  const sh = fs.readFileSync(path.join(DIR, 'make-write-key.sh'), 'utf8');
+  assert.match(sh, /FILE="\$\{ENV_FILE:-\$HOME\/Development\/\.env\}"/);
+});
+
 test('make-write-key.sh is valid bash', () => { assert.equal(spawnSync('bash', ['-n', path.join(DIR, 'make-write-key.sh')]).status, 0); });
 
 test('make-write-key.sh: a WRITE-only key for ping-logs-* and demo-logs-*, saved as PING_LOGS_ES_APIKEY, never printed', async () => {

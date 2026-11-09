@@ -4,19 +4,20 @@
 #
 # The key can only create documents (and create the index or data stream) in ping-logs-* and demo-logs-*: it cannot read, update or delete.
 # The password of an Elasticsearch user that may create API keys is typed hidden, or read from a cluster Secret in your own shell; it is never
-# stored or printed, and goes to curl on stdin so it is not in the process list. The old .env is kept as .env.bak.<time>. The old key keeps
+# stored or printed, and goes to curl on stdin so it is not in the process list. The old settings file is kept as <file>.bak.<time>. The old key keeps
 # working until you invalidate it in Elasticsearch.
 #
 #   ./make-write-key.sh --find                                list candidate Secrets (names only)
 #   ES_SECRET=<name> ES_SECRET_KEY=<key> ./make-write-key.sh  read the password from the cluster Secret
 #   ./make-write-key.sh [elastic-user-name]                   or type it (default user: elastic)
-# Settings: ES_LOCAL_URL (default http://localhost:9200, the port-forward), ENV_FILE (default ./.env beside this script), KEY_EXPIRY (default 90d),
+# Settings: ES_LOCAL_URL (default http://localhost:9200, the port-forward), ENV_FILE (default ~/Development/.env, the shared settings file), KEY_EXPIRY (default 90d),
 #           ES_NS / ES_KUBE_CONTEXT (default ping-devops-curtismuir / us).
 set -euo pipefail
 ES="${ES_LOCAL_URL:-http://localhost:9200}"
 USER_NAME="${1:-elastic}"; [ "$USER_NAME" = "--find" ] && USER_NAME=elastic
 HERE="$(cd "$(dirname "$0")" && pwd)"
-FILE="${ENV_FILE:-$HERE/.env}"
+# The collector gets PING_LOGS_ES_URL and PING_LOGS_ES_APIKEY from the shared settings file, so that is where the key goes by default.
+FILE="${ENV_FILE:-$HOME/Development/.env}"
 EXPIRY="${KEY_EXPIRY:-90d}"
 NS="${ES_NS:-ping-devops-curtismuir}"; CTX="${ES_KUBE_CONTEXT:-us}"
 
@@ -29,7 +30,7 @@ if [ "${1:-}" = "--find" ]; then
   exit 0
 fi
 
-[ -f "$FILE" ] || { echo "missing $FILE (copy .env.example to .env first)" >&2; exit 1; }
+[ -f "$FILE" ] || { echo "missing $FILE (set ENV_FILE to the settings file that holds PING_LOGS_ES_APIKEY)" >&2; exit 1; }
 curl -s -m 5 -o /dev/null "$ES/" || { echo "cannot reach $ES (is the Elasticsearch port-forward running?)" >&2; exit 1; }
 
 if [ -n "${ES_SECRET:-}" ]; then
