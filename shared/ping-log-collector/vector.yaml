@@ -38,6 +38,20 @@ sources:
     include_containers:
       - "${PING_GATEWAY_CONTAINER}"
 
+  # ai-demo-mcp-server prints each log entry as a header line ("[hh:mm:ss.mmm] INFO: text") followed by indented detail lines
+  # (service, trace_id, scope and so on). Read line by line that was about 14000 documents per 5 minutes, mostly detail lines.
+  # A line that starts with a space or tab belongs to the entry above it, so each entry becomes one document.
+  demo_mcp_server:
+    type: docker_logs
+    docker_host: unix:///var/run/docker.sock
+    include_containers:
+      - "ai-demo-mcp-server"
+    multiline:
+      start_pattern: '^\S'
+      condition_pattern: '^\s'
+      mode: continue_through
+      timeout_ms: 1000
+
   privilege_gateway_file:
     type: file
     include:
@@ -57,7 +71,6 @@ sources:
       - "ai-demo-mcp-gateway"
       - "ai-demo-llm-proxy"
       - "ai-demo-authz-server"
-      - "ai-demo-mcp-server"
       - "ai-demo-mcp-weather"
       - "ai-demo-hitl-service"
 
@@ -284,7 +297,7 @@ transforms:
   # level is only taken from a JSON "level" or a logfmt level= (never guessed from words in the text).
   normalize_demo:
     type: remap
-    inputs: [demo_docker]
+    inputs: [demo_docker, demo_mcp_server]
     source: |
       raw = string(.message) ?? ""
       container = string(.container_name) ?? ""
@@ -321,6 +334,12 @@ transforms:
       svc = replace(container, r'^ai-demo-', "")
       svc = replace(svc, r'^lab-proxy-lab-proxy-1$', "lab-proxy")
       out.demo_service = svc
+      # Some containers print very large dumps (ai-demo-mcp-server prints its whole tool schema, thousands of lines, about every 15
+      # minutes). Keep the first 8000 characters of any entry, after masking, and say so.
+      if strlen(m) > 8000 {
+        m = slice!(m, start: 0, end: 8000) + " ...[truncated by the collector]"
+        out.truncated = true
+      }
       if starts_with(m, "{") {
         j = parse_json(m) ?? null
         if is_object(j) && is_string(j.level) { out.level = downcase(string!(j.level)) }
@@ -409,6 +428,47 @@ tests:
               assert!(!contains(string!(.message), "hunter2"))
               assert!(!contains(string!(.message), "abc.def.ghi"))
               assert!(is_string(.doc_id))
+  - name: demo-logs truncates a huge entry after masking it, and leaves a short one alone
+    inputs:
+      - insert_at: normalize_demo
+        type: log
+        log_fields:
+          message: "client_secret=hunter2 AAAAAAAAAA"
+          container_name: ai-demo-mcp-server
+          timestamp: "2026-11-09T10:00:00Z"
+    outputs:
+      - extract_from: normalize_demo
+        conditions:
+          - type: vrl
+            source: |
+              assert!(!exists(.truncated))
+              assert!(!contains(string!(.message), "hunter2"))
+              assert_eq!(.demo_service, "mcp-server")
+  - name: demo-logs truncation of a long entry
+    inputs:
+      - insert_at: normalize_demo
+        type: vrl
+        source: |
+          big = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+          big = big + big
+          big = big + big
+          big = big + big
+          big = big + big
+          big = big + big
+          big = big + big
+          big = big + big
+          .message = "client_secret=hunter2 " + big
+          .container_name = "ai-demo-mcp-server"
+          .timestamp = "2026-11-09T10:00:00Z"
+    outputs:
+      - extract_from: normalize_demo
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.truncated, true)
+              assert!(strlen(string!(.message)) < 8100)
+              assert!(contains(string!(.message), "truncated by the collector"))
+              assert!(!contains(string!(.message), "hunter2"))
   - name: demo-logs lab proxy name and JSON level
     inputs:
       - insert_at: normalize_demo

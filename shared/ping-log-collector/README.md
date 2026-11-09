@@ -23,6 +23,8 @@ names: `lab-proxy-lab-proxy-1` (service `lab-proxy`), `procyon-nodesensor`, and 
 `ai-demo-llm-proxy`, `ai-demo-authz-server`, `ai-demo-mcp-server`, `ai-demo-mcp-weather` and `ai-demo-hitl-service` (service name without the
 `ai-demo-` prefix). A container that is not running is simply absent.
 
+`ai-demo-mcp-server` has its own source because it prints each log entry as a header line plus indented detail lines: lines that start with a space or tab are joined to the entry above them, so one entry is one document (about 6 times fewer documents measured offline on a real capture of its logs). Any entry longer than 8000 characters is cut after masking and marked `truncated: true`; the server prints its whole tool schema, thousands of lines, about every 15 minutes.
+
 They get exactly the same masking as the Ping pipeline (a test keeps the two blocks identical), then these fields: `@timestamp` (Docker's
 per-line time), `demo_service`, `host` (the container), `environment` (`local`), `event_kind` (`runtime`), `message`, and `level` only when the
 line has a JSON `level` or a logfmt `level=` (never guessed from words). Document id: SHA-256 of the container, Docker's per-line time and the raw line.

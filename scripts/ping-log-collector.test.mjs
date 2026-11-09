@@ -24,11 +24,16 @@ test('vector.yaml: the demo pipeline masks exactly like the Ping one (the two ma
 test('vector.yaml: demo containers go to demo-logs-<service>, Ping products stay in ping-logs-<product>, each sink has its own input', () => {
   assert.match(YAML, /index: "ping-logs-\{\{ ping_product \}\}"/);
   assert.match(YAML, /index: "demo-logs-\{\{ demo_service \}\}"/);
-  assert.match(section('normalize_demo'), /inputs: \[demo_docker\]/);
+  assert.match(section('normalize_demo'), /inputs: \[demo_docker, demo_mcp_server\]/);
   assert.match(YAML, /elasticsearch_demo:\n {4}type: elasticsearch\n {4}inputs: \[normalize_demo\]/);
   assert.match(YAML, /elasticsearch:\n {4}type: elasticsearch\n {4}inputs: \[drop_pf_debug\]/);
-  const names = [...YAML.slice(YAML.indexOf('  demo_docker:'), YAML.indexOf('\ntransforms:')).matchAll(/- "([a-z0-9-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(names, ['lab-proxy-lab-proxy-1', 'procyon-nodesensor', 'ai-demo-mcp-gateway', 'ai-demo-llm-proxy', 'ai-demo-authz-server', 'ai-demo-mcp-server', 'ai-demo-mcp-weather', 'ai-demo-hitl-service']);
+  const block = (name, next) => YAML.slice(YAML.indexOf(`\n  ${name}:\n`), YAML.indexOf(next));
+  const names = [...block('demo_docker', '\ntransforms:').matchAll(/- "([a-z0-9-]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(names, ['lab-proxy-lab-proxy-1', 'procyon-nodesensor', 'ai-demo-mcp-gateway', 'ai-demo-llm-proxy', 'ai-demo-authz-server', 'ai-demo-mcp-weather', 'ai-demo-hitl-service']);
+  const mcp = block('demo_mcp_server', '\n  privilege_gateway_file:');
+  assert.match(mcp, /- "ai-demo-mcp-server"/, 'mcp-server has its own source');
+  assert.match(mcp, /start_pattern: '\^\\S'/); assert.match(mcp, /condition_pattern: '\^\\s'/); assert.match(mcp, /mode: continue_through/);
+  assert.ok(!names.includes('ai-demo-mcp-server'), 'and is not also read line by line by the shared source');
   assert.ok(!/PING_/.test(section('normalize_demo')), 'the demo transform does not depend on the Ping container variables');
 });
 
