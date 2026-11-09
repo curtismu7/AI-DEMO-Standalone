@@ -19,7 +19,7 @@ jobs:
       - name: Shell scripts parse
         run: for f in scripts/*.sh; do bash -n "$f"; done
       - name: Test
-        run: node --test test/*.test.mjs
+        run: node --test test/*.test.mjs scripts/*.test.mjs
 
   gitleaks:
     runs-on: ubuntu-latest
