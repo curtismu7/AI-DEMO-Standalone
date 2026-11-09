@@ -11,8 +11,9 @@ compact, in its header. Back returns to the dashboard with `?returned=<this app 
   URL). `from` only selects a list entry; nothing read from the address bar becomes part of the target's origin or path.
 - **Unknown `from` or bad ids = nothing rendered.** Ids match `/^[A-Za-z0-9.-]{1,40}$/`; `uc` is required, `vertical` optional;
   a repeated `from`, `uc` or `vertical` is refused.
-- **Proxy vs direct.** On a loopback host (`127.0.0.1`, `localhost`, `::1`: the app opened on its own port) Back goes to the
-  target's `directUrl`; anywhere else (the shared lab proxy, one origin for every lab) to the target's `proxyPath` on the same origin.
+- **Proxy vs direct, from the page's own path.** Under a directory prefix (`/a2a-lab/...`: the shared lab proxy, which also runs
+  on `127.0.0.1:8443` and `localhost:8443`, so the host cannot decide) Back goes to the target's `proxyPath` on the same origin;
+  served at its root (`/` or `/index.html`: the app on its own port) Back goes to the target's `directUrl`.
 - **Same tab.** The lab proxy keeps one lab cookie per browser, so a second tab would route the other app's API calls here.
 - **Ids only** travel back: `returned` and `uc`. Theme tokens only, no colour literals; wraps at 375px.
 
@@ -28,7 +29,7 @@ import { readReturnContext } from "./return-link/returnTargets.js";
 
 // in the shell bar, right side
 <ReturnLink app="a2a-lab" variant="header" />
-// first thing in the page, above the simulation banner
+// right below the simulation banner (the banner stays first)
 <ReturnLink app="a2a-lab" />
 
 // optional: preselect the app's own scenario when the use case obviously maps to one

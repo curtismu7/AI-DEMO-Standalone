@@ -1,10 +1,12 @@
 // Tests for the return-link logic (node:test). Run by the parent repo's CI through test/return-link.test.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RETURN_TARGETS, readReturnContext, backHref, returnLinkFor, isLoopbackHost } from './returnTargets.js';
+import { RETURN_TARGETS, readReturnContext, backHref, returnLinkFor, isProxiedPath } from './returnTargets.js';
 
-const proxy = (search) => ({ hostname: 'labs.example', pathname: '/a2a-lab/', search });
-const direct = (search, hostname = '127.0.0.1') => ({ hostname, pathname: '/', search });
+// A location as the browser gives it, from a full URL (hosts are examples or the fixed loopback ones).
+const loc = (url) => { const u = new URL(url); return { hostname: u.hostname, pathname: u.pathname, search: u.search }; };
+const proxy = (search) => loc(`https://labs.example/a2a-lab/${search}`);
+const direct = (search) => loc(`http://127.0.0.1:5150/${search}`);
 
 test('the target list is fixed and frozen: customer-agent only', () => {
   assert.deepEqual(Object.keys(RETURN_TARGETS), ['customer-agent']);
@@ -51,13 +53,20 @@ test('proxy: Back is the fixed proxy path on this origin, ids only', () => {
   assert.ok(!l.href.startsWith('//'));
 });
 
-test('direct port: Back is the fixed loopback URL', () => {
-  for (const h of ['127.0.0.1', 'localhost', 'LOCALHOST', '[::1]', '::1']) {
-    assert.equal(returnLinkFor('a2a-lab', direct('?from=customer-agent&uc=UC47', h)).href,
-      'http://127.0.0.1:5603/?returned=a2a-lab&uc=UC47', h);
+test('proxied vs direct is decided by the path, not the host (the lab proxy is also on loopback)', () => {
+  const href = (url) => returnLinkFor('a2a-lab', loc(url)).href;
+  const q = '?from=customer-agent&uc=UC47';
+  for (const url of [`https://localhost:8443/a2a-lab/${q}`, `http://127.0.0.1:8443/a2a-lab/${q}`, `https://labs.example/a2a-lab/deep/page${q}`]) {
+    assert.equal(href(url), '/customer-agent/?returned=a2a-lab&uc=UC47', url);
   }
-  assert.equal(isLoopbackHost('127.0.0.2'), false);
-  assert.equal(isLoopbackHost('localhost.example'), false);
+  for (const url of [`http://127.0.0.1:5150/${q}`, `http://localhost:5150/index.html${q}`, `http://[::1]:5150/${q}`]) {
+    assert.equal(href(url), 'http://127.0.0.1:5603/?returned=a2a-lab&uc=UC47', url);
+  }
+  assert.equal(isProxiedPath('/a2a-lab/'), true);
+  assert.equal(isProxiedPath('/'), false);
+  assert.equal(isProxiedPath('/index.html'), false);
+  assert.equal(isProxiedPath('//evil.example/'), false);
+  assert.equal(isProxiedPath(undefined), false);
 });
 
 test('open-redirect attempts never reach the href', () => {
@@ -86,10 +95,11 @@ test('open-redirect attempts never reach the href', () => {
 
 test('a bad self id or a hand-made context gives no href', () => {
   const ctx = readReturnContext('?from=customer-agent&uc=UC1');
-  assert.equal(backHref(ctx, 'bad id', { hostname: 'labs.example' }), null);
-  assert.equal(backHref(ctx, undefined, { hostname: 'labs.example' }), null);
-  assert.equal(backHref({ from: 'evil', uc: 'UC1' }, 'a2a-lab', { hostname: 'labs.example' }), null);
-  assert.equal(backHref({ from: 'customer-agent', uc: '../x' }, 'a2a-lab', { hostname: 'labs.example' }), null);
-  assert.equal(backHref(null, 'a2a-lab', { hostname: 'labs.example' }), null);
+  const at = { pathname: '/a2a-lab/' };
+  assert.equal(backHref(ctx, 'bad id', at), null);
+  assert.equal(backHref(ctx, undefined, at), null);
+  assert.equal(backHref({ from: 'evil', uc: 'UC1' }, 'a2a-lab', at), null);
+  assert.equal(backHref({ from: 'customer-agent', uc: '../x' }, 'a2a-lab', at), null);
+  assert.equal(backHref(null, 'a2a-lab', at), null);
   assert.equal(returnLinkFor('a2a-lab', null), null);
 });

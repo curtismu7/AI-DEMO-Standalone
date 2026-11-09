@@ -116,11 +116,12 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
 pinned by `return-link.sha256`).
 
-- Opened with `?from=customer-agent&uc=<id>&vertical=<id>`: a strip at the top of the page (above the simulation banner),
+- Opened with `?from=customer-agent&uc=<id>&vertical=<id>`: a strip right BELOW the simulation banner (the banner stays first),
   "Opened from Customer Agent LAB · <uc>", with a **Back to Customer Agent LAB** button; the same button, compact
   (`variant="header"`), in the shell bar's right side.
-- Back navigates the same tab. The target comes only from the fixed list in `returnTargets.js` (proxy path on the lab proxy,
-  direct loopback URL on the app's own port), never from the address bar. Unknown `from` or a bad id renders nothing.
+- Back navigates the same tab. The target comes only from the fixed list in `returnTargets.js`, never from the address bar:
+  the proxy path when the page sits under a directory prefix (`/<app>/...`, the lab proxy, also on loopback :8443), the
+  direct loopback URL when the app is served at its root. Unknown `from` or a bad id renders nothing.
 - Preselect the app's own scenario from `uc` / `vertical` only where it obviously maps; otherwise show the strip only.
 - Theme tokens only (the strip's left edge is `--focus`, not the accent, so it never reads as the simulation banner).
 
