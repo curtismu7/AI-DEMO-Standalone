@@ -17,6 +17,10 @@ export const ACTORS = {
   privilege: { label: "Privilege gateway", initials: "PV", lane: "privilege", role: "The agent gateway leg that checks the agent key and its grants.", sees: "the agent key and the call", never: "the user's password" },
   registry: { label: "Agent registry", initials: "RG", lane: "registry", role: "The list of registered agents and their owners.", sees: "agent ids and owners", never: "tokens" },
   credentials: { label: "Credential store", initials: "CS", lane: "credentials", role: "Holds the downstream credential that is swapped in for the call.", sees: "the stored credential", never: "the user token" },
+  lab: { label: "Lab server", initials: "LB", lane: "lab", role: "The lab's own server. It looks a command key up in a fixed allow-list and starts the tool with fixed arguments.", sees: "the command key and the tool's output (scrubbed of secrets)", never: "a free-form command or the client secret in any reply" },
+  pingcli: { label: "Ping CLI", initials: "PC", lane: "agent", role: "The pingcli binary, acting for the admin with a worker profile.", sees: "its private profile, the worker token and the API responses", never: "anything outside its private folder" },
+  "pingone-auth": { label: "PingOne token endpoint", initials: "PA", lane: "idp", role: "Issues the worker access token for client credentials.", sees: "the worker client id and secret", never: "what the API returns" },
+  "pingone-api": { label: "PingOne management API", initials: "PM", lane: "mcp", role: "The management API that pingcli pingone api calls with the worker token.", sees: "the bearer token and the request", never: "the client secret" },
 };
 
 export function actorOf(id) {
