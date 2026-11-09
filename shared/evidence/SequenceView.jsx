@@ -7,16 +7,19 @@ import "./evidence.css";
 // Lifeline sequence diagram of one run, ported from AI-DEMO2's SequenceReelDiagram + SequenceActorHeader and driven by
 // demo-hop/1 hops. Presentational: it never fetches. Every box is a button: an actor tile or a lifeline box opens the
 // actor card, a row (arrow, label or note) calls onSelect(n). Arrow keys move between rows.
-const COL = 220;
+const COL = 220;      // lane spacing at 100% (zoomed views)
+const MIN_COL = 96;   // fit mode spreads lanes across the width down to this, keeping text full size
 const BOX_W = 140;
 const ROW = 54;
 const TOP = 80;
 const CHAR_W = 7;
-const ZOOM_MIN = 60, ZOOM_MAX = 200, ZOOM_STEP = 10, ZOOM_DEFAULT = 100;
+// Zoom: "fit" (the default) scales the drawing to the scroller's width, never above 100%, so every lane shows with no sideways scroll;
+// − / + switch to a fixed percentage starting from the fitted one, and Fit goes back.
+const ZOOM_MIN = 20, ZOOM_MAX = 200, ZOOM_STEP = 10, ZOOM_DEFAULT = "fit";
 const FONTS = ["small", "medium", "large"];
 const SPEEDS = [{ ms: 1000, label: "1s" }, { ms: 1500, label: "1.5s" }, { ms: 2600, label: "2.6s" }, { ms: 4000, label: "4s" }, { ms: 6000, label: "6s" }];
 const SPEED_DEFAULT = 2600;
-const K = { zoom: "cal.ev.seq.zoom", font: "cal.ev.seq.font", speed: "cal.ev.seq.speed" };
+const K = { zoom: "cal.ev.seq.zoom2", font: "cal.ev.seq.font", speed: "cal.ev.seq.speed" };
 const STATE_WORD = { idle: "idle", done: "done", active: "working" };
 
 const rowLabel = (h) => `${h.n} · ${txt(h.title)}${h.verdict && h.verdict !== "ok" ? ` · ${verdictWord(h.verdict)}` : ""}`;
@@ -25,7 +28,8 @@ const noteW = (s) => Math.max(150, s.length * CHAR_W + 32);
 
 export default function SequenceView({ hops = [], selected = null, onSelect }) {
   const uid = useId().replace(/[^A-Za-z0-9]/g, "");
-  const [zoom, setZoom] = useState(() => Number(readPref(K.zoom, (v) => { const n = Number(v); return n >= ZOOM_MIN && n <= ZOOM_MAX; }, ZOOM_DEFAULT)));
+  const [zoom, setZoom] = useState(() => { const v = readPref(K.zoom, (x) => x === "fit" || (Number(x) >= ZOOM_MIN && Number(x) <= ZOOM_MAX), ZOOM_DEFAULT); return v === "fit" ? v : Number(v); });
+  const [boxW, setBoxW] = useState(0);
   const [font, setFont] = useState(() => readPref(K.font, (v) => FONTS.includes(v), "medium"));
   const [speed, setSpeed] = useState(() => Number(readPref(K.speed, (v) => SPEEDS.some((s) => String(s.ms) === v), SPEED_DEFAULT)));
   const [slow, setSlow] = useState(false);
@@ -82,6 +86,16 @@ export default function SequenceView({ hops = [], selected = null, onSelect }) {
   // also scroll the page and drag the diagram sideways).
   const scrollRef = useRef(null);
   const rowRefs = useRef({});
+  const hasHops = hops.length > 0;
+  // The scroller's inner width, for the fitted percentage (no ResizeObserver, as in jsdom: the fit is still drawn, the readout says 100%).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(() => setBoxW(el.clientWidth));
+    ro.observe(el);
+    setBoxW(el.clientWidth);
+    return () => ro.disconnect();
+  }, [hasHops]);
   useEffect(() => {
     if (!follow || focusN == null) return;
     const el = rowRefs.current[focusN];
@@ -110,9 +124,17 @@ export default function SequenceView({ hops = [], selected = null, onSelect }) {
 
   const labels = shown.map(rowLabel);
   const half = labels.reduce((m, s, i) => Math.max(m, (isNote(shown[i]) ? noteW(s) : labelW(s)) / 2), 0);
-  const pad = Math.max(COL / 2, BOX_W / 2 + 8, half + 8);
-  const colX = (id) => pad + cast.indexOf(id) * COL;
-  const width = pad * 2 + Math.max(cast.length - 1, 0) * COL;
+  // Fit: lay the lanes out across the scroller's width (text stays full size); scale down only if even MIN_COL lanes do not fit.
+  const gaps = Math.max(cast.length - 1, 0);
+  const fitCol = zoom === "fit" && boxW > 0 && gaps > 0 ? Math.max(MIN_COL, Math.min(COL, Math.floor((boxW - 2 * Math.max(BOX_W / 2 + 8, 80)) / gaps))) : COL;
+  const col = fitCol;
+  const laneBox = Math.min(BOX_W, col - 12);
+  const pad = zoom === "fit" && col < COL ? Math.max(laneBox / 2 + 8, 80) : Math.max(COL / 2, BOX_W / 2 + 8, half + 8);
+  const colX = (id) => pad + cast.indexOf(id) * col;
+  const width = pad * 2 + gaps * col;
+  const fitPct = boxW > 0 ? Math.max(ZOOM_MIN, Math.min(100, Math.floor((boxW / width) * 100))) : 100;
+  const pct = zoom === "fit" ? fitPct : zoom;
+  const zoomBy = (d) => setZoom((z) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (z === "fit" ? fitPct : z) + d)));
   const footY = TOP + total * ROW - 22;
   const height = footY + 34;
   const mock = hops.some((h) => h.mock);
@@ -125,9 +147,10 @@ export default function SequenceView({ hops = [], selected = null, onSelect }) {
       <div className="sq-bar" role="toolbar" aria-label="Sequence controls">
         {mock && <Tag state="info" title="Every hop here was produced by the lab's mock engine">MOCK engine</Tag>}
         <span className="sq-grp" role="group" aria-label="Zoom">
-          <button type="button" aria-label="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}>−</button>
-          <button type="button" aria-label="Reset zoom" onClick={() => setZoom(ZOOM_DEFAULT)} data-testid="seq-zoom">{zoom}%</button>
-          <button type="button" aria-label="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}>+</button>
+          <button type="button" aria-label="Zoom out" disabled={pct <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>−</button>
+          <button type="button" aria-label={`Zoom ${pct}%, actual size`} title="Actual size (100%)" onClick={() => setZoom(100)} data-testid="seq-zoom">{pct}%</button>
+          <button type="button" aria-label="Zoom in" disabled={pct >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>+</button>
+          <button type="button" aria-pressed={zoom === "fit"} title="Fit the whole width: every lane in view" onClick={() => setZoom("fit")} data-testid="seq-fit">Fit</button>
         </span>
         <span className="sq-grp" role="group" aria-label="Text size">
           {FONTS.map((f) => (
@@ -171,7 +194,8 @@ export default function SequenceView({ hops = [], selected = null, onSelect }) {
         {actor && <ActorCard actorId={actor} hops={shown} onSelect={(n) => { setActor(null); onSelect?.(n); }} onClose={() => setActor(null)} />}
 
         <div className="sq-scroll" ref={scrollRef}>
-          <svg className="sq-svg" viewBox={`0 0 ${width} ${height}`} width={(width * zoom) / 100} role="group"
+          <svg className="sq-svg" viewBox={`0 0 ${width} ${height}`} width={zoom === "fit" ? undefined : (width * zoom) / 100}
+            style={zoom === "fit" ? { width: "100%", maxWidth: `${width}px` } : undefined} data-zoom={zoom === "fit" ? "fit" : String(zoom)} role="group"
             aria-label={`Sequence diagram, ${total} steps${sel}`} data-testid="sequence-svg">
             <defs>
               <marker id={`${uid}a`} markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" className="sq-head" /></marker>
@@ -182,7 +206,7 @@ export default function SequenceView({ hops = [], selected = null, onSelect }) {
               const a = actorOf(id);
               const box = (y, h, ty, small, where) => (
                 <g role="button" tabIndex={-1} className="sq-lbtn" aria-label={`${a.label} actor details (${where})`} onClick={() => openActor(id)} onKeyDown={(e) => actorKey(e, id)}>
-                  <rect className="sq-lbox" x={x - BOX_W / 2} y={y} width={BOX_W} height={h} rx="7" />
+                  <rect className="sq-lbox" x={x - laneBox / 2} y={y} width={laneBox} height={h} rx="7" />
                   <text className={`sq-lt${small ? " sq-lt--sm" : ""}`} x={x} y={ty} textAnchor="middle">{a.label}</text>
                 </g>
               );

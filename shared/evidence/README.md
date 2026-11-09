@@ -1,6 +1,6 @@
 # evidence: sequence view, movie reel, step detail and actor card
 
-The shared evidence screens for every -LAB that draws a token chain. Ported from AI-DEMO2's SequenceReelDiagram, TokenChainNodeRail / TokenChainFilmstrip and StepDetailPanel, restyled to the Ping UI standard (owner decision 2026-11-08: port, then restyle; vendored, never imported across repos). First vendored in customer-agent-LAB (`web/src/evidence/`, commit 19b8249).
+The shared evidence screens for every -LAB that draws a token chain. Ported from AI-DEMO2's SequenceReelDiagram, TokenChainNodeRail / TokenChainFilmstrip and StepDetailPanel, restyled to the Ping UI standard (owner decision 2026-11-08: port, then restyle; vendored, never imported across repos). First vendored in customer-agent-LAB (`web/src/evidence/`, commit 66d14d2).
 
 They draw `demo-hop/1` hops (see `../hop-detail/README.md`): the server enriches each hop with the shared hop catalog, and these screens only display what the server sent. Mock keeps MOCK tokens raw for teaching; Real redacts on the server.
 
