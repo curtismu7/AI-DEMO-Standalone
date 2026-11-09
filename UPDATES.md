@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.4** — seven new labs on the shelf: PingCLI, Observability, PingOne Events, Aggregate Entitlement, Privilege Logging, Field Notes and Env Map. Run the update command below to get them.
+**Version 2.5** — one new lab on the shelf: MCP Skills, a tester for the MCP Skills extension. Run the update command below to get it.
