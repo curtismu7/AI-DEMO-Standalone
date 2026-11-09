@@ -45,7 +45,7 @@ A hop is one arrow in the chain. The engine already fills the **raw** fields; `e
 
 ### Actors
 
-`browser`, `page`, `agent`, `bff`, `idp`, `mcp-as`, `gateway`, `authorize`, `mcp`, `a2a`, `hitl`, `privilege`, `registry`, `credentials`. An app may add its own; the screens fall back to a neutral lane colour for an unknown id.
+`browser`, `page`, `lab`, `agent`, `bff`, `idp`, `mcp-as`, `gateway`, `authorize`, `mcp`, `a2a`, `hitl`, `privilege`, `registry`, `credentials`. An app may add its own; the screens fall back to a neutral lane colour for an unknown id.
 
 ### Rules
 

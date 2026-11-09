@@ -534,6 +534,48 @@
         "why": "This use case is a learning page; the lab opens it and the product shows its own demo.",
         "failure": "Presenting a guide as a computed result. Nothing here was decided by the engine."
       }
+    },
+    "live-discovery": {
+      "title": "Discovery",
+      "fact": "metadata read",
+      "spec": {
+        "refs": [
+          {
+            "label": "RFC 8414 §3",
+            "title": "Authorization server metadata",
+            "url": "https://www.rfc-editor.org/rfc/rfc8414#section-3"
+          },
+          {
+            "label": "OIDC Discovery 1.0",
+            "title": "Provider configuration",
+            "url": "https://openid.net/specs/openid-connect-discovery-1_0.html"
+          }
+        ],
+        "mandate": "An authorization server publishes its metadata (issuer, endpoints, supported grants) at a well-known URL, and a client reads it instead of hard-coding them.",
+        "why": "Whether this environment supports token exchange is read from grant_types_supported, not assumed.",
+        "failure": "Hard-coding endpoints or assuming a grant is supported. The demo then fails later with a confusing error instead of saying the feature is off."
+      }
+    },
+    "live-actor-token": {
+      "title": "Agent token (live)",
+      "fact": "live token, masked",
+      "spec": {
+        "refs": [
+          {
+            "label": "RFC 6749 §4.4",
+            "title": "Client credentials grant",
+            "url": "https://www.rfc-editor.org/rfc/rfc6749#section-4.4"
+          },
+          {
+            "label": "RFC 9068 §2.2",
+            "title": "JWT access token data",
+            "url": "https://www.rfc-editor.org/rfc/rfc9068#section-2.2"
+          }
+        ],
+        "mandate": "Client credentials issue a token for the client itself, with no user in it. The JWT access token profile names that machine principal in client_id and sub.",
+        "why": "The agent needs its own provable identity, so the next exchange has a real actor_token to present. Without it there is no evidence of who acted, only that a call arrived.",
+        "failure": "Using the user token as the agent identity. The user and the agent collapse into one party, and the act claim made next proves nothing."
+      }
     }
   }
 }
