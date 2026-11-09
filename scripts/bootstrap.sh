@@ -601,6 +601,11 @@ elif [ -n "${start_top:-}" ]; then
   done
 fi
 
+# Labs just started: attach the launcher to their networks now, not at the watchdog's next 5-min tick.
+if [ "$dry_run" != 1 ] && { [ "$start_all" = 1 ] || [ -n "$start_app" ] || [ -n "${start_top:-}" ]; }; then
+  "$root/scripts/lab-proxy-watchdog.sh" > /dev/null 2>&1 || true
+fi
+
 # ---- network-pool headroom ---------------------------------------------------
 # Docker's default pool holds ~31 user networks; every compose project takes one. Warn before
 # the cryptic daemon error, and offer the prune.

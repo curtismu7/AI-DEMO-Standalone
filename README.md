@@ -116,7 +116,7 @@ All apps are reached through ONE domain, already in `/etc/hosts` - never `127.0.
 - `https://local.ping-devops.com:8443` - the shelf (launcher)
 - `https://local.ping-devops.com:8443/<app>/` - each app, e.g. `/pingone-lab/`, `/ciba-hitl-lab/`
 
-The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; it joins a network per app, so an app only appears once its compose stack is up. `scripts/setup.sh` starts it when possible. Adding an app to the proxy = one entry location + two cookie-map lines + its compose network in `shared/lab-proxy/`.
+The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; `scripts/lab-proxy-watchdog.sh` attaches the proxy to each running app's network (setup, `setup.sh update`, and its launchd agent every 5 min), so an app appears once its compose stack is up. Adding an app to the proxy = one entry location + two cookie-map lines in `shared/lab-proxy/nginx.conf`.
 
 ## Ports, and what to do if a port is taken
 
