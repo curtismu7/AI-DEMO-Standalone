@@ -486,6 +486,30 @@ running_compose_files() {
   docker compose ls --format json 2>/dev/null \
     | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{for(const p of JSON.parse(s||"[]"))for(const f of String(p.ConfigFiles||"").split(","))console.log(f)})' 2>/dev/null || true
 }
+# top_labs <n>: the lab dirs --start-top starts, one per line. The shelf's start agent records
+# every start/stop in .data/last-running.json (most recent first); those labs come first. With no
+# history (a fresh machine) or fewer than <n> recorded, the rest come in the shelf seed's order.
+top_labs() {
+  node -e '
+    const fs = require("fs"), path = require("path");
+    const [root, n] = [process.argv[1], Number(process.argv[2])];
+    const shelf = path.join(root, "standalone/demo-shelf-LAB");
+    const read = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
+    const list = (d) => (d && (d.demos || d)) || [];
+    const reg = [...list(read(path.join(shelf, ".data/demos.local.json"))), ...list(read(path.join(shelf, "data/demos.json")))];
+    // registry composeFile -> lab dir under standalone/ (seed paths are relative; local ones may be absolute)
+    const dirOf = (d) => {
+      const f = d && d.composeFile; if (!f) return null;
+      const rel = path.relative(path.join(root, "standalone"), path.resolve(path.join(root, "standalone"), f));
+      const dir = rel.split(path.sep)[0];
+      return dir && !dir.startsWith("..") && dir !== "demo-shelf-LAB" && fs.existsSync(path.join(root, "standalone", dir)) ? dir : null;
+    };
+    const out = [];
+    const add = (dir) => { if (dir && !out.includes(dir) && out.length < n) out.push(dir); };
+    for (const e of list(read(path.join(shelf, ".data/last-running.json")))) add(dirOf(reg.find((d) => d.id === e.id)));
+    for (const d of list(read(path.join(shelf, "data/demos.json")))) add(dirOf(d));
+    console.log(out.join("\n"));' "$root" "$1"
+}
 start_one() {
   local app="$1" dir="$root/standalone/$1" script compose
   if [ ! -d "$dir" ]; then echo "  no such lab dir: standalone/$1"; return 1; fi
@@ -562,38 +586,19 @@ elif [ -n "${start_top:-}" ]; then
   # start agent records every start/stop to .data/last-running.json). LRU-first order.
   top="${start_top:-10}"
   case "$top" in ''|*[!0-9]*) top=10 ;; esac
-  last_file="$root/standalone/demo-shelf-LAB/.data/last-running.json"
-  if [ ! -f "$last_file" ]; then
-    echo "No last-running set yet ($last_file missing) — start labs from the shelf and they will be remembered."
-  else
+  labs_to_start="$(top_labs "$top")"
+  if [ -f "$root/standalone/demo-shelf-LAB/.data/last-running.json" ]; then
     echo "Starting the $top most recently used labs:"
-    ids=$(node -e "
-      const d = JSON.parse(require('fs').readFileSync('$last_file', 'utf8'));
-      const ids = (d.demos || []).slice(0, $top).map((e) => e.id).reverse();
-      console.log(ids.join(' '));" 2>/dev/null)
-    for id in $ids; do
-      # registry id -> lab dir: the seed uses the repo minus -LAB, but demos.local.json may
-      # differ; resolve via the registry entry's composeFile path when present.
-      dir=$(node -e "
-        const fs = require('fs');
-        const d = JSON.parse(fs.readFileSync('$last_file', 'utf8'));
-        void d;
-        const reg = JSON.parse(fs.readFileSync('$root/standalone/demo-shelf-LAB/.data/demos.local.json', 'utf8'));
-        const demo = (reg.demos || []).find((x) => x.id === '$id');
-        if (demo && demo.composeFile) {
-          const p = demo.composeFile.startsWith('/') ? demo.composeFile : require('path').join('$root/standalone', demo.composeFile);
-          console.log(require('path').dirname(require('path').resolve(p)));
-        }" 2>/dev/null)
-      if [ -n "$dir" ] && [ -f "$dir/docker-compose.yml" ]; then
-        if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "$(basename "$dir")"; then
-          echo "  $id: already running"; continue
-        fi
-        (cd "$dir" && docker compose up -d > /dev/null 2>&1) && echo "  $id: started ($dir)" || echo "  $id: docker compose failed (run it there by hand)"
-      else
-        echo "  $id: no compose file found — start it from the shelf"
-      fi
-    done
+  else
+    echo "Starting $top labs (no usage history yet, so the shelf's order):"
   fi
+  up_files="$(running_compose_files)"
+  for app in $labs_to_start; do
+    if compose="$(lab_compose_file "$app")" && printf '%s\n' "$up_files" | grep -qxF "$compose"; then
+      echo "  $app: already running"; continue
+    fi
+    start_one "$app"
+  done
 fi
 
 # ---- network-pool headroom ---------------------------------------------------

@@ -65,3 +65,39 @@ test("lab_compose_file prefers the shelf seed, then the usual spots", () => {
   assert.equal(composeFor(root, "deployonly-LAB"), "deployonly-LAB/deploy/docker-compose.yml");
   assert.equal(composeFor(root, "none-LAB"), null);
 });
+
+const topFn = src.match(/^top_labs\(\) \{[\s\S]*?^\}$/m)?.[0];
+function topLabs(root, n) {
+  const r = spawnSync("bash", ["-c", `set -u; root="$1"; ${topFn}\ntop_labs "$2"`, "_", root, String(n)], { encoding: "utf8" });
+  return r.stdout.trim().split("\n").filter(Boolean);
+}
+function shelfRoot({ seed, last, local }) {
+  const root = mkdtempSync(join(tmpdir(), "bs-top-"));
+  const shelf = join(root, "standalone/demo-shelf-LAB");
+  mkdirSync(join(shelf, "data"), { recursive: true });
+  mkdirSync(join(shelf, ".data"), { recursive: true });
+  for (const d of seed) mkdirSync(join(root, "standalone", d.composeFile.split("/")[0]), { recursive: true });
+  writeFileSync(join(shelf, "data/demos.json"), JSON.stringify({ demos: seed }));
+  if (last) writeFileSync(join(shelf, ".data/last-running.json"), JSON.stringify({ demos: last.map((id) => ({ id })) }));
+  if (local) writeFileSync(join(shelf, ".data/demos.local.json"), JSON.stringify({ demos: local }));
+  return root;
+}
+const seed = ["a", "b", "c", "d"].map((x) => ({ id: x, composeFile: `${x}-LAB/docker-compose.yml` }));
+
+test("top_labs with no history takes the shelf order, capped at n", () => {
+  assert.ok(topFn);
+  assert.deepEqual(topLabs(shelfRoot({ seed }), 3), ["a-LAB", "b-LAB", "c-LAB"]);
+});
+
+test("top_labs puts recently used labs first, fills from the shelf order, skips unknown ids", () => {
+  const root = shelfRoot({ seed, last: ["c", "gone", "a"] });
+  assert.deepEqual(topLabs(root, 3), ["c-LAB", "a-LAB", "b-LAB"]);
+});
+
+test("top_labs never lists the shelf itself and resolves absolute local compose paths", () => {
+  const root = shelfRoot({ seed: [{ id: "shelf", composeFile: "demo-shelf-LAB/docker-compose.yml" }, ...seed] });
+  writeFileSync(join(root, "standalone/demo-shelf-LAB/.data/demos.local.json"),
+    JSON.stringify({ demos: [{ id: "x", composeFile: join(root, "standalone/d-LAB/docker-compose.yml") }] }));
+  writeFileSync(join(root, "standalone/demo-shelf-LAB/.data/last-running.json"), JSON.stringify({ demos: [{ id: "x" }] }));
+  assert.deepEqual(topLabs(root, 2), ["d-LAB", "a-LAB"]);
+});
