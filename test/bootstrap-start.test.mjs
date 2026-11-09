@@ -140,3 +140,30 @@ test("the repo's first-run picks name exactly 10 real labs", () => {
   assert.equal(new Set(picks).size, 10);
   for (const p of picks) assert.ok(modules.includes(`path = standalone/${p}\n`), `${p} is a submodule`);
 });
+
+const fnOf = (name) => lib.match(new RegExp(`^${name}\\(\\) \\{[\\s\\S]*?^\\}$`, "m"))?.[0];
+function accessRoot() {
+  const root = mkdtempSync(join(tmpdir(), "bs-acc-"));
+  spawnSync("git", ["init", "-q", root]);
+  writeFileSync(join(root, ".gitmodules"), [
+    '[submodule "standalone/open-LAB"]', "\tpath = standalone/open-LAB", "\turl = https://github.com/o/open-LAB.git",
+    '[submodule "standalone/secret-LAB"]', "\tpath = standalone/secret-LAB", "\turl = https://github.com/o/secret-LAB.git", ""].join("\n"));
+  // a fake gh: only o/open-LAB is visible to "this account"
+  const bin = join(root, "bin"); mkdirSync(bin);
+  writeFileSync(join(bin, "gh"), '#!/bin/sh\n[ "$2" = "repos/o/open-LAB" ] && { echo o/open-LAB; exit 0; }\nexit 1\n', { mode: 0o755 });
+  return { root, bin };
+}
+
+test("submodule_repo maps a path to owner/name from .gitmodules", () => {
+  const { root } = accessRoot();
+  const r = spawnSync("bash", ["-c", `set -u; root="$1"; ${fnOf("submodule_repo")}\nsubmodule_repo standalone/secret-LAB`, "_", root], { encoding: "utf8" });
+  assert.equal(r.stdout.trim(), "o/secret-LAB");
+});
+
+test("split_by_access skips repos this account cannot see and keeps real failures", () => {
+  const { root, bin } = accessRoot();
+  const fns = ["submodule_repo", "has_access", "split_by_access"].map(fnOf).join("\n");
+  const r = spawnSync("bash", ["-c", `set -u; root="$1"; ${fns}\nsplit_by_access standalone/open-LAB standalone/secret-LAB; echo "skip=[$no_access_paths] broken=[$broken_paths]"`, "_", root],
+    { encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+  assert.equal(r.stdout.trim(), "skip=[ standalone/secret-LAB] broken=[ standalone/open-LAB]");
+});

@@ -90,9 +90,19 @@ case "$sub" in
     git -C "$root" submodule sync --recursive
     # Restart the shelf if its pin moved (it serves the update banner/notes — it
     # must run the new code for users to see them).
-    shelf_pin_before=$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')
-    git -C "$root" submodule update --init --recursive
-    shelf_pin_after=$(git -C "$root" ls-tree HEAD standalone/demo-shelf-LAB | awk '{print $3}')
+    # The shelf folder's checked-out commit, not the meta-repo pin: the pull above already moved the pin,
+    # so comparing pins never saw a change and the shelf kept running old code after every update.
+    shelf_pin_before=$(git -C "$root/standalone/demo-shelf-LAB" rev-parse HEAD 2>/dev/null)
+    # shellcheck source=lib-labs.sh
+    dry_run=0; . "$root/scripts/lib-labs.sh"
+    # Labs whose repo this account cannot see (private) are skipped, never fatal; see lib-labs.sh.
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$root" submodule update --init --recursive; then
+      # shellcheck disable=SC2046
+      split_by_access $(submodules_each)
+      [ -n "$no_access_paths" ] && echo "  skipped (repo not visible to your GitHub account):$no_access_paths"
+      [ -n "$broken_paths" ] && { echo "  could not update:$broken_paths (run: git submodule update --init <path> to see why)"; exit 1; }
+    fi
+    shelf_pin_after=$(git -C "$root/standalone/demo-shelf-LAB" rev-parse HEAD 2>/dev/null)
     if [ -d "$root/standalone/demo-shelf-LAB" ]; then
       if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
         echo "Shelf not running — starting it..."
@@ -115,8 +125,6 @@ case "$sub" in
     fi
     # Bring back what the user had running (the shelf's history), rebuilt so the new code is live.
     # Nothing else starts here: an update never adds labs the user did not have up.
-    # shellcheck source=lib-labs.sh
-    dry_run=0; . "$root/scripts/lib-labs.sh"
     restore="$(top_labs 10 history-only)"
     if [ -n "$restore" ]; then
       echo "Restarting the labs you had running, with the updated code:"

@@ -139,3 +139,36 @@ start_labs() {
   [ -n "$ok" ] && record_started $ok
   return 0
 }
+
+# ---- submodules a user cannot access ----------------------------------------------------------
+# Some lab repos can be private. A user without access must still get every other lab, so a
+# failed submodule update is retried one lab at a time and the inaccessible ones are skipped.
+
+# submodule_repo <path>: owner/name of that submodule's GitHub repo (from .gitmodules).
+submodule_repo() {
+  git -C "$root" config -f .gitmodules --get-regexp '^submodule\..*\.path$' | while read -r key p; do
+    [ "$p" = "$1" ] || continue
+    git -C "$root" config -f .gitmodules --get "${key%.path}.url" | sed -E 's#^https://github.com/##; s#^git@github.com:##; s#\.git$##'
+  done
+}
+# has_access <path>: can the signed-in GitHub account see that submodule's repo?
+has_access() {
+  local repo; repo="$(submodule_repo "$1")"
+  [ -n "$repo" ] && gh api "repos/$repo" --jq .full_name > /dev/null 2>&1
+}
+# submodules_each: init every submodule on its own (no credential prompts); prints the failed paths.
+submodules_each() {
+  local p failed=""
+  for p in $(git -C "$root" config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}'); do
+    GIT_TERMINAL_PROMPT=0 git -C "$root" submodule update --init --recursive -- "$p" > /dev/null 2>&1 || failed="$failed $p"
+  done
+  echo $failed
+}
+# split_by_access <path...>: sets $no_access_paths (skipped: repo not visible to this account)
+# and $broken_paths (visible but failed: a real error).
+split_by_access() {
+  local p; no_access_paths=""; broken_paths=""
+  for p in "$@"; do
+    if has_access "$p"; then broken_paths="$broken_paths $p"; else no_access_paths="$no_access_paths $p"; fi
+  done
+}
