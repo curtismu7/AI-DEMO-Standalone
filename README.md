@@ -219,7 +219,9 @@ Some apps (for example id-jag-standalone) need a PingFederate. The setup script 
 scripts/pingfederate-setup.sh
 ```
 
-You need Docker (OrbStack or Docker Desktop) and a license file named `pingfederate.lic`, placed at `~/Documents/pingfederate.lic` (or set `PF_LICENSE_FILE`). The script asks you to accept Ping's terms before it installs.
+You need Docker (OrbStack or Docker Desktop) and a license file named `pingfederate.lic`, placed at `~/.config/demo-kit/pingfederate.lic` (or set `PF_LICENSE_FILE`). The script asks you to accept Ping's terms before it installs.
+
+**Image and container:** the script installs `pingidentity/pingfederate:13.1.3-latest` (override with `PF_IMAGE`) in a container named `id-jag-kit-pf`. If a container named `pingfederate-lab` exists from an earlier version, it reuses that one and never creates a second PingFederate. Override the name with `PF_CONTAINER`.
 
 **Default login (new local install):**
 - Username: `administrator`
