@@ -2,6 +2,8 @@
 # Reads PingFederate + PingGateway container stdout and the Privilege gateway
 # cyonproxy.log, normalises to the ping-logs common fields, masks secrets,
 # and bulk-creates into Elasticsearch index ping-logs-<ping_product>.
+# A second pipeline (demo_docker, normalize_demo, elasticsearch_demo) ships the AI-DEMO2 and lab
+# containers, which are not Ping products, into demo-logs-<service>.
 #
 # Note: Vector interpolates environment variables everywhere in this file
 # (comments too), so a literal dollar sign in VRL (regex capture refs) is
@@ -43,6 +45,21 @@ sources:
     read_from: end
     max_line_bytes: 262144
     offset_key: offset
+
+  # The AI-DEMO2 and lab containers (not Ping products): same Docker socket, one source, matched by container-name prefix.
+  # They go to their own index family demo-logs-<service>; the ping-logs-<product> indexes above are untouched.
+  demo_docker:
+    type: docker_logs
+    docker_host: unix:///var/run/docker.sock
+    include_containers:
+      - "lab-proxy-lab-proxy-1"
+      - "procyon-nodesensor"
+      - "ai-demo-mcp-gateway"
+      - "ai-demo-llm-proxy"
+      - "ai-demo-authz-server"
+      - "ai-demo-mcp-server"
+      - "ai-demo-mcp-weather"
+      - "ai-demo-hitl-service"
 
 transforms:
   normalize:
@@ -263,6 +280,60 @@ transforms:
       out.doc_id = sha2(id_src, variant: "SHA-256")
       . = out
 
+  # demo-logs: the same masking as normalize above (a test keeps the two blocks identical), then a few common fields.
+  # level is only taken from a JSON "level" or a logfmt level= (never guessed from words in the text).
+  normalize_demo:
+    type: remap
+    inputs: [demo_docker]
+    source: |
+      raw = string(.message) ?? ""
+      container = string(.container_name) ?? ""
+      ts = .timestamp
+      src_ts = .timestamp
+
+      # Strip ANSI colour codes (PingGateway logback) and mask secrets
+      # BEFORE any parsing, so parsed fields inherit the masking.
+      m = replace(raw, r'\x1b\[[0-9;]*m', "")
+      # A joined PingFederate record: drop the file prefix from the
+      # continuation lines (the first line's prefix is parsed below).
+      m = replace(m, r'\n/opt/out/instance/log/[A-Za-z0-9._-]+: {1,2}', "\n")
+      # Parameter dumps ("name:" then the value on the following indented
+      # line or lines): replace every value line.
+      m = replace(m, r'(?i)(\b(?:client_secret|password|client_assertion|refresh_token|access_token|id_token|subject_token|actor_token|code|code_verifier|assertion|authorization)[ \t]*:[ \t]*)(?:\n[ \t]+[^\n]*)+', "$${1}\n    ***")
+      # Same-line "name: value", "name=value", JSON "name":"value".
+      m = replace(m, r'(?i)\b(client_secret|password|client_assertion|refresh_token|access_token|id_token|subject_token|actor_token|assertion)(["\x27]?[ \t]*[:=][ \t]*["\x27]?)[^\s"\x27&,;}\]]+', "$${1}$${2}***")
+      # "code" only as a query or form parameter or a JSON key, so ordinary
+      # text like "status code: 404" stays readable.
+      m = replace(m, r'(?im)(^|[?&"\x27])(code|code_verifier)(["\x27]?[ \t]*[:=][ \t]*["\x27]?)[^\s"\x27&,;}\]]+', "$${1}$${2}$${3}***")
+      # Header-style "name: [scheme] value" (also JSON "name":["value"]).
+      m = replace(m, r'(?i)\b(proxy-authorization|authorization|set-cookie|cookie|x-api-key)("?\s*[:=]\s*\[?\s*"?)(?:(?:bearer|basic|apikey|dpop|negotiate)\s+)?[^\s"\x27,;}\]\[{]+', "$${1}$${2}[REDACTED]")
+      m = replace(m, r'(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+', "Bearer [REDACTED]")
+      m = replace(m, r'(?i)\bbasic\s+[A-Za-z0-9+/=]{8,}', "Basic [REDACTED]")
+      m = replace(m, r'sk-[A-Za-z0-9_-]{6,}', "sk-[REDACTED]")
+      m = replace(m, r'eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*', "[REDACTED_JWT]")
+      m = replace(m, r'(?i)\bcookie\{[^}]*\}', "Cookie{[REDACTED]}")
+
+      out = {
+        "environment": "local",
+        "event_kind": "runtime",
+        "host": container
+      }
+      svc = replace(container, r'^ai-demo-', "")
+      svc = replace(svc, r'^lab-proxy-lab-proxy-1$', "lab-proxy")
+      out.demo_service = svc
+      if starts_with(m, "{") {
+        j = parse_json(m) ?? null
+        if is_object(j) && is_string(j.level) { out.level = downcase(string!(j.level)) }
+      } else {
+        l = parse_regex(m, r'(?i)\blevel="?(?P<level>[A-Za-z]+)') ?? null
+        if l != null { out.level = downcase(string!(l.level)) }
+      }
+      out."@timestamp" = ts
+      out.message = m
+      # Same idea as the ping id: the container, Docker's per-line time and the raw line, so a re-read gives the same id.
+      out.doc_id = sha2(container + "|" + (format_timestamp(src_ts, "%Y-%m-%dT%H:%M:%S%.9fZ") ?? "") + "|" + raw, variant: "SHA-256")
+      . = out
+
   # PingFederate server.log DEBUG lines (heartbeat, locale, cookie and
   # request-id chatter) were about 60% of PF volume; drop them.
   drop_pf_debug:
@@ -293,3 +364,64 @@ sinks:
       type: disk
       max_size: 268435488   # Vector's minimum disk buffer (~256 MiB)
       when_full: block
+
+  elasticsearch_demo:
+    type: elasticsearch
+    inputs: [normalize_demo]
+    endpoints:
+      - "${PING_LOGS_ES_URL}"
+    api_version: v8
+    mode: bulk
+    bulk:
+      action: create
+      index: "demo-logs-{{ demo_service }}"
+    id_key: doc_id
+    encoding:
+      except_fields: [doc_id]
+    request:
+      headers:
+        Authorization: "ApiKey ${PING_LOGS_ES_APIKEY}"
+    healthcheck:
+      enabled: false
+    buffer:
+      type: disk
+      max_size: 268435488
+      when_full: block
+
+# Run these with Vector's test command on this file (see the README, Check the config). Note: no dollar signs in comments, Vector reads them as variables.
+tests:
+  - name: demo-logs masks secrets, names the service and reads level
+    inputs:
+      - insert_at: normalize_demo
+        type: log
+        log_fields:
+          message: 'time=1 level=WARN msg="call" client_secret=hunter2 Authorization: Bearer abc.def.ghi'
+          container_name: ai-demo-llm-proxy
+          timestamp: "2026-11-09T10:00:00Z"
+    outputs:
+      - extract_from: normalize_demo
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.demo_service, "llm-proxy")
+              assert_eq!(.level, "warn")
+              assert_eq!(.environment, "local")
+              assert!(!contains(string!(.message), "hunter2"))
+              assert!(!contains(string!(.message), "abc.def.ghi"))
+              assert!(is_string(.doc_id))
+  - name: demo-logs lab proxy name and JSON level
+    inputs:
+      - insert_at: normalize_demo
+        type: log
+        log_fields:
+          message: '{"level":"ERROR","msg":"x","password":"p4ss"}'
+          container_name: lab-proxy-lab-proxy-1
+          timestamp: "2026-11-09T10:00:00Z"
+    outputs:
+      - extract_from: normalize_demo
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.demo_service, "lab-proxy")
+              assert_eq!(.level, "error")
+              assert!(!contains(string!(.message), "p4ss"))

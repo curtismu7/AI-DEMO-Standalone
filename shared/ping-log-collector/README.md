@@ -15,6 +15,23 @@ to Elasticsearch in the `ping-logs-<ping_product>` indexes. It runs on OrbStack
 Today only PingFederate `server.log` (and `init.log`) reach stdout. `admin.log`,
 `admin-api.log` and `audit.log` are handled, but nothing sends them yet.
 
+## The AI-DEMO2 and lab containers (`demo-logs-*`)
+
+A second pipeline (`demo_docker`, `normalize_demo`, `elasticsearch_demo`) reads eight containers that are not Ping products and writes them to
+`demo-logs-<service>`, so the `ping-logs-<ping_product>` indexes stay Ping-only. The containers are matched by name prefix and have fixed
+names: `lab-proxy-lab-proxy-1` (service `lab-proxy`), `procyon-nodesensor`, and the AI-DEMO2 services `ai-demo-mcp-gateway`,
+`ai-demo-llm-proxy`, `ai-demo-authz-server`, `ai-demo-mcp-server`, `ai-demo-mcp-weather` and `ai-demo-hitl-service` (service name without the
+`ai-demo-` prefix). A container that is not running is simply absent.
+
+They get exactly the same masking as the Ping pipeline (a test keeps the two blocks identical), then these fields: `@timestamp` (Docker's
+per-line time), `demo_service`, `host` (the container), `environment` (`local`), `event_kind` (`runtime`), `message`, and `level` only when the
+line has a JSON `level` or a logfmt `level=` (never guessed from words). Document id: SHA-256 of the container, Docker's per-line time and the raw line.
+
+The key in `PING_LOGS_ES_APIKEY` must be allowed to write `demo-logs-*` as well as `ping-logs-*`. Run `./make-write-key.sh` (you run it; it needs
+the Elasticsearch port-forward and the password of a user that may create keys, typed hidden or read from a cluster Secret) to make a
+write-only key for both families and save it in `.env`; then `docker --context orbstack compose up -d --force-recreate`. Reading is a separate,
+read-only key (observability-LAB's `scripts/make-read-key.sh`).
+
 ## What it writes
 
 Each event has these fields: `@timestamp`, `ping_product`, `ping_component`,
@@ -77,6 +94,9 @@ docker --context orbstack run --rm --read-only -e PING_LOGS_ES_URL=http://x:9200
   -v "$PWD/vector.yaml:/etc/vector/vector.yaml:ro" timberio/vector:0.50.0-alpine \
   validate --no-environment /etc/vector/vector.yaml
 ```
+
+The file also holds Vector unit tests for the demo pipeline (masking, service name, level). Run them with the same command and `test` in place of `validate`.
+Do not put a dollar sign in a comment: Vector reads variables inside comments too.
 
 `validate --no-environment` does not compile the VRL. To catch VRL errors, run
 the pipeline against a console sink.
