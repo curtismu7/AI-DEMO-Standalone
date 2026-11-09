@@ -113,3 +113,4 @@
   }
   .fd-titlebar { cursor: default; touch-action: auto; }
 }
+.fd-popout-layout:focus { outline: none; }

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MARGIN, clampToViewport, initialPosition, keyboardStep, resizeRect } from '../shared/floating-dialog/geometry.js';
+import { MARGIN, clampSize, clampToViewport, initialPosition, keyboardStep, resizeRect } from '../shared/floating-dialog/geometry.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'shared');
 const read = (p) => fs.readFileSync(path.join(dir, p), 'utf8');
@@ -18,6 +18,15 @@ test('clampToViewport keeps a restored panel inside the window, and pins an over
   assert.deepEqual(clampToViewport({ x: 100, y: 100 }, { w: 400, h: 300 }, vp), { x: 100, y: 100 });
   assert.deepEqual(clampToViewport({ x: 500, y: 500 }, { w: 5000, h: 5000 }, vp), { x: MARGIN, y: MARGIN });
   assert.deepEqual(clampToViewport({ x: 9, y: 9 }, { w: 1, h: 1 }, null), { x: 9, y: 9 });
+});
+
+test('clampSize validates a restored size and keeps it within min..window; h null stays null', () => {
+  assert.deepEqual(clampSize({ w: 10, h: 5 }, min, vp), { w: 300, h: 200 });
+  assert.deepEqual(clampSize({ w: 9000, h: 9000 }, min, vp), { w: 1280 - 2 * MARGIN, h: 900 - 2 * MARGIN });
+  assert.deepEqual(clampSize({ w: 400, h: null }, min, vp), { w: 400, h: null });
+  assert.equal(clampSize({ w: 400, h: 'tall' }, min, vp), null);
+  assert.equal(clampSize({ w: NaN, h: 1 }, min, vp), null);
+  assert.equal(clampSize(null, min, vp), null);
 });
 
 test('resizeRect grows east/south and stops at the minimum size', () => {
@@ -42,7 +51,7 @@ test('keyboardStep: arrows move 10, Shift 50, Alt resizes, other keys are ignore
   assert.equal(keyboardStep('Enter'), null);
 });
 
-test('initialPosition: explicit x/y win, else centred or against the right edge', () => {
+test('initialPosition: explicit x/y win, else centred or against the right edge (placement only picks where it opens)', () => {
   assert.deepEqual(initialPosition({ vp, w: 400, h: 300, x: 5, y: 6 }), { x: 5, y: 6 });
   assert.deepEqual(initialPosition({ vp, w: 400, h: 300 }), { x: 440, y: 270 });
   assert.equal(initialPosition({ vp, w: 400, h: 300, placement: 'right' }).x, 1280 - 400 - MARGIN);
@@ -64,4 +73,5 @@ test('pop-out opens a same-origin blank window, never a URL', () => {
   assert.match(src, /window\.open\("", name, `popup,width=/);
   assert.equal(/window\.open\(\s*["'`]https?:/.test(src), false);
   assert.equal(/\balert\(/.test(src), false);
+  assert.match(src, /fd_\$\{PAGE_ID\}_/); // unique per page load
 });

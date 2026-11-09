@@ -33,7 +33,13 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
   this page's `<link rel="stylesheet">` and `<style>` nodes and the root `data-theme`, and renders the content there
   through its own React root. State stays in this page, so the popped-out copy is live. The page shows a placeholder
   with Focus and Close window; closing the window (either way) brings the dialog back into the page. If the browser
-  blocks the popup, the dialog stays in the page and says so (no `alert()`).
+  blocks the popup, the dialog stays in the page and says so (no `alert()`). The popped-out dialog takes focus, and
+  Escape anywhere in that window closes it. A theme change in the page reaches the popup. The window name is unique
+  per page load, and a reused window is cleared before it is built (never a second root or doubled styles); if the
+  browser swaps the blank document after it was built, it is built again. Reloading or leaving the page closes the
+  popup, as do closing or unmounting the dialog.
+- Do not put `target="_blank"` links inside a dialog: the popup keeps a handle on this page (`window.opener`), and a
+  page opened from it would too. (Standalone apps show link-outs as plain labels anyway.)
 - Close button in the title bar and Escape (a modal listens on the page; a `noBackdrop` panel only while focus is in
   it). Default footer with a Close button.
 - Focus moves into the dialog on open (the close button) and back to whatever opened it on close. A modal holds Tab
@@ -54,7 +60,7 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
 | `footer` | `undefined` | `undefined` = a Close button, `null` = none, a node = that node |
 | `defaultWidth` / `defaultHeight` | `520` / `600` | `defaultHeight={null}` fits the content until resized |
 | `defaultX` / `defaultY` | `null` | `null` = from `placement` |
-| `placement` | `"center"` | or `"right"` (full-height drawer on the right edge) |
+| `placement` | `"center"` | or `"right"`: where it first opens; after that it moves and resizes like any other |
 | `storageKey` | `null` | localStorage key for position and size |
 | `minWidth` / `minHeight` | `320` / `240` | |
 | `zIndex` | `1000` | |
@@ -69,8 +75,12 @@ import FloatingDialog from "./floating-dialog/FloatingDialog";
 ## Tests
 
 - `floating-dialog.test.jsx` (vitest): drag, resize clamps, keyboard move and resize, Escape and focus return, Tab
-  held in a modal, singleton, persistence (and throwing storage), the narrow sheet, pop-out (same-origin blank window,
-  stylesheets and theme copied, live content, placeholder, closing restores, blocked popup). Runs in each lab that
+  held in a modal (also from the panel itself), singleton, persistence (restored position and size clamped on every
+  side, throwing storage), the narrow sheet, pop-out (same-origin blank window, stylesheets and theme copied, theme
+  changes mirrored, live content, placeholder, closing restores, Escape in the popup, closed on page unload, unmount
+  and isOpen=false, unique name, a reused window cleared, a swapped blank document rebuilt, blocked popup).
+  jsdom has no real second window: the lab's e2e drives a real popup in Chromium (stylesheets applied, placeholder,
+  close restores, Escape in the popup). Runs in each lab that
   vendors the folder (first: customer-agent-LAB).
 - `../../test/floating-dialog.test.mjs` (this repo's `node --test`): the geometry, no literal colours in the CSS, and
   the pop-out never opening a URL.

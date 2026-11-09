@@ -18,6 +18,16 @@ export function clampToViewport(p, size, vp) {
   return { x: Math.min(Math.max(p.x, MARGIN), maxX), y: Math.min(Math.max(p.y, MARGIN), maxY) };
 }
 
+// A restored or keyboard-resized size: finite numbers only, at least the minimum, at most the viewport (minus the
+// margins). h null means "fit the content" and stays null. Returns null when the size is not usable at all.
+export function clampSize(size, min, vp) {
+  if (!size || !Number.isFinite(size.w)) return null;
+  if (size.h != null && !Number.isFinite(size.h)) return null;
+  const maxW = vp && vp.w ? Math.max(min.w, vp.w - 2 * MARGIN) : Infinity;
+  const maxH = vp && vp.h ? Math.max(min.h, vp.h - 2 * MARGIN) : Infinity;
+  return { w: Math.min(Math.max(size.w, min.w), maxW), h: size.h == null ? null : Math.min(Math.max(size.h, min.h), maxH) };
+}
+
 // Resize from any edge or corner. `start` is { x, y, w, h } when the resize began, dx/dy the pointer travel.
 // Growing from the north or west edge moves the top-left corner; that growth is capped so the title bar (the only
 // drag target) can never be pushed off the top or left edge. The floor is min(0, start) so a panel the user dragged
