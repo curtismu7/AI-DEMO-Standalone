@@ -107,7 +107,7 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | hitl-mfa-lab-LAB | Demo | standalone/hitl-mfa-lab-LAB |
 | idjag-runner-LAB | Tester | standalone/idjag-runner-LAB |
 | mcp-gateway-lab-LAB | Demo | standalone/mcp-gateway-lab-LAB |
-| ping-shared (infra) | Rule 20 shared Ping products | shared/ping-shared |
+| ping-shared (infra) | Rule 20 shared Ping products it runs itself: PingFederate, a minimal PingGateway, the CIMD server | shared/ping-shared |
 
 ## One domain for demo users (lab-proxy)
 
@@ -214,6 +214,8 @@ It reads the app list from the shelf registry on GitHub and shallow-clones each 
 ## PingFederate (for apps that need it)
 
 Some apps (for example id-jag-standalone) need a PingFederate. The setup script checks for one first. If one answers, it asks for its admin login. If none is running, it installs the official image in Docker and binds it to 127.0.0.1 only.
+
+The shared `ping-shared` project (`shared/ping-shared`) runs the same PingFederate as a compose service and is what `scripts/bootstrap.sh` starts. It owns it: nothing depends on AI-DEMO2. It needs the same licence file, and it never accepts Ping's terms for you. With no licence file, setup prints `PingFederate skipped: no licence file at <path>` and carries on; the labs' Mock mode needs no PingFederate. `shared/ping-shared/scripts/ping-shared.sh up pingfederate` starts it by hand (it asks for the YES), and one instance per host is kept: a PingFederate already running on 4732 is reused. See `shared/ping-shared/README.md`.
 
 ```sh
 scripts/pingfederate-setup.sh
