@@ -20,6 +20,13 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.9 (2026-11-10)
+
+**Improved**
+- Shelf banners fold: a closed What's new panel or Updates banner now folds to a one-line strip with a Show button instead of disappearing. Show re-opens it for that visit only; a new release or a new lab opens the full panel again. The fold is remembered across visits (same localStorage keys as before).
+- Ports reserved: demo-map-lab on 7808, ping-shared's PingGateway on 7809.
+- pingone-setup: clearer guidance when the worker lacks an Organization Admin role (early probe plus an ACCESS_FAILED hint).
+
 ## 2.8 (2026-11-10)
 
 **New labs**
