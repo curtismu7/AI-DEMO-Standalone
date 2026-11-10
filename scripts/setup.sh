@@ -72,6 +72,9 @@ fi
 # Keep the canonical checkout current; recover from divergence instead of
 # staying stale (the Air's repeated 'not our ref' failures came from this).
 sync_to_origin
+# Re-read submodule URLs from the (possibly updated) .gitmodules — a checkout
+# predating the ping-sandbox -> curtismu7 migration keeps fetching dead repos otherwise.
+git -C "$root" submodule sync --recursive > /dev/null 2>&1 || true
 
 sub="${1:-}"
 case "$sub" in

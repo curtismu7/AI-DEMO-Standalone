@@ -43,9 +43,13 @@ sync_to_origin() {
     echo "  local checkout diverged from GitHub — resetting to origin/main (stray changes stashed)"
     git -C "$canonical" stash push -m "auto-stash before sync $(date +%F)" > /dev/null 2>&1 || true
     git -C "$canonical" reset --hard origin/main
+    # reset --hard updates .gitmodules but git does NOT re-read submodule URLs from it;
+    # a checkout predating the ping-sandbox -> curtismu7 migration keeps fetching the
+    # dead repo. sync re-reads every URL from the fresh .gitmodules.
+    git -C "$canonical" submodule sync --recursive > /dev/null 2>&1 || true
   fi
+  git -C "$canonical" submodule sync --recursive > /dev/null 2>&1 || true
 }
-
 if [ -d "$canonical/.git" ]; then
   echo "Found existing checkout at $canonical — updating."
   # If the checkout points at a stale/different remote (e.g. the old
