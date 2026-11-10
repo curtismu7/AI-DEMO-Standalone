@@ -20,6 +20,17 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.7 (2026-11-09)
+
+**New labs**
+- customer-agent (D24): the customer-facing AI agent with all 87 use cases, each routed Here, Here + go deeper, Hand off or Guide. A movie reel, sequence view and step detail for every run; hand-offs to 30 labs, whose Back button resumes the chat; an A2A page; a Scripted or local llama.cpp brain. Mock runs offline; Live reads the lab's own .env.
+
+**Improved**
+- pingone-signin: a Passkey tab walks through passkey registration and sign-in step by step, with every server check shown and a replayed sign-in refused. Mock only; the Real card lists the tenant setup.
+- token-workbench: Real mode gets, verifies and introspects tokens against one PingOne or PingFederate issuer you configure in its .env, with a log of every HTTP call. Mock stays the default.
+- Dialogs in 10 labs are now movable, resizable and can pop out into their own window (gateway-suite, hitl-mfa, id-jag, mcp-tools, pingone-mcp-inspector, muse, personal-agent-demo, pingcli, pingfederate, pingone).
+- 29 labs show "Opened from Customer Agent LAB" with a Back button when you arrive from the customer agent.
+
 ## 2.6 (2026-11-09)
 
 **New labs**
