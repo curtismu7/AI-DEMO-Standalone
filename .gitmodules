@@ -236,3 +236,6 @@
 [submodule "standalone/mcp-skills-LAB"]
 	path = standalone/mcp-skills-LAB
 	url = https://github.com/curtismu7/mcp-skills-LAB.git
+[submodule "standalone/demo-map-LAB"]
+	path = standalone/demo-map-LAB
+	url = https://github.com/curtismu7/demo-map-LAB.git

@@ -20,6 +20,14 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.8 (2026-11-10)
+
+**New labs**
+- demo-map: a one-page map of the demo family. A row for the Personal Agent demo, the Digital Worker agent and each Ping product (PingOne, PingFederate, PingGateway, Privilege, Authorize, Protect), with the shelf's apps that belong in it and the AI-DEMO2 pages for it. Mock uses a made-up sample; Real reads your local shelf.
+
+**Improved**
+- The shelf has a PingOne Protect tag, and the apps that use PingOne Authorize or PingOne Protect now carry them (Muse, Personal Agent Flow, Customer Agent, agent-mcp-door, agent-preferences).
+
 ## 2.7 (2026-11-09)
 
 **New labs**
