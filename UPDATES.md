@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.6** — one new lab on the shelf: A2A Lab, a generalist agent handing off to a specialist through two token exchanges. Run the update command below to get it.
+**Version 2.7** — Customer Agent LAB is on the shelf: the customer-facing AI agent with all 87 use cases, a movie reel for every run, and hand-offs to 30 labs with a Back button. Also new: a Passkey tab in pingone-signin, Real mode in token-workbench, and movable dialogs in 10 labs. Run the update command below to get it.
