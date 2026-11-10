@@ -475,7 +475,7 @@ fi
 
 step "Shared services"
 # Every shared/<svc>/docker-compose.yml is per-host infra the labs reuse (rule 20: ping-shared's
-# network + cimd-doc-server, the log collector, ...). Bring each one up so a new service ships
+# network + cimd-doc-server, the log collector, ...). ping-shared also owns PingFederate and a minimal PingGateway (below). Bring each one up so a new service ships
 # by adding its folder. lab-proxy is the watchdog's job (next step). A service whose compose
 # demands settings (${VAR:?...}) waits until its own .env exists — never a half-configured start.
 svc_up=""; svc_skip=""; svc_fail=""
@@ -492,9 +492,33 @@ for f in "$root"/shared/*/docker-compose.yml; do
     svc_fail="$svc_fail $svc"
   fi
 done
+# ping-shared's own Ping products (PingFederate, PingGateway) start from ping-shared itself, never from another
+# project's containers. A product that is not ready is skipped with a plain reason and never fails the setup:
+# exit 4 = no PingFederate licence file, 5 = licence found but Ping's terms not accepted (the user's step), 6 = gateway not configured.
+ps_script="$root/shared/ping-shared/scripts/ping-shared.sh"
+pf_note=""
+if [ -x "$ps_script" ]; then
+  ps_flags=(--non-interactive); [ "$dry_run" = 1 ] && ps_flags+=(--dry-run)
+  pf_rc=0; pf_out="$(perl -e 'alarm 600; exec @ARGV' "$ps_script" up pingfederate "${ps_flags[@]}" 2>&1)" || pf_rc=$?
+  gw_rc=0; gw_out="$(perl -e 'alarm 300; exec @ARGV' "$ps_script" up pinggateway "${ps_flags[@]}" 2>&1)" || gw_rc=$?
+  [ "$dry_run" = 1 ] && { printf '%s\n' "$pf_out" "$gw_out" | grep '^would run' | sed 's/^/    /'; }
+  case "$pf_rc" in
+    0) svc_up="$svc_up pingfederate" ;;
+    4) pf_note="PingFederate skipped: no licence file at ${PF_LICENSE_FILE:-$HOME/.config/demo-kit/pingfederate.lic}"
+       step_detail "$pf_out" ;;
+    5) pf_note="PingFederate not started: licence found, Ping's terms not accepted yet"
+       step_detail "$pf_out" ;;
+    *) svc_fail="$svc_fail pingfederate"; step_detail "$pf_out" ;;
+  esac
+  case "$gw_rc" in
+    0) svc_up="$svc_up pinggateway" ;;
+    6) ;;   # optional, and not configured: nothing to report
+    *) svc_fail="$svc_fail pinggateway"; step_detail "$gw_out" ;;
+  esac
+fi
 [ -n "$svc_skip" ] && step_detail "Not configured yet (fill in .env from .env.example in each, then re-run):$(for s in $svc_skip; do printf '\n  shared/%s' "$s"; done)"
 [ -n "$svc_fail" ] && step_detail "Failed to start (log: /tmp/standalone-shared-<name>.log):$svc_fail"
-if [ -n "$svc_fail" ]; then step_warn "up:${svc_up:- none}"; else step_ok "up:${svc_up:- none}${svc_skip:+ (skipped:$svc_skip)}"; fi
+if [ -n "$svc_fail" ] || [ -n "$pf_note" ]; then step_warn "up:${svc_up:- none}${pf_note:+; $pf_note}"; else step_ok "up:${svc_up:- none}${svc_skip:+ (skipped:$svc_skip)}"; fi
 
 step "Launcher"
 # All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.
