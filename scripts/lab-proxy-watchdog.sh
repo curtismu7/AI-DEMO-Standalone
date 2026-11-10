@@ -10,6 +10,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Keep the shelf's start agent alive too: Start/Stop buttons in the shelf need it
 # (the containerised shelf cannot run docker on the host by itself). Loopback only.
+# Also bring the shelf container itself up when it is missing or exited: closing the
+# terminal that ran `npm run agent` used to leave the shelf 503 until a human fixed it.
 agent_dir="$root/standalone/demo-shelf-LAB"
 if [ -d "$agent_dir" ] && ! lsof -iTCP:4405 -sTCP:LISTEN > /dev/null 2>&1; then
   (cd "$agent_dir" && nohup npm run agent > /tmp/standalone-demo-shelf-agent.log 2>&1 &)
@@ -34,6 +36,15 @@ if ! docker_ok; then
   for _ in 1 2 3 4 5 6; do docker_ok && break; sleep 2; done
 fi
 if ! docker_ok; then echo "lab-proxy-watchdog: Docker (OrbStack) is not running"; exit 1; fi
+
+# The shelf container runs with SHELF_AUTOSTART=0 (launchd/watchdog-spawned agents never
+# auto-build), so bring it up here when it is missing or exited: closing the terminal that
+# ran `npm run agent` used to leave the shelf 503 until a human fixed it by hand.
+agent_dir="$root/standalone/demo-shelf-LAB"
+if [ -d "$agent_dir" ] && ! docker --context "$docker_ctx" ps --format '{{.Names}}' 2>/dev/null | grep -qi "shelf"; then
+  (cd "$agent_dir" && SHELF_OPEN=0 node scripts/docker-up.mjs up > /tmp/standalone-demo-shelf-docker-up.log 2>&1) \
+    && echo "lab-proxy-watchdog: shelf container started"
+fi
 
 # Skip list: container-name globs (one per line, # comments) that step 1 never auto-starts, so a
 # lab you stopped on purpose stays stopped. No file = no skips (the default for every user).
