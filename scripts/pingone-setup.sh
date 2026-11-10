@@ -125,6 +125,22 @@ if [[ -z "$access" ]]; then
 fi
 ok "organization token minted"
 
+# Early permission check: a worker with no admin role mints a token fine but
+# fails much later with a cryptic ACCESS_FAILED on the first management call.
+# Probe a call that needs Organization Admin; on 403 tell the user exactly what
+# to fix before re-running.
+perm_probe="$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$api/organizations" -H "authorization: Bearer $access")"
+if [[ "$perm_probe" != "200" ]]; then
+  err "the Worker app you entered has no organization-level admin role (HTTP $perm_probe)."
+  echo "" >&2
+  echo "  Fix in the PingOne console (Administrators environment):" >&2
+  echo "    Applications → your Worker → Roles → assign Organization Admin" >&2
+  echo "    (scope: the Organization, not a single environment)" >&2
+  echo "  Then re-run this script with the same credentials." >&2
+  exit 1
+fi
+ok "worker has an organization admin role"
+
 # ── 2. license ────────────────────────────────────────────────────────────────
 info "Looking for an active license with the demo's entitlements..."
 org_id="$(curl -s --max-time 30 "$api/environments/$PINGONE_ADMIN_ENV_ID" \
@@ -242,7 +258,17 @@ assign="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications
 if printf '%s' "$assign" | grep -q 'UNIQUENESS_VIOLATION'; then
   info "role already assigned — continuing"
 elif printf '%s' "$assign" | grep -q '"code"'; then
-  err "role assignment failed:"; printf '%s\n' "$assign" >&2; exit 1
+  err "role assignment failed:"
+  printf '%s\n' "$assign" >&2
+  if printf '%s' "$assign" | grep -q 'ACCESS_FAILED'; then
+    echo "" >&2
+    echo "  The worker app that minted the org token is not allowed to assign roles." >&2
+    echo "  Fix in the PingOne console (Administrators environment):" >&2
+    echo "    Applications → your Worker → Roles → assign Organization Admin" >&2
+    echo "    (scope: the Organization, not a single environment)" >&2
+    echo "  Then re-run this script." >&2
+  fi
+  exit 1
 fi
 # Secret mint is POST /secret (singular); the value lands in "secret".
 secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/secret" \
