@@ -8,7 +8,7 @@ import { join } from "node:path";
 // bootstrap.sh starts ping-shared's OWN Ping products (never AI-DEMO2's) and says plainly what it skipped.
 // Pull the real block out of bootstrap.sh and run it alone in bash against a stand-in ping-shared.sh.
 const src = readFileSync(new URL("../scripts/bootstrap.sh", import.meta.url), "utf8");
-const block = src.match(/^# ping-shared's own Ping products[\s\S]*?^if \[ -n "\$svc_fail" \] \|\| \[ -n "\$pf_note" \];.*$/m)?.[0];
+const block = src.match(/^# ping-shared's own PingFederate[\s\S]*?^if \[ -n "\$svc_fail" \] \|\| \[ -n "\$pf_note" \];.*$/m)?.[0];
 const repoRoot = new URL("..", import.meta.url).pathname;
 
 function run({ pf = 0, gw = 6, dry = 0, verbose = 0, withScript = true, pfText = "pf output", gwText = "gw output", licenseEnv = "" } = {}) {
@@ -41,10 +41,10 @@ test("bootstrap names no AI-DEMO2 container and calls only ping-shared's script"
   assert.doesNotMatch(block, /ai-demo/i);
 });
 
-test("everything ready: PingFederate and PingGateway are listed as up", () => {
-  const r = run({ pf: 0, gw: 0 });
+test("everything ready: PingFederate is listed as up", () => {
+  const r = run({ pf: 0 });
   assert.equal(r.status, 0, r.out);
-  assert.match(r.out, /^OK up: pingfederate pinggateway/m);
+  assert.match(r.out, /^OK up: pingfederate$/m);
 });
 
 test("no licence (exit 4): a WARN that names the licence path, the script's help is shown, nothing fails", () => {
@@ -73,14 +73,15 @@ test("a real failure (exit 1) is reported as failed to start", () => {
   assert.match(r.out, /docker compose could not start PingFederate/);
 });
 
-test("PingGateway not configured (exit 6) is optional and silent", () => {
-  const r = run({ pf: 0, gw: 6 });
+test("this block never starts the PingGateway (it has its own step that asks first)", () => {
+  assert.doesNotMatch(block, /up pinggateway/);
+  const r = run({ pf: 0, gw: 0 });
   assert.doesNotMatch(r.out, /PingGateway|pinggateway/);
   assert.match(r.out, /^OK up: pingfederate$/m);
 });
 
 test("dry run prints the would-run lines", () => {
-  const r = run({ pf: 0, gw: 0, dry: 1 });
+  const r = run({ pf: 0, dry: 1 });
   assert.match(r.out, /would run: docker compose --profile pingfederate up -d pingfederate/);
 });
 
