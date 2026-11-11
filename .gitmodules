@@ -239,3 +239,6 @@
 [submodule "standalone/demo-map-LAB"]
 	path = standalone/demo-map-LAB
 	url = https://github.com/curtismu7/demo-map-LAB.git
+[submodule "standalone/privilege-k8-kits-LAB"]
+	path = standalone/privilege-k8-kits-LAB
+	url = https://github.com/curtismu7/privilege-k8-kits-LAB.git
