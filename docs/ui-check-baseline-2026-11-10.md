@@ -4,7 +4,7 @@ First full run of the per-page checker (`scripts/check-ui-patterns.mjs`) over ev
 
 ## How the numbers were produced
 
-- **State analysed: the exact submodule pins of `origin/main` of this repo, not the working copies.** All 80 app checkouts on this machine were present; 78 sit exactly on their pin, `demo-shelf-LAB` is ahead of its pin and has uncommitted changes, and `id-jag-standalone-LAB` has uncommitted changes. To avoid measuring local edits, each app was exported with `git archive <pin>` (tracked files only) into a scratch directory and the checker was run over that:
+- **State analysed: the exact submodule pins of `origin/main` of this repo, not the working copies.** All 81 app checkouts on this machine were present; 79 sit exactly on their pin, `demo-shelf-LAB` is ahead of its pin and has uncommitted changes, and `id-jag-standalone-LAB` has uncommitted changes. To avoid measuring local edits, each app was exported with `git archive <pin>` (tracked files only) into a scratch directory and the checker was run over that:
   `node scripts/check-ui-patterns.mjs --root <scratch> --json`
 - The five apps recommended below had their pin compared with GitHub `main` (`gh api repos/curtismu7/<app>/commits/main`): all five are at their pin.
 - Static analysis only. A clean page means none of the patterns were found, not that the page is right. Not checked: contrast of computed colours (only the shared tokens are checked), 375px overflow, keyboard behaviour, markup built at run time, CSS-in-JS.
@@ -12,21 +12,21 @@ First full run of the per-page checker (`scripts/check-ui-patterns.mjs`) over ev
 
 ## Headline
 
-- **323 pages** in **76 apps** analysed; 4 apps have no UI pages (listed at the end).
-- **8 pages are clean** (mcp-skills-LAB, privilege-demo-LAB); **315 pages have at least one DRIFT**.
+- **326 pages** in **77 apps** analysed; 4 apps have no UI pages (listed at the end).
+- **8 pages are clean** (mcp-skills-LAB, privilege-demo-LAB); **318 pages have at least one DRIFT**.
 - The 8 clean pages are on the allowlist (`scripts/ui-pattern-converted.txt`) and enforced from this PR on; every other page is advisory.
-- WARN findings (advisory, never a failure): H2 64, T1 50, P2 27, P11 13, P1 9, P6 6, M1 5, P10 5 pages with at least one.
+- WARN findings (advisory, never a failure): H2 64, T1 53, P2 27, P11 13, P1 9, P6 6, M1 5, P10 5 pages with at least one.
 
 ## Findings by rule (pages with DRIFT)
 
 | rule | pages with DRIFT | | rule | pages with DRIFT |
 |------|------|-|------|------|
-| P1 | 263 | | T1 | 7 |
-| P3 | 243 | | H3 | 6 |
-| P9 | 201 | | V1 | 5 |
-| P10 | 98 | | C1 | 2 |
-| A2 | 61 | | T2 | 2 |
-| H1 | 60 | | T3 | 2 |
+| P1 | 266 | | V1 | 8 |
+| P3 | 245 | | T1 | 7 |
+| P9 | 203 | | H3 | 6 |
+| P10 | 101 | | T3 | 5 |
+| A2 | 61 | | C1 | 2 |
+| H1 | 60 | | T2 | 2 |
 | P2 | 60 | | P4 | 1 |
 | M1 | 12 | | P6 | 1 |
 | A1 | 9 | | P7 | 1 |
@@ -49,6 +49,7 @@ Columns: pages found, pages with no DRIFT, pages with DRIFT, DRIFT findings (a f
 | agent-registry-demo-LAB | Demo | 5 | 0 | 5 | 16 | H1×5 P1×5 P3×5 P9×1 |
 | agentcore-pingone-demo-LAB | Demo | 6 | 0 | 6 | 17 | P1×6 P9×6 P3×5 |
 | aggregate-entitlement-LAB | Tester | 3 | 0 | 3 | 12 | A2×3 P1×3 P3×3 P9×3 |
+| ai-demo-standalone-LAB | Demo | 3 | 0 | 3 | 16 | P1×3 P10×3 T3×3 V1×3 |
 | ai-gateway-client-LAB | Tester | 2 | 0 | 2 | 10 | H1×2 P10×2 P2×2 P3×2 |
 | ai-guard-sidecar-LAB | Demo | 1 | 0 | 1 | 5 | A2 P1 P3 P9 |
 | ai-policies-LAB | Demo | 8 | 0 | 8 | 21 | P1×8 P3×8 P9×5 |
