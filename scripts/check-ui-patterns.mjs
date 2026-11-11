@@ -41,7 +41,8 @@
  *   A3  every img has alt
  *   V1  the page loads a standalone-ui.css identical to shared/standalone-ui.css
  *   M1  Mock / Real toggle on the page, wired to /api/mode
- *   C1  token contrast: primary gradient, chips, muted text, borders, focus ring (>= 4.5 text, >= 3 non-text)
+ *   C1  token contrast: primary gradient, chips, muted text, borders, focus ring on content and on the dark shell bar
+ *       (>= 4.5 text, >= 3 non-text)
  *
  * ALLOWLIST (scripts/ui-pattern-converted.txt, one `<app>/<page>` per line): a DRIFT on an enforced page FAILS
  * (exit 1); every other page is advisory and only reported. Convert a page, then add its line in the same PR.
@@ -99,7 +100,7 @@ export const RULES = {
   A3: 'every img has alt (role=img needs a label)',
   V1: 'the page loads a standalone-ui.css identical to the canonical shared/standalone-ui.css',
   M1: 'a visible Mock / Real toggle on the page, wired to /api/mode',
-  C1: 'token contrast of the primary gradient, chips, muted text, borders and focus ring (4.5:1 text, 3:1 non-text)',
+  C1: 'token contrast of the primary gradient, chips, muted text, borders, and the focus ring on content and on the dark shell bar (4.5:1 text, 3:1 non-text)',
 };
 export const RULE_IDS = Object.keys(RULES);
 
@@ -2196,6 +2197,160 @@ const ratioRow = (label, fg, bg, min) => {
   const c = contrast(over(fg, bg), bg);
   return { label, ratio: c, min, ok: c >= min };
 };
+
+// ---- C1: the focus ring on the shell bar
+// A tiny selector matcher over our element tree: enough to ask "does this rule reach that element?".
+function splitComplex(part) {
+  const out = [];
+  let cur = '';
+  let comb = ' ';
+  let depth = 0;
+  for (const ch of part.trim()) {
+    if (ch === '(' || ch === '[') depth += 1;
+    if (ch === ')' || ch === ']') depth -= 1;
+    if (depth === 0 && (/\s/.test(ch) || ch === '>' || ch === '+' || ch === '~')) {
+      if (cur) {
+        out.push({ comb, compound: cur });
+        cur = '';
+        comb = ' ';
+      }
+      if (ch !== ' ' && !/\s/.test(ch)) comb = ch;
+    } else cur += ch;
+  }
+  if (cur) out.push({ comb, compound: cur });
+  return out;
+}
+const SYNTH_CLASS = { ShelfLink: ['shelf-link'] };
+const elClasses = (el) => [...classTokens(el).map((t) => t.replace(/\*$/, '')), ...(SYNTH_CLASS[el.name] || [])];
+function compoundMatches(compound, el) {
+  const c = compound.replace(/::?[a-zA-Z-]+(?:\([^)]*\))?/g, (m) => (m.startsWith(':not(') ? m : ''));
+  const tag = tagOfCompound(c);
+  if (tag && tag !== '*' && tag !== el.name.toLowerCase()) return false;
+  const id = /#([\w-]+)/.exec(c);
+  if (id && attrText(el, 'id') !== id[1]) return false;
+  const have = new Set(elClasses(el));
+  if (!classesOfCompound(c).every((k) => have.has(k))) return false;
+  // [attr] / [attr=value]: a value written as an expression is unknown, which counts as no match
+  for (const m of c.matchAll(/\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*["']?([^"'\]]*?)["']?)?\s*\]/g)) {
+    const a = el.attrs.get(m[1]);
+    if (!a) return false;
+    if (m[2] && (a.type !== 'str' || (m[2] === '=' && a.text !== m[3]))) return false;
+  }
+  return true;
+}
+function selectorMatches(part, el) {
+  const seq = splitComplex(part);
+  if (!seq.length) return true;
+  if (!compoundMatches(seq[seq.length - 1].compound, el)) return false;
+  let cur = el;
+  for (let i = seq.length - 1; i > 0; i -= 1) {
+    const { comb } = seq[i];
+    const want = seq[i - 1].compound;
+    if (comb === '>') {
+      cur = cur.parent && cur.parent.name !== '#root' ? cur.parent : null;
+      if (!cur || !compoundMatches(want, cur)) return false;
+    } else if (comb === ' ') {
+      let a = cur.parent;
+      while (a && a.name !== '#root' && !compoundMatches(want, a)) a = a.parent;
+      if (!a || a.name === '#root') return false;
+      cur = a;
+    }
+  }
+  return true;
+}
+const specificity = (sel) => {
+  const t = sel.replace(/\[[^\]]*\]/g, '.a').replace(/:(?:where|is)\([^)]*\)/g, '');
+  return (t.match(/#[\w-]+/g) || []).length * 100 + ((t.match(/\.[\w-]+/g) || []).length + (t.match(/(?<!:):[a-z-]+/gi) || []).length) * 10 + (t.match(/(?:^|[\s>+~])[a-z][\w-]*/gi) || []).length;
+};
+const FOCUS_PSEUDO = /:focus-visible|:focus-within|:focus\b/;
+const isFocusableEl = (e) => !e.isContainer && e.name !== '#frag' && (
+  (e.name === 'a' && e.attrs.has('href')) || ['button', 'select', 'textarea', 'summary'].includes(e.name) ||
+  (e.name === 'input' && attrText(e, 'type') !== 'hidden') || e.attrs.has('tabIndex') || e.attrs.has('tabindex') ||
+  /^(?:button|link|tab|menuitem|switch|checkbox)$/.test(attrText(e, 'role') || '') || isButtonEl(e) || e.name === 'ShelfLink');
+function descendantsOf(n, out = []) {
+  for (const k of [...(n.rendered || []), ...(n.attrBlocks || []), ...n.children, ...(n.slotted || [])]) {
+    out.push(k);
+    descendantsOf(k, out);
+  }
+  return out;
+}
+const tokenName = (value) => (/var\(\s*(--[\w-]+)/.exec(value) || [])[1] || null;
+
+/** Focus ring on the app shell bar, light and dark: one row per theme and cause. Returns { rows, notes }. */
+function barRingFindings(u, maps) {
+  const forest = forestOf(u);
+  const all = forest ? forest.all : u.els;
+  const bars = all.filter((e) => !e.isContainer && hasClass(e, /^shell-bar$/));
+  if (!bars.length) return [];
+  const rules = u.sheets.flatMap((s) => s.parsed.rules.map((r, order) => ({ r, order, shared: s.name === 'standalone-ui.css', ord: `${s.path}:${order}` })));
+  const themeOk = (r, theme) => (isDarkAt(r) ? theme === 'dark' : !isLightAt(r) || theme === 'light') && !r.at.some((a) => /max-width|min-width|print|prefers-reduced/.test(a));
+  const found = [];
+  for (const [theme, tokens] of [['light', maps.light], ['dark', maps.dark]]) {
+    // the bar's surface: the last background declared on .shell-bar
+    let bgDecl = null;
+    for (const { r } of rules) {
+      if (!themeOk(r, theme) || !selParts(r.selector).some((p) => classesOfCompound(subjectOf(p)).includes('shell-bar'))) continue;
+      for (const d of r.decls) if (/^background(?:-color|-image)?$/.test(d.prop)) bgDecl = d.value;
+    }
+    if (!bgDecl) continue;
+    const bgs = scanColourLiterals(resolveVars(bgDecl, tokens)).map((l) => l.rgb).filter(Boolean).map((c) => c.slice(0, 3));
+    if (!bgs.length) continue;
+    const surfaceTok = tokenName(bgDecl);
+    // is the --focus value in force the shared one, or did this app redefine it?
+    let focusShared = true;
+    for (const { r, shared } of rules) {
+      if (!themeOk(r, theme) || !selParts(r.selector).some((p) => /^(?::root|html|body)\b/.test(p.trim()) || p.trim() === '*')) continue;
+      if (r.decls.some((d) => d.prop === '--focus')) focusShared = shared;
+    }
+    for (const bar of bars) {
+      for (const f of [bar, ...descendantsOf(bar)].filter(isFocusableEl)) {
+        // the ring rule that reaches this element: highest specificity, then the latest
+        let best = null;
+        for (const { r, order, shared } of rules) {
+          if (!themeOk(r, theme) || !r.decls.some((d) => d.prop === 'outline' || d.prop === 'outline-color')) continue;
+          for (const part of selParts(r.selector)) {
+            if (!FOCUS_PSEUDO.test(part) || !selectorMatches(part, f)) continue;
+            const decl = [...r.decls].reverse().find((d) => (d.prop === 'outline' && !/^(?:none|0)\b/.test(d.value.trim())) || d.prop === 'outline-color');
+            if (!decl) continue;
+            const key = [specificity(part), order];
+            if (!best || key[0] > best.key[0] || (key[0] === best.key[0] && (shared ? false : true))) best = { key, r, decl, shared };
+          }
+        }
+        if (!best) continue;
+        // a `--focus` override scoped to the bar or to a group inside it
+        let tk = tokens;
+        let overridden = false;
+        if (/var\(\s*--focus\b/.test(best.decl.value)) {
+          let winner = null;
+          for (const a of [f, ...ancestors(f)]) {
+            for (const { r } of rules) {
+              if (!themeOk(r, theme)) continue;
+              const d = r.decls.find((x) => x.prop === '--focus');
+              if (!d || selParts(r.selector).some((p) => /^(?::root|html|body)\b/.test(p.trim()) || p.trim() === '*')) continue;
+              if (selParts(r.selector).some((p) => selectorMatches(p, a))) winner = d.value;
+            }
+            if (winner) break;
+          }
+          if (winner) {
+            tk = new Map(tokens).set('--focus', winner);
+            overridden = true;
+          }
+        }
+        const ring = scanColourLiterals(resolveVars(best.decl.value, tk)).map((l) => l.rgb).filter(Boolean)[0];
+        if (!ring) continue;
+        const worst = Math.min(...bgs.map((bg) => contrast(over(ring, bg), bg)));
+        if (worst >= 3) continue;
+        found.push({
+          theme, ratio: worst, shared: /var\(\s*--focus\b/.test(best.decl.value) && !overridden && focusShared, file: best.r.file, line: best.decl.line,
+          ringName: tokenName(best.decl.value) || best.decl.value.trim().slice(0, 30), surfaceName: surfaceTok || 'its background',
+          ringHex: ring.slice(0, 3).map((v) => v.toString(16).padStart(2, '0')).join(''), el: f,
+        });
+      }
+    }
+  }
+  return found;
+}
+
 function ruleC1(u) {
   const R = 'C1';
   const rules = u.sheets.flatMap((s) => s.parsed.rules);
@@ -2222,13 +2377,30 @@ function ruleC1(u) {
     for (const t of ['--status-ok', '--status-warn', '--status-info', '--danger-text', '--muted', '--text-body']) rows.push(ratioRow(`${theme}: ${t} text on --surface`, col(t), surface, 4.5));
     rows.push(ratioRow(`${theme}: --muted text on --bg`, col('--muted'), bg, 4.5));
     rows.push(ratioRow(`${theme}: --border on --surface`, col('--border'), surface, 3));
-    rows.push(ratioRow(`${theme}: --focus ring on --bg`, col('--focus'), bg, 3));
+    // the focus ring (non-text, 3:1) against every surface content sits on
+    for (const sname of ['--bg', '--surface', '--surface-2']) rows.push(ratioRow(`${theme}: --focus ring on ${sname} (content)`, col('--focus'), col(sname), 3));
     for (const r of rows.filter(Boolean)) {
       worst = Math.min(worst, r.ratio / r.min);
       if (!r.ok) bad.push({ file: 'tokens', line: 0, msg: `${r.label} is ${r.ratio.toFixed(2)}:1 (needs ${r.min}:1)` });
     }
   }
-  return bad.length ? mk(R, 'DRIFT', bad.slice(0, 3).map((b) => b.msg).join('; '), bad) : PASS(R);
+  // the focus ring on the dark shell bar
+  const ringBad = [];
+  const sharedBad = [];
+  const seen = new Set();
+  for (const f of barRingFindings(u, maps)) {
+    const key = `${f.theme}|${f.shared}|${f.ringName}|${f.file}|${f.line}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const what = `shell bar: focus ring (${f.ringName}${f.ringName.startsWith('--') ? ` = #${f.ringHex}` : ''}, ${f.theme} theme) on the shell bar background (${f.surfaceName}) is ${f.ratio.toFixed(2)}:1 (needs 3:1 non-text)`;
+    if (f.shared) {
+      sharedBad.push({ file: f.file, line: f.line, msg: `${what}. This is the shared ring token, which this app does not override on the bar; the owner decides whether to change the shared token; the app can fix it with .shell-bar :focus-visible { outline-color: var(--on-box); }` });
+    } else ringBad.push({ file: f.file, line: f.line, msg: `${what}; set by this app's own CSS (${f.file}:${f.line})` });
+  }
+  const hard = [...bad, ...ringBad];
+  if (hard.length) return mk(R, 'DRIFT', hard.slice(0, 3).map((b) => b.msg).join('; '), hard);
+  if (sharedBad.length) return mk(R, 'WARN', sharedBad.slice(0, 2).map((b) => b.msg).join('; '), sharedBad);
+  return PASS(R);
 }
 
 const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleV1, ruleM1, ruleC1];
