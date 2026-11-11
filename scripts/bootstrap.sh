@@ -20,7 +20,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=14
+STEP_TOTAL=15
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""
@@ -109,6 +109,9 @@ Options:
   --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
                    --pingone="--region com --admin-env-id ID --client-id ID --client-secret SECRET"
   --no-pingone     Skip PingOne entirely (mock mode)
+  --non-interactive  Never ask a question: the optional minimal PingGateway is not started
+                   (the output says how to start it). Also the behaviour whenever stdin
+                   is not a terminal.
   --verbose        Show all tool output (brew, npm) instead of only failures
   --dry-run        Print what would happen without changing anything
   -h, --help       This help
@@ -123,6 +126,7 @@ USAGE
     --pingone) run_pingone=1 ;;
     --pingone=*) run_pingone=1; PINGONE_ARGS="${arg#--pingone=}" ;;
     --no-pingone) run_pingone=0 ;;
+    --non-interactive) non_interactive=1 ;;
     --start-all) start_all=1 ;;
     --no-start) no_start=1 ;;
     --start=*) start_app="${arg#--start=}" ;;
@@ -142,6 +146,9 @@ USAGE
   esac
 done
 dry_run="${dry_run:-0}"
+non_interactive="${non_interactive:-0}"
+# Interactive = the user can answer a question: no --non-interactive and stdin is a terminal.
+is_interactive() { [ "$non_interactive" != 1 ] && [ -t 0 ]; }
 start_all="${start_all:-0}"
 start_top="${start_top:-}"
 no_start="${no_start:-0}"
@@ -475,7 +482,7 @@ fi
 
 step "Shared services"
 # Every shared/<svc>/docker-compose.yml is per-host infra the labs reuse (rule 20: ping-shared's
-# network + cimd-doc-server, the log collector, ...). ping-shared also owns PingFederate and a minimal PingGateway (below). Bring each one up so a new service ships
+# network + cimd-doc-server, the log collector, ...). ping-shared also owns PingFederate (below) and an optional minimal PingGateway (next step). Bring each one up so a new service ships
 # by adding its folder. lab-proxy is the watchdog's job (next step). A service whose compose
 # demands settings (${VAR:?...}) waits until its own .env exists — never a half-configured start.
 svc_up=""; svc_skip=""; svc_fail=""
@@ -492,16 +499,15 @@ for f in "$root"/shared/*/docker-compose.yml; do
     svc_fail="$svc_fail $svc"
   fi
 done
-# ping-shared's own Ping products (PingFederate, PingGateway) start from ping-shared itself, never from another
-# project's containers. A product that is not ready is skipped with a plain reason and never fails the setup:
-# exit 4 = no PingFederate licence file, 5 = licence found but Ping's terms not accepted (the user's step), 6 = gateway not configured.
+# ping-shared's own PingFederate starts from ping-shared itself, never from another project's containers. If it is not
+# ready it is skipped with a plain reason and never fails the setup: exit 4 = no PingFederate licence file,
+# 5 = licence found but Ping's terms not accepted (the user's step). The optional PingGateway has its own step below.
 ps_script="$root/shared/ping-shared/scripts/ping-shared.sh"
 pf_note=""
 if [ -x "$ps_script" ]; then
   ps_flags=(--non-interactive); [ "$dry_run" = 1 ] && ps_flags+=(--dry-run)
   pf_rc=0; pf_out="$(perl -e 'alarm 600; exec @ARGV' "$ps_script" up pingfederate "${ps_flags[@]}" 2>&1)" || pf_rc=$?
-  gw_rc=0; gw_out="$(perl -e 'alarm 300; exec @ARGV' "$ps_script" up pinggateway "${ps_flags[@]}" 2>&1)" || gw_rc=$?
-  [ "$dry_run" = 1 ] && { printf '%s\n' "$pf_out" "$gw_out" | grep '^would run' | sed 's/^/    /'; }
+  [ "$dry_run" = 1 ] && { printf '%s\n' "$pf_out" | grep '^would run' | sed 's/^/    /'; }
   case "$pf_rc" in
     0) svc_up="$svc_up pingfederate" ;;
     4) pf_note="PingFederate skipped: no licence file at ${PF_LICENSE_FILE:-$HOME/.config/demo-kit/pingfederate.lic}"
@@ -510,15 +516,54 @@ if [ -x "$ps_script" ]; then
        step_detail "$pf_out" ;;
     *) svc_fail="$svc_fail pingfederate"; step_detail "$pf_out" ;;
   esac
-  case "$gw_rc" in
-    0) svc_up="$svc_up pinggateway" ;;
-    6) ;;   # optional, and not configured: nothing to report
-    *) svc_fail="$svc_fail pinggateway"; step_detail "$gw_out" ;;
-  esac
 fi
 [ -n "$svc_skip" ] && step_detail "Not configured yet (fill in .env from .env.example in each, then re-run):$(for s in $svc_skip; do printf '\n  shared/%s' "$s"; done)"
 [ -n "$svc_fail" ] && step_detail "Failed to start (log: /tmp/standalone-shared-<name>.log):$svc_fail"
 if [ -n "$svc_fail" ] || [ -n "$pf_note" ]; then step_warn "up:${svc_up:- none}${pf_note:+; $pf_note}"; else step_ok "up:${svc_up:- none}${svc_skip:+ (skipped:$svc_skip)}"; fi
+
+# ---- PingGateway (optional, rule 20: probe, reuse, or OFFER; never silent) -----------------------------------------
+# ping-shared's minimal PingGateway fronts an MCP server with a token check. Mock does not need it. It starts only
+# when (1) no healthy one already answers, (2) shared/ping-shared/.env names GATEWAY_ISSUER and GATEWAY_AUDIENCE with
+# real values (not the .env.example placeholders), (3) this is not a dry run, (4) the user can be asked, and said yes.
+gw_dir="$root/shared/ping-shared"
+gw_script="$gw_dir/scripts/ping-shared.sh"
+gw_cmd="shared/ping-shared/scripts/ping-shared.sh up pinggateway"
+# gw_setting <KEY>: the last assignment in ping-shared/.env, quotes stripped; empty when absent. Never printed.
+gw_setting() { grep -E "^$1=" "$gw_dir/.env" 2>/dev/null | tail -1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' -e 's/[[:space:]]*$//'; }
+# gw_real <value>: set, and not a placeholder from .env.example (*.example hosts, <angle brackets>, changeme/your-...).
+gw_real() { case "$1" in ''|*'<'*'>'*|*.example|*.example/*|*.example:*|*example.com*|[Cc]hange[mM]e*|CHANGE*|your[-_]*|xxx*|TODO*) return 1 ;; esac; }
+gw_state=ask
+if [ ! -x "$gw_script" ]; then gw_state=absent
+elif [ -f "$gw_dir/probe.mjs" ] && node "$gw_dir/probe.mjs" pinggateway > /dev/null 2>&1; then gw_state=reuse
+elif ! gw_real "$(gw_setting GATEWAY_ISSUER)" || ! gw_real "$(gw_setting GATEWAY_AUDIENCE)"; then gw_state=unset
+elif [ "$dry_run" = 1 ]; then gw_state=dry
+elif ! is_interactive; then gw_state=noask
+else
+  gw_port="$(gw_setting PINGGATEWAY_HOST_PORT)"; gw_port="${gw_port:-7809}"
+  # The question comes before the step line so the answer cannot land in the middle of "[n/N] PingGateway ....".
+  printf '\n  The minimal PingGateway is configured in shared/ping-shared/.env (issuer and audience set).\n'
+  printf '  Start it now on 127.0.0.1:%s? (first start pulls a public image; it fronts an MCP server with a token check) [y/N] ' "$gw_port"
+  gw_answer=""; read -r gw_answer || true
+  case "$gw_answer" in y|Y|yes|YES|Yes) gw_state=start ;; *) gw_state=declined ;; esac
+fi
+step "PingGateway"
+case "$gw_state" in
+  absent)   step_skip "ping-shared not checked out (optional)" ;;
+  reuse)    step_ok "reusing the healthy gateway already on 127.0.0.1:7809" ;;
+  unset)    step_skip "optional; to use it set GATEWAY_ISSUER and GATEWAY_AUDIENCE in shared/ping-shared/.env" ;;
+  dry)      step_skip "dry run: would ask, then run $gw_cmd" ;;
+  noask)    step_skip "configured, not started (no prompt here); start it: $gw_cmd" ;;
+  declined) step_skip "not started (you said no); start it later: $gw_cmd" ;;
+  start)
+    gw_rc=0; gw_out="$(perl -e 'alarm 300; exec @ARGV' "$gw_script" up pinggateway 2>&1)" || gw_rc=$?
+    case "$gw_rc" in
+      0) step_ok "started, health on http://127.0.0.1:${gw_port}/health" ;;
+      6) step_skip "settings missing; set GATEWAY_ISSUER and GATEWAY_AUDIENCE in shared/ping-shared/.env" ;;
+      142) step_detail "$gw_out"; step_warn "did not finish in 5 minutes; setup carries on (docker logs ping-shared-pinggateway)" ;;
+      *) step_detail "$gw_out"; step_warn "did not start (exit $gw_rc); setup carries on; retry: $gw_cmd" ;;
+    esac ;;
+esac
+# ---- end PingGateway step ---------------------------------------------------------------------------------------------
 
 step "Launcher"
 # All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.
@@ -654,3 +699,13 @@ printf "    ${C_DIM}Many labs running? Lower OrbStack's memory in Settings > Sys
 if [ "$mode" != "${mode#mock}" ]; then
   printf "    For live mode later: ${C_DIM}scripts/pingone-setup.sh${C_0}\n"
 fi
+
+# ---- What each lab needs for Real (short; the full list is a file) -------------------------------------------------
+# The summary lives in docs/REAL-PREREQUISITES.md between its summary markers, so this text cannot drift from the doc.
+req_doc="$root/docs/REAL-PREREQUISITES.md"
+printf '\n'
+if [ -f "$req_doc" ]; then
+  sed -e '1,/<!-- summary:start -->/d' -e '/<!-- summary:end -->/,$d' "$req_doc" | sed 's/^/  /'
+fi
+printf '  Per lab, with where each is documented: %s\n' "docs/REAL-PREREQUISITES.md"
+# ---- end Real prerequisites ---------------------------------------------------------------------------------------
