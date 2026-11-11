@@ -2,6 +2,7 @@
   "rule": "C1",
   "status": "DRIFT",
   "note": "G: the focus ring token is checked against the shell bar and the content surfaces, light and dark",
+  "alsoVariants": { "warn-shared-token": ["V1"], "warn-partial-override": ["V1"] },
   "variants": { "warn-shared-token": "WARN", "warn-partial-override": "WARN" },
   "match": {
     "warn-shared-token": "focus ring \\(--focus = #12538d, light theme\\) on the shell bar background \\(--box-dark\\).*shared ring token",
