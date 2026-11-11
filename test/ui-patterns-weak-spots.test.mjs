@@ -26,7 +26,12 @@ function buildApp(variantDir) {
   const app = path.join(dir, 'clean-react');
   fs.cpSync(path.join(FIX, 'clean-react'), app, { recursive: true });
   fs.copyFileSync(CANON, path.join(app, 'web', 'src', 'standalone-ui.css'));
-  if (variantDir) fs.cpSync(variantDir, path.join(app, 'web', 'src'), { recursive: true });
+  if (variantDir) {
+    fs.cpSync(variantDir, path.join(app, 'web', 'src'), { recursive: true });
+    // a variant may vendor its own (older) copy of the shared stylesheet, e.g. to pin a pre-fix canonical sheet
+    const pinned = path.join(variantDir, 'standalone-ui.css');
+    if (fs.existsSync(pinned)) fs.copyFileSync(pinned, path.join(app, 'web', 'src', 'standalone-ui.css'));
+  }
   return { dir, app };
 }
 
