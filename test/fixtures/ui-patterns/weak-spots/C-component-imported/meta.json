@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "C: components imported from another file (default and named, aliased) are followed to their use sites" }

@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "B: JSX passed as an attribute (arrow function or direct element) is parsed and counted" }

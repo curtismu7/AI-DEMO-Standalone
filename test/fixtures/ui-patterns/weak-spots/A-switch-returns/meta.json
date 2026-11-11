@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "A: if / else if / switch-case early returns are separate states of the component" }

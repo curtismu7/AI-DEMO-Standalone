@@ -203,3 +203,29 @@ It is the only app with clean pages today, so finishing it gives the first fully
 - **id-jag-standalone-LAB** (L): 69 locations, mostly its own `--th-*` / `--ijp-*` / `--brand-*` tokens read by buttons in 6 CSS files (P10). A theming migration, not a one-PR conversion.
 - **privilege-a2a-anthropic-demo-LAB**: no UI pages (headless).
 
+## Update, 2026-11-10: weak spots A-H fixed in the checker
+
+The tables above were produced by the first release of the checker (#174) and are kept as they were. The checker was then changed for seven known weak spots (fragment arms, attribute JSX, component boundaries, sibling conditional primaries, header buttons, heading order through child components, focus-ring contrast; section 11 of `shared/STANDALONE-UI-PATTERNS.md` has the rules and the changelog). Headline numbers did not move: **326 pages, 8 clean, 318 with DRIFT, the same 8 enforced pages all still PASS.**
+
+How it was re-measured: the same method as above, on the submodule pins of `origin/main` at `3c99219` (`git archive <pin>` of all 81 apps), run once with the old script and once with the new one, so only the checker differs. "Pages" below are pages with at least one result of that status for the rule.
+
+| rule | status | before | after | why it moved |
+|------|--------|--------|-------|--------------|
+| P9 | DRIFT | 203 | 206 | +4 real (below), -1 false |
+| H1 | DRIFT | 61 | 48 | -13 false: an early-return state wrapped in a fragment (`if (..) { return (<>..<main>..) }`) counted as a second `main` |
+| A1 | DRIFT | 9 | 11 | +2 real: an unlabelled select and two inputs inside `banner={<>..</>}` attribute JSX, invisible before |
+| C1 | DRIFT | 2 | 9 | +7 real: the app's own CSS sets a faint focus ring on the dark shell bar |
+| C1 | WARN | 0 | 43 | the shared ring token (dark blue, 2.29:1 on the dark bar) in apps that do not override it on the bar; 10 apps |
+| H2 | WARN | 64 | 120 | +87 pages: a real skip inside a child component (33 distinct heading locations, e.g. a shared `Bits.jsx` hop title that is an `h4` straight under the page `h1`), plus one page-local skip the old order did not read (`session-LAB`, h1 to h4); -31 pages: false skips caused by child-component headings the old check could not see |
+
+Every changed result, classified (none is left as a false positive):
+
+- **New DRIFT, real violations the old check missed (P9, 4 pages).** `agent-registry-demo-LAB/start-boxes`: the diagram tab renders `ScenarioBar` (imported from the lifecycle tab, its "Run story" is primary) next to its own "Simulate". `ai-policies-LAB/policies`: `Layer` (primary "Save layer") is rendered once per layer by `LAYERS.map`. `saas-access-LAB/approvals`: `Pending` (primary "Approve") is rendered once per pending request. `secrets-vault-LAB/governance`: `Proof`'s "Run the proof now" and the grant form's "Grant" are on the same tab (the old check treated an early-return state of one component as exclusive with everything else on the page).
+- **New DRIFT, real (A1, 2 pages):** `ai-gateway-client-LAB/flow` and `templates`, `web/src/App.jsx:448`, `:462`, `:487`.
+- **New DRIFT, real (C1, 7 pages):** `pingone-events-LAB` (6 pages: `button:focus-visible` and `select:focus-visible` use the page blue, 2.29:1 on the bar; only the nav links are overridden) and `muse-LAB/index` (`input:focus-visible` uses the dark accent, 1.42:1).
+- **DRIFT removed, false (H1, 13 pages in 6 apps; P9, 1 page):** `ciba-hitl-lab`, `gateway-suite-LAB`, `jev-lab-LAB`, `jit-lab-LAB`, `obo-lab-LAB`, `stolen-token-LAB` (fragment-wrapped early return); `mcp-tools-LAB/gateway` (its real-gateway state and its mock state are separate early returns).
+- **WARN only (never a failure):** C1 on 43 pages (the shared ring token; the owner decides whether to change `--focus`, or each app adds `.shell-bar :focus-visible { outline-color: var(--on-box) }`), H2 as above.
+- **The 8 enforced pages and the three open app PRs** (`privilege-demo-LAB` #10, `cimd-LAB` #9, `hostile-a2a-LAB` #6, with their allowlist lines) PASS enforced with the new checker.
+
+Re-measure with: `git archive <pin>` of every app into a scratch root, then `node scripts/check-ui-patterns.mjs --root <scratch> --json` with the old and the new script, and compare the per-page `results`.
+

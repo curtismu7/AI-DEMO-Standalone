@@ -98,6 +98,6 @@ jobs:
             git submodule update --init --depth 1 "standalone/$app"
           done
       - name: Mutation tests (each rule catches what it claims)
-        run: node --test test/ui-patterns.test.mjs test/ui-patterns-mutation.test.mjs
+        run: node --test test/ui-patterns.test.mjs test/ui-patterns-mutation.test.mjs test/ui-patterns-weak-spots.test.mjs
       - name: Enforced pages pass
         run: node scripts/check-ui-patterns.mjs --require-checkout
