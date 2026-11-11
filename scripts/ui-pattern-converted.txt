@@ -2,11 +2,27 @@
 # A DRIFT finding on one of these pages fails CI. Every other page is advisory.
 # Convert a page, then add its line here in the same PR.
 # Baseline 2026-11-10: the pages that pass every rule today (8 of 323).
+# 2026-11-10: privilege-demo-LAB (all 7 pages), cimd-LAB (6) and hostile-a2a-LAB (5) converted; their pins are bumped in the same PR.
+cimd-LAB/h2
+cimd-LAB/lab
+cimd-LAB/learn
+cimd-LAB/pf
+cimd-LAB/stories
+cimd-LAB/talk
+hostile-a2a-LAB/diagram
+hostile-a2a-LAB/gallery
+hostile-a2a-LAB/limits
+hostile-a2a-LAB/roundtrip
+hostile-a2a-LAB/run
 mcp-skills-LAB/approvals
 mcp-skills-LAB/diagram
 mcp-skills-LAB/overview
 mcp-skills-LAB/source
 mcp-skills-LAB/verifier
+privilege-demo-LAB/approvals
 privilege-demo-LAB/console
 privilege-demo-LAB/diagram
 privilege-demo-LAB/home
+privilege-demo-LAB/learn
+privilege-demo-LAB/policies
+privilege-demo-LAB/trace
