@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "C: a component that renders itself or a cycle does not hang the checker" }

@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "H: aria-current is not a selected state (standard section 9: aria-pressed / aria-selected), so such buttons are plain actions" }

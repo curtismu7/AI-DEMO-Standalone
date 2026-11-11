@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "C: a component's primary is judged where the component is USED (once per use site)" }

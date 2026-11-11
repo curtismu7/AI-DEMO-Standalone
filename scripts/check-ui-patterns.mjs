@@ -15,6 +15,10 @@
  *     it imports; its CSS is every stylesheet those files import (following @import) plus <style> blocks and
  *     inline style attributes. Vendored shared components (floating-dialog, evidence, return-link, hop-detail,
  *     shelf-link) are not judged: they are pinned byte for byte by their own checks.
+ *   P9 and H2 are judged on the RENDER FOREST, not on the flat list of written elements: fragments are real nodes,
+ *     JSX handed over as an attribute (`render={() => <b/>}`) renders at its host element, and every component use site
+ *     (same file, or imported from under the app root) is expanded into what that component returns. See the
+ *     "render forest" section below and section 11 of shared/STANDALONE-UI-PATTERNS.md for the assumptions.
  *
  * Rules (stable ids; status PASS / DRIFT / WARN / INFO; DRIFT is what an enforced page may not have):
  *   P1  app shell: exactly one shell-bar (or InspectorShell) and one page header, styled
@@ -23,7 +27,7 @@
  *   P4  cards: bordered, token top edge (accent edge optional)
  *   P6  inspector layout (Tester tier): three parts when used
  *   P7  chips: text + a semantic tone from tokens, never colour alone
- *   P9  exactly ONE primary button per view state (a dialog is its own state)
+ *   P9  exactly ONE primary button per view state, judged where components are used (a dialog is its own state)
  *   P10 button colours read only the shared tokens and resolve to the fixed Ping Red gradient
  *   P11 every modal is a FloatingDialog (advisory)
  *   H1  exactly one h1 and one main landmark
@@ -46,9 +50,10 @@
  * the line above lets that one finding through. Every escape is listed in the report.
  *
  * What it does NOT see (the browser checks in light, dark and 375px still apply): real contrast of computed
- * colours (only the shared tokens are checked), horizontal overflow at 375px, keyboard behaviour, markup built at
- * run time by JavaScript (innerHTML, createElement), a banner or button that only a child component outside the
- * page's imports renders, CSS-in-JS, and values set at run time (customer accent, skin, theme from storage).
+ * colours (only the shared tokens and the focus ring are checked), horizontal overflow at 375px, keyboard behaviour,
+ * markup built at run time by JavaScript (innerHTML, createElement), render helpers called as functions
+ * (`{renderRow()}`), components held in variables (`const C = cond ? A : B; <C/>`), a banner or button that only a
+ * component outside the app root renders, CSS-in-JS, and values set at run time (customer accent, skin, theme from storage).
  * A clean run means "none of these patterns found", not "the page is right".
  *
  *   node scripts/check-ui-patterns.mjs [app-dir ...]    report every page, enforce the allowlist
@@ -80,7 +85,7 @@ export const RULES = {
   P4: 'cards are bordered with a token top edge (accent edge optional) and are styled',
   P6: 'inspector layout (tree + form + output) is complete where used; Tester pages that probe use it',
   P7: 'chips carry text and a semantic tone class from tokens, never colour alone',
-  P9: 'exactly one primary button per view state (a dialog is its own state)',
+  P9: 'exactly one primary button per view state, judged where components are used (a dialog is its own state)',
   P10: 'button colours read only shared tokens; the primary resolves to the fixed Ping Red gradient',
   P11: 'every modal is a FloatingDialog (advisory)',
   H1: 'exactly one h1 and one main landmark',
@@ -192,7 +197,7 @@ function readTag(src, i) {
     else if (c === '>' && depth === 0) break;
   }
   const attrsRaw = src.slice(i + nm[0].length, j);
-  return { name: nm[1], attrsRaw, end: j + 1, selfClosing: /\/\s*$/.test(attrsRaw) };
+  return { name: nm[1], attrsRaw, attrsStart: i + nm[0].length, end: j + 1, selfClosing: /\/\s*$/.test(attrsRaw) };
 }
 
 function parseAttrs(raw) {
@@ -230,7 +235,7 @@ function parseAttrs(raw) {
         i = e < 0 ? n : e + 1;
       } else if (raw[i] === '{') {
         const e = closeBracket(raw, i);
-        attrs.set(name, { type: 'expr', text: raw.slice(i + 1, e - 1) });
+        attrs.set(name, { type: 'expr', text: raw.slice(i + 1, e - 1), start: i + 1, end: e - 1 });
         i = e;
       } else {
         const mm = /^[^\s>]+/.exec(raw.slice(i));
@@ -245,68 +250,113 @@ function parseAttrs(raw) {
 /**
  * Parse HTML or JSX source into an element tree. Each element:
  * { name, attrs, spread, index, end, fullEnd, innerStart, innerEnd, line, parent, children, raw, file, src, seq }.
+ * JSX only: a fragment `<>...</>` is an element named `#frag`, so the arms of `cond ? (<>..</>) : (<>..</>)` are real
+ * siblings; JSX inside an attribute expression (`render={() => <b/>}`, `actions={<b/>}`) is parsed into an `#attr`
+ * container on the host element (`host.attrBlocks`, not in `host.children`), and its elements are listed in `els`.
  */
 export function parseMarkup(src, { kind, file }) {
   const li = lineIndexer(src);
   const els = [];
-  const root = { name: '#root', children: [], parent: null, innerStart: 0, innerEnd: src.length };
-  const stack = [root];
-  let i = 0;
-  while (i < src.length) {
-    const lt = src.indexOf('<', i);
-    if (lt === -1) break;
-    if (src[lt + 1] === '/') {
-      const m = /^<\/([A-Za-z][\w.:-]*)\s*>/.exec(src.slice(lt, lt + 120));
-      if (m) {
-        for (let k = stack.length - 1; k >= 1; k -= 1) {
-          if (stack[k].name === m[1]) {
-            for (let q = stack.length - 1; q >= k; q -= 1) {
-              stack[q].innerEnd = lt;
-              stack[q].fullEnd = q === k ? lt + m[0].length : lt;
+  const root = { name: '#root', attrs: new Map(), children: [], parent: null, innerStart: 0, innerEnd: src.length };
+  const scan = (from, to, top) => {
+    const stack = [top];
+    let i = from;
+    while (i < to) {
+      const lt = src.indexOf('<', i);
+      if (lt === -1 || lt >= to) break;
+      if (src[lt + 1] === '/') {
+        if (kind === 'jsx' && src[lt + 2] === '>') {
+          for (let k = stack.length - 1; k >= 1; k -= 1) {
+            if (stack[k].name === '#frag') {
+              for (let q = stack.length - 1; q >= k; q -= 1) {
+                stack[q].innerEnd = lt;
+                stack[q].fullEnd = q === k ? lt + 3 : lt;
+              }
+              stack.length = k;
+              break;
             }
-            stack.length = k;
-            break;
           }
+          i = lt + 3;
+          continue;
         }
-        i = lt + m[0].length;
-      } else i = lt + 2;
-      continue;
+        const m = /^<\/([A-Za-z][\w.:-]*)\s*>/.exec(src.slice(lt, lt + 120));
+        if (m) {
+          for (let k = stack.length - 1; k >= 1; k -= 1) {
+            if (stack[k].name === m[1]) {
+              for (let q = stack.length - 1; q >= k; q -= 1) {
+                stack[q].innerEnd = lt;
+                stack[q].fullEnd = q === k ? lt + m[0].length : lt;
+              }
+              stack.length = k;
+              break;
+            }
+          }
+          i = lt + m[0].length;
+        } else i = lt + 2;
+        continue;
+      }
+      const prev = src[lt - 1];
+      if (kind === 'jsx' && prev && /[\w$)\]]/.test(prev)) {
+        i = lt + 1;
+        continue;
+      }
+      if (kind === 'jsx' && src[lt + 1] === '>') {
+        const parent = stack[stack.length - 1];
+        const frag = {
+          name: '#frag', attrs: new Map(), spread: false, index: lt, end: lt + 2, fullEnd: to, innerStart: lt + 2, innerEnd: to,
+          line: li(lt), parent, children: [], raw: null, file, src, seq: els.length,
+        };
+        els.push(frag);
+        parent.children.push(frag);
+        stack.push(frag);
+        i = lt + 2;
+        continue;
+      }
+      const tag = readTag(src, lt);
+      if (!tag) {
+        i = lt + 1;
+        continue;
+      }
+      const { attrs, spread } = parseAttrs(tag.attrsRaw);
+      const parent = stack[stack.length - 1];
+      const el = {
+        name: tag.name, attrs, spread, index: lt, end: tag.end, fullEnd: tag.end, innerStart: tag.end, innerEnd: tag.end,
+        line: li(lt), parent, children: [], raw: null, file, src, seq: els.length,
+      };
+      els.push(el);
+      parent.children.push(el);
+      i = tag.end;
+      if (kind === 'jsx') {
+        for (const [aname, a] of attrs) {
+          if (a.type !== 'expr' || !/<[A-Za-z>]/.test(a.text)) continue;
+          const aStart = tag.attrsStart + a.start;
+          const aEnd = tag.attrsStart + a.end;
+          const cont = {
+            name: '#attr', attrName: aname, attrs: new Map(), spread: false, index: aStart, end: aStart, fullEnd: aEnd, innerStart: aStart, innerEnd: aEnd,
+            line: li(aStart), parent: el, children: [], raw: null, file, src, seq: `a${aStart}`,
+          };
+          (el.attrBlocks || (el.attrBlocks = [])).push(cont);
+          scan(aStart, aEnd, cont);
+        }
+      }
+      const lname = tag.name.toLowerCase();
+      if (tag.selfClosing || VOID.has(lname)) continue;
+      if (RAW_TEXT.has(lname)) {
+        const close = src.toLowerCase().indexOf(`</${lname}`, tag.end);
+        const e = close === -1 ? src.length : close;
+        el.raw = src.slice(tag.end, e);
+        el.innerEnd = e;
+        const gt = src.indexOf('>', e);
+        el.fullEnd = gt === -1 ? src.length : gt + 1;
+        i = el.fullEnd;
+        continue;
+      }
+      el.innerEnd = to;
+      el.fullEnd = to;
+      stack.push(el);
     }
-    const prev = src[lt - 1];
-    if (kind === 'jsx' && prev && /[\w$)\]]/.test(prev)) {
-      i = lt + 1;
-      continue;
-    }
-    const tag = readTag(src, lt);
-    if (!tag) {
-      i = lt + 1;
-      continue;
-    }
-    const { attrs, spread } = parseAttrs(tag.attrsRaw);
-    const parent = stack[stack.length - 1];
-    const el = {
-      name: tag.name, attrs, spread, index: lt, end: tag.end, fullEnd: tag.end, innerStart: tag.end, innerEnd: tag.end,
-      line: li(lt), parent, children: [], raw: null, file, src, seq: els.length,
-    };
-    els.push(el);
-    parent.children.push(el);
-    i = tag.end;
-    const lname = tag.name.toLowerCase();
-    if (tag.selfClosing || VOID.has(lname)) continue;
-    if (RAW_TEXT.has(lname)) {
-      const close = src.toLowerCase().indexOf(`</${lname}`, tag.end);
-      const e = close === -1 ? src.length : close;
-      el.raw = src.slice(tag.end, e);
-      el.innerEnd = e;
-      const gt = src.indexOf('>', e);
-      el.fullEnd = gt === -1 ? src.length : gt + 1;
-      i = el.fullEnd;
-      continue;
-    }
-    el.innerEnd = src.length;
-    el.fullEnd = src.length;
-    stack.push(el);
-  }
+  };
+  scan(0, src.length, root);
   return { els, root, src, file, kind, lineOf: li };
 }
 
@@ -319,17 +369,46 @@ const attrText = (el, ...names) => {
   return a ? a.text : null;
 };
 
-/** Class tokens an element can carry: literal classes plus every quoted piece of a className expression. Dynamic tails come as `prefix*`. */
+/** Class tokens an element can carry: literal classes plus every quoted piece of a className expression (also inside `${..}`). Dynamic tails come as `prefix*`. */
 function classTokens(el) {
   const a = attrOf(el, 'className', 'class');
   if (!a) return [];
   if (a.type === 'str') return a.text.split(/\s+/).filter(Boolean);
   if (a.type === 'bool') return [];
   const out = new Set();
-  for (const m of a.text.matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g)) {
-    for (const mm of m[2].matchAll(/([\w-]+)\$\{/g)) out.add(`${mm[1]}*`);
-    for (const t of m[2].replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) if (t) out.add(t);
-  }
+  const take = (text) => {
+    for (let i = 0; i < text.length; ) {
+      const q = text[i];
+      if (q !== '"' && q !== "'" && q !== '`') {
+        i += 1;
+        continue;
+      }
+      const end = skipQuoted(text, i);
+      const body = text.slice(i + 1, Math.max(i + 1, end - 1));
+      if (q === '`') {
+        let staticPart = '';
+        for (let j = 0; j < body.length; ) {
+          if (body[j] === '$' && body[j + 1] === '{') {
+            const e = closeBracket(body, j + 1);
+            const tail = /([\w-]+)$/.exec(staticPart);
+            if (tail) out.add(`${tail[1]}*`);
+            for (const t of staticPart.split(/\s+/)) if (t) out.add(t);
+            staticPart = ' ';
+            take(body.slice(j + 2, e - 1));
+            j = e;
+          } else {
+            staticPart += body[j];
+            j += 1;
+          }
+        }
+        for (const t of staticPart.split(/\s+/)) if (t) out.add(t);
+      } else {
+        for (const t of body.split(/\s+/)) if (t) out.add(t);
+      }
+      i = end;
+    }
+  };
+  take(a.text);
   return [...out];
 }
 const hasClass = (el, re) => classTokens(el).some((t) => re.test(t));
@@ -340,6 +419,8 @@ const ancestors = (el) => {
   return out;
 };
 const nameIs = (el, ...names) => names.includes(el.name);
+/** Children with fragments (`<>..</>`) looked through, as the browser sees them. */
+const realKids = (el) => el.children.flatMap((c) => (c.name === '#frag' ? realKids(c) : [c]));
 
 const BLANK_EXPR = /^\s*(?:""|''|``|" "|' '|null|undefined|false|true|void 0)?\s*$/;
 /** Visible text (or a non-blank expression, taken as text) directly or deeply inside an element. */
@@ -389,45 +470,67 @@ function innerPlain(el) {
 }
 
 // Alternatives of a ternary written in JSX sit in different arms and never render together.
+// These read the ORIGINAL element (a clone made for a component use site points at it with `.orig`), so the text around
+// the element is always judged where it was written.
+const origOf = (el) => el.orig || el;
 function gapBefore(el) {
-  const p = el.parent;
-  const idx = p.children.indexOf(el);
+  const o = origOf(el);
+  const p = o.parent;
+  if (!p) return '';
+  const idx = p.children.indexOf(o);
+  if (idx < 0) return '';
   const start = idx > 0 ? p.children[idx - 1].fullEnd : p.innerStart;
-  return el.src.slice(start, el.index);
+  return o.src.slice(start, o.index);
 }
 function chainInfo(el) {
-  if (el._chain !== undefined) return el._chain;
-  const p = el.parent;
+  const o = origOf(el);
+  if (o._chain !== undefined) return o._chain;
+  const p = o.parent;
+  if (!p || !p.children.includes(o)) {
+    o._chain = null;
+    return null;
+  }
   let chain = null;
   let branch = 0;
   let cid = 0;
   for (const c of p.children) {
     const gap = gapBefore(c);
-    if (/\?\s*\(?\s*$/.test(gap)) {
+    // `: cond ? (<B/>)` continues the chain (a chained ternary is one set of exclusive arms) before `? (` starts one
+    if (chain && /^[\s)]*:\s*(?:[^<{}:]*\?\s*)?\(?\s*$/.test(gap)) branch += 1;
+    else if (/\?\s*\(?\s*$/.test(gap)) {
       cid += 1;
       chain = `${p.seq ?? 'r'}:${p.index ?? 0}:${cid}`;
       branch = 0;
-    } else if (chain && /^[\s)]*:\s*(?:[^<{}:]*\?\s*)?\(?\s*$/.test(gap)) branch += 1;
-    else chain = null;
+    } else chain = null;
     c._chain = chain ? { chain, branch } : null;
   }
-  return el._chain;
+  return o._chain;
 }
+// `return` states of one function: `if (..) return`, `else return`, `case x: return`, `default: return`. Each is a state
+// of its component of its own. Statements between the condition and the `return` are not followed (then it is counted).
+const GUARD_GAPS = [
+  /\bif\s*\([^;{}]*\)\s*\{?\s*return\s*\(?\s*$/,
+  /\belse\s*\{?\s*return\s*\(?\s*$/,
+  /\bcase\s+[^:;{}]+:\s*\{?\s*return\s*\(?\s*$/,
+  /\bdefault\s*:\s*\{?\s*return\s*\(?\s*$/,
+];
 /** The early-return branch an element renders in (`if (loading) return <main>..`): a separate state of its component, or null. */
 function guardOf(el) {
-  if (el._guard !== undefined) return el._guard;
+  const o0 = origOf(el);
+  if (o0._guard !== undefined) return o0._guard;
   let g = null;
-  for (let e = el; e && e.name !== '#root'; e = e.parent) {
-    if (/\bif\s*\([^;{}]*\)\s*\{?\s*return\s*\(?\s*$/.test(gapBefore(e))) {
+  for (let e = o0; e && e.name !== '#root'; e = e.parent) {
+    const gap = gapBefore(e);
+    if (GUARD_GAPS.some((re) => re.test(gap))) {
       g = e;
       break;
     }
   }
-  el._guard = g;
+  o0._guard = g;
   return g;
 }
 /** True when a and b are in different arms of the same ternary (somewhere up their ancestry). */
-function exclusive(a, b) {
+function exclusiveFlat(a, b) {
   if (guardOf(a) !== guardOf(b)) return true;
   const ca = [];
   for (let e = a; e && e.name !== '#root'; e = e.parent) ca.push(chainInfo(e));
@@ -437,23 +540,32 @@ function exclusive(a, b) {
   }
   return false;
 }
-/** The largest number of these elements that can render together. */
-function maxSimultaneous(list) {
+/** The largest number of these elements that can render together (a maximum set of pairwise non-exclusive elements). */
+function maxSimultaneous(list, excl = exclusiveFlat) {
   const n = list.length;
   if (n <= 1) return n;
-  if (n > 14) return n;
+  const memo = new Map();
+  const ex = (i, j) => {
+    const k = i * n + j;
+    if (!memo.has(k)) memo.set(k, excl(list[i], list[j]));
+    return memo.get(k);
+  };
   let best = 1;
+  let steps = 0;
   const rec = (i, picked) => {
+    if (steps > 200000) return;
+    steps += 1;
     if (picked.length + (n - i) <= best) return;
     if (i === n) {
       best = Math.max(best, picked.length);
       return;
     }
-    if (picked.every((p) => !exclusive(p, list[i]))) rec(i + 1, [...picked, list[i]]);
+    if (picked.every((p) => !ex(p, i))) rec(i + 1, [...picked, i]);
     rec(i + 1, picked);
   };
   rec(0, []);
-  return best;
+  // out of budget: no proof of exclusivity, so count them all
+  return steps > 200000 ? n : best;
 }
 /** Is the element rendered by a .map()/.flatMap()/.forEach()/Array.from() callback (once per item)? */
 function inLoop(el) {
@@ -801,6 +913,11 @@ class FileCache {
       const src = isHtml ? stripHtmlComments(raw) : stripJsComments(raw);
       const doc = parseMarkup(src, { kind: isHtml ? 'html' : 'jsx', file: rel });
       doc.escapes = scanEscapes(raw);
+      doc.path = p;
+      for (const e of doc.els) {
+        e.doc = doc;
+        for (const ab of e.attrBlocks || []) ab.doc = doc;
+      }
       this.markup.set(p, doc);
     }
     return this.markup.get(p);
@@ -989,7 +1106,7 @@ export function discoverPages(appDir, cache = new FileCache()) {
       if (views.size >= 2 || views.size === 1) {
         for (const [vf, v] of views) {
           const own = closure(cache, vf, new Set([...stop].filter((x) => x !== vf)), htmlRoot, rel);
-          pages.push({ id: takeId(views.size === 1 ? v.id : v.id), kind: 'view', file: rel(vf), view: vf, how: v.how, files: [...new Set([...chrome, ...own, ...cssLinks])], chrome, entry, htmlFile: html, htmlRoot, viewFile: vf });
+          pages.push({ id: takeId(views.size === 1 ? v.id : v.id), kind: 'view', file: rel(vf), view: vf, how: v.how, files: [...new Set([...chrome, ...own, ...cssLinks])], chrome, entry, htmlFile: html, htmlRoot, viewFile: vf, ownViewName: v.name, viewFiles: [...views.keys()] });
         }
       } else {
         pages.push({ id: takeId('index'), kind: 'app', file: rel(entry), files: [...new Set([...chrome, ...cssLinks])], chrome, entry, htmlFile: html, htmlRoot, viewFile: null });
@@ -1106,7 +1223,357 @@ function buildUnit(app, page, cache) {
   const own = docs.filter((d) => !d.vendored);
   const all = docs.flatMap((d) => d.els.map((e) => Object.assign(e, { vendored: d.vendored })));
   const unitEls = all.filter((e) => !e.vendored);
-  return { app, page, docs, own, els: unitEls, allEls: all, order: order.filter((e) => !e.vendored), sheets, texts, layout };
+  return { app, page, cache, docs, own, els: unitEls, allEls: all, order: order.filter((e) => !e.vendored), sheets, texts, layout, slot, viewDoc };
+}
+
+// ============================== render forest (component boundaries) ==============================
+//
+// The flat element list of a page says what is WRITTEN in its files. The render forest says what RENDERS: every
+// component use site (`<LiveForm/>`) is expanded into copies of the elements that component returns, so
+//   - a component's primary is judged where the component is USED (inside the ternary arm, the dialog, the loop that
+//     holds the use site) and counts once per use site,
+//   - heading order runs through child components,
+//   - JSX handed over as an attribute (`render={() => <b/>}`, `actions={<b/>}`) renders where its host element is.
+// Components are followed in the same file and, when the import resolves under the app root, in imported files.
+// A component that is never used on the page, and the JSX at module level, are roots of their own. The page's view
+// is mounted at the layout's slot (`{children}` / `<Outlet/>`) when nothing in the layout names it. Another page's view
+// is never expanded. Limits: render helpers called as functions (`{renderRow()}`) and components held in variables
+// (`const C = cond ? A : B; <C/>`) are not followed; their markup counts once where it is written.
+
+const DECL_LINE = /^[A-Za-z_$(@][^\n]*/gm;
+const FN_DECL = /^(export\s+(default\s+)?)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)?/;
+const VAR_DECL = /^(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=/;
+const CLASS_DECL = /^(export\s+(default\s+)?)?class\s+([A-Za-z_$][\w$]*)/;
+const DEFAULT_ALIAS = /^export\s+default\s+(?:(?:React\.)?(?:memo|forwardRef|observer)\(\s*(?:function\s*([A-Za-z_$][\w$]*)?|([A-Za-z_$][\w$]*))|([A-Za-z_$][\w$]*)\s*;?\s*$)/;
+const WRAP_ALIAS = /=\s*(?:React\.)?(?:memo|forwardRef|observer)\(\s*([A-Z][\w$]*)\s*[,)]/;
+
+/** Top-level declarations of a JSX file: [{ name, start, end, exportNames: [..] }]. A declaration is a statement that starts at column 0. */
+function defsOf(doc) {
+  if (doc._defs) return doc._defs;
+  const src = doc.src;
+  const starts = [...src.matchAll(DECL_LINE)].map((m) => ({ index: m.index, line: m[0] }));
+  const defs = [];
+  const exportsMap = new Map();
+  starts.forEach((st, k) => {
+    const end = k + 1 < starts.length ? starts[k + 1].index : src.length;
+    let m;
+    let def = null;
+    if ((m = FN_DECL.exec(st.line))) {
+      def = { name: m[3] || (m[2] ? '#default' : null), start: st.index, end, exportNames: [] };
+      if (m[1]) def.exportNames.push(m[2] ? 'default' : m[3]);
+    } else if ((m = VAR_DECL.exec(st.line))) {
+      def = { name: m[2], start: st.index, end, exportNames: m[1] ? [m[2]] : [] };
+    } else if ((m = CLASS_DECL.exec(st.line))) {
+      def = { name: m[3], start: st.index, end, exportNames: m[1] ? [m[2] ? 'default' : m[3]] : [] };
+    } else if ((m = DEFAULT_ALIAS.exec(st.line))) {
+      const target = m[1] || m[2] || m[3];
+      if (target) exportsMap.set('default', { alias: target });
+      else def = { name: '#default', start: st.index, end, exportNames: ['default'] };
+    } else if ((m = /^export\s*\{([^}]*)\}\s*;?\s*$/.exec(st.line))) {
+      for (const part of m[1].split(',')) {
+        const mm = /^\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*$/.exec(part);
+        if (mm) exportsMap.set(mm[2] || mm[1], { alias: mm[1] });
+      }
+    }
+    if (def) {
+      const w = WRAP_ALIAS.exec(src.slice(def.start, Math.min(def.end, def.start + 240)));
+      if (w) def.aliasOf = w[1];
+      defs.push(def);
+    }
+  });
+  for (const d of defs) for (const n of d.exportNames) exportsMap.set(n, { def: d });
+  doc._defs = defs;
+  doc._exports = exportsMap;
+  return defs;
+}
+/** The definition a file exports under a name ('default' or a named export), following `memo(X)` and `export { X as Y }`. */
+function exportedDef(doc, name) {
+  defsOf(doc);
+  const e = doc._exports.get(name);
+  if (!e) return null;
+  if (e.def) return followAlias(doc, e.def);
+  const d = defsOf(doc).find((x) => x.name === e.alias);
+  return d ? followAlias(doc, d) : null;
+}
+function followAlias(doc, def, depth = 0) {
+  if (def.aliasOf && depth < 4 && !topEls(doc, def).length) {
+    const t = defsOf(doc).find((x) => x.name === def.aliasOf);
+    if (t && t !== def) return followAlias(doc, t, depth + 1);
+  }
+  return def;
+}
+/** The elements a definition writes at its top level (not nested in another element), in source order. */
+function topEls(doc, def) {
+  if (!def._top) def._top = doc.root.children.filter((e) => e.index >= def.start && e.index < def.end);
+  return def._top;
+}
+function bindingsOf(doc) {
+  if (doc._bind) return doc._bind;
+  const out = new Map();
+  for (const m of doc.src.matchAll(/\bimport\s+([^'"()]+?)\s+from\s+["']([^"']+)["']/g)) {
+    const clause = m[1].trim();
+    const named = /\{([^}]*)\}/.exec(clause);
+    if (named) {
+      for (const part of named[1].split(',')) {
+        const mm = /^\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*$/.exec(part);
+        if (mm) out.set(mm[2] || mm[1], { spec: m[2], imported: mm[1] });
+      }
+    }
+    const rest = (named ? clause.replace(named[0], '') : clause).trim().replace(/,\s*$/, '');
+    if (/^[A-Za-z_$][\w$]*$/.test(rest)) out.set(rest, { spec: m[2], imported: 'default' });
+  }
+  for (const m of doc.src.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\w*[Ll]azy\w*\(\s*\(\)\s*=>\s*import\(\s*["']([^"']+)["']/g)) out.set(m[1], { spec: m[2], imported: 'default' });
+  doc._bind = out;
+  return out;
+}
+
+/** A resolver for component use sites of one page: element -> { def, doc } or null. */
+function makeResolver(u) {
+  const { app, page, cache } = u;
+  const underApp = (p) => !path.relative(app.dir, p).startsWith('..');
+  const vendored = (p) => path.relative(app.dir, p).split(path.sep).some((x) => VENDORED_DIRS.has(x));
+  const otherViews = new Set((page.viewFiles || []).filter((f) => f !== page.viewFile));
+  const memo = new Map();
+  return (el) => {
+    const o = origOf(el);
+    if (!o.doc || !/^[A-Z][\w$]*$/.test(o.name)) return null;
+    const key = `${o.doc.path}|${o.name}`;
+    if (memo.has(key)) return memo.get(key);
+    let found = null;
+    const local = defsOf(o.doc).find((d) => d.name === o.name);
+    if (local) found = { def: followAlias(o.doc, local), doc: o.doc };
+    else {
+      const b = bindingsOf(o.doc).get(o.name);
+      if (b && (b.spec.startsWith('.') || b.spec.startsWith('/'))) {
+        const target = resolveLocal(o.doc.path, b.spec, page.htmlRoot);
+        if (target && CODE_EXT.test(target) && underApp(target) && !vendored(target)) {
+          const tdoc = cache.parseMarkupFile(target, path.relative(app.dir, target).split(path.sep).join('/'));
+          const def = exportedDef(tdoc, b.imported);
+          // another page's view is a different page, not a part of this one
+          if (def && !(otherViews.has(target) && def === exportedDef(tdoc, 'default'))) found = { def, doc: tdoc };
+        }
+      }
+    }
+    if (found && vendored(found.doc.path)) found = null;
+    if (found && !topEls(found.doc, found.def).length) found = null;
+    memo.set(key, found);
+    return found;
+  };
+}
+
+/** Build the forest of a unit: { roots, all } where `all` lists every element clone. */
+function buildForest(u) {
+  const resolve = makeResolver(u);
+  const cache = u.cache;
+  const unitDocs = u.docs.filter((d) => !d.vendored).map((d) => cache.parseMarkupFile(d.path, d.file));
+  const jsxDocs = unitDocs.filter((d) => d.kind === 'jsx');
+  const referenced = new Set();
+  for (const d of jsxDocs) {
+    for (const el of d.els) {
+      const r = resolve(el);
+      if (!r) continue;
+      if (r.doc === d && el.index >= r.def.start && el.index < r.def.end) continue;
+      referenced.add(r.def);
+    }
+  }
+  // the page's own view: mounted at the layout slot when no component in the layout names it
+  let viewSpec = null;
+  if (u.page.viewFile) {
+    const vdoc = jsxDocs.find((d) => d.path === u.page.viewFile);
+    if (vdoc) {
+      const def = exportedDef(vdoc, 'default') || defsOf(vdoc).find((x) => x.name === u.page.ownViewName);
+      if (def && !referenced.has(def) && topEls(vdoc, def).length) viewSpec = { doc: vdoc, def };
+    }
+  }
+  const state = { n: 0, count: 0, all: [], docs: new Set(), defs: new Set() };
+  const clone = (el, parent, inst, stack) => {
+    const c = { ...el, orig: el, parent, inst, children: [], rendered: [], slotted: [], attrBlocks: [] };
+    state.all.push(c);
+    state.count += 1;
+    for (const k of el.children) c.children.push(clone(k, c, inst, stack));
+    for (const ab of el.attrBlocks || []) {
+      const cc = { ...ab, orig: ab, parent: c, inst, children: [], rendered: [], slotted: [], attrBlocks: [], isContainer: true };
+      for (const k of ab.children) cc.children.push(clone(k, cc, inst, stack));
+      c.attrBlocks.push(cc);
+    }
+    if (el.name !== '#frag' && state.count < 30000) {
+      const r = resolve(el);
+      if (r && !stack.includes(r.def)) {
+        state.docs.add(r.doc);
+        state.defs.add(r.def);
+        state.n += 1;
+        const inst2 = state.n;
+        c.rendered = topEls(r.doc, r.def).map((e) => clone(e, c, inst2, [...stack, r.def]));
+      }
+    }
+    return c;
+  };
+  const roots = [];
+  const addRoot = (doc, def, els) => {
+    if (def) state.defs.add(def);
+    state.n += 1;
+    const inst = state.n;
+    for (const e of els) roots.push(clone(e, null, inst, def ? [def] : []));
+  };
+  for (const d of unitDocs) {
+    if (d.kind !== 'jsx') {
+      addRoot(d, null, d.root.children);
+      continue;
+    }
+    const defs = defsOf(d);
+    const inDef = (e) => defs.some((f) => e.index >= f.start && e.index < f.end);
+    const moduleEls = d.root.children.filter((e) => !inDef(e));
+    if (moduleEls.length) addRoot(d, null, moduleEls);
+    for (const def of defs) {
+      if (referenced.has(def) || (viewSpec && viewSpec.def === def)) continue;
+      const els = topEls(d, def);
+      if (els.length) addRoot(d, def, els);
+    }
+  }
+  if (viewSpec) {
+    state.defs.add(viewSpec.def);
+    state.n += 1;
+    const vroots = topEls(viewSpec.doc, viewSpec.def).map((e) => clone(e, null, state.n, [viewSpec.def]));
+    let host = null;
+    if (u.layout && u.slot >= 0) {
+      for (const c of state.all) {
+        if (c.isContainer || c.src !== u.layout.src || !(c.innerStart <= u.slot && u.slot < c.innerEnd)) continue;
+        if (!host || c.innerStart >= host.innerStart) host = c;
+      }
+    }
+    if (host) {
+      for (const v of vroots) v.parent = host;
+      host.slotted.push(...vroots);
+    } else roots.push(...vroots);
+  }
+  // definitions that are only used through a cycle (A renders B renders A) are never reached from a root: each gets its own
+  for (let pass = 0; pass < 3; pass += 1) {
+    let added = false;
+    for (const d of jsxDocs) {
+      for (const def of defsOf(d)) {
+        if (state.defs.has(def) || !referenced.has(def)) continue;
+        const els = topEls(d, def);
+        if (els.length) {
+          addRoot(d, def, els);
+          added = true;
+        }
+      }
+    }
+    if (!added) break;
+  }
+  return { roots, all: state.all, docs: state.docs };
+}
+const forestOf = (u) => {
+  if (u._forest === undefined) {
+    try {
+      u._forest = buildForest(u);
+    } catch {
+      u._forest = null; // the rules fall back to the flat element list
+    }
+  }
+  return u._forest;
+};
+
+// ---- exclusivity in the forest
+const pathTo = (n) => {
+  const out = [];
+  for (let e = n; e; e = e.parent) out.push(e);
+  return out.reverse();
+};
+const LIT = String.raw`("[^"\n]*"|'[^'\n]*'|-?\d+(?:\.\d+)?|true|false|null)`;
+const EQ_BEFORE = new RegExp(String.raw`([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*(?<![!=<>])(===?)\s*${LIT}\s*(?:&&|\?)\s*\(?\s*$`);
+const FLAG_BEFORE = /(?<![\w$.])([A-Za-z_$][\w$]*)\s*(?:&&|\?)\s*\(?\s*$/;
+const litValue = (t) => (/^["']/.test(t) ? t.slice(1, -1) : t);
+/** `X === literal` a flag was defined as in this file (`const first = step === 0;`), or null. */
+function flagDef(src, id) {
+  const m = new RegExp(String.raw`\b(?:const|let|var)\s+${id.replace(/\$/g, '\\$')}\s*=\s*([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*(?<![!=<>])(===?)\s*${LIT}\s*[;\n]`).exec(src);
+  return m ? { expr: m[1], lit: litValue(m[3]) } : null;
+}
+/** Conditions `X === literal` that must hold for this element to render (written right before it: `X === 'a' && <A/>`). */
+function existConds(n) {
+  const o = origOf(n);
+  if (o._ec !== undefined) return o._ec;
+  const gap = gapBefore(o);
+  let out = [];
+  const m = EQ_BEFORE.exec(gap);
+  if (m) out = [{ expr: m[1], lit: litValue(m[3]) }];
+  else {
+    const f = FLAG_BEFORE.exec(gap);
+    const d = f && flagDef(o.src, f[1]);
+    if (d) out = [d];
+  }
+  o._ec = out;
+  return out;
+}
+const PRIMARY_TOKEN = /^primary$|^(?:btn|button)[-_]*primary$|[-_]primary$/;
+const STRING_RE = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
+/** `className={X === 1 ? "btn primary" : "btn"}`: the element is primary only while X === literal -> { expr, lit }, or null. */
+function primaryCond(n) {
+  const o = origOf(n);
+  if (o._pc !== undefined) return o._pc;
+  o._pc = null;
+  const a = attrOf(o, 'className', 'class');
+  if (!a || a.type !== 'expr') return null;
+  const TERN = new RegExp(String.raw`([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*(?:(?<![!=<>])(===?|!==?)\s*${LIT}\s*)?\?\s*(["'])((?:\\.|(?!\4)[^\\])*)\4\s*:\s*(["'])((?:\\.|(?!\6)[^\\])*)\6`, 'g');
+  const hasPrimary = (str) => str.split(/\s+/).some((t) => PRIMARY_TOKEN.test(t));
+  const hits = [];
+  for (const m of a.text.matchAll(TERN)) {
+    const t = hasPrimary(m[5]);
+    const f = hasPrimary(m[7]);
+    if (t !== f) hits.push({ m, t });
+  }
+  if (hits.length !== 1) return null;
+  const { m, t } = hits[0];
+  // no other quoted piece of the expression may carry the primary class
+  const rest = a.text.slice(0, m.index) + a.text.slice(m.index + m[0].length);
+  for (const sm of rest.matchAll(STRING_RE)) if (sm[2].split(/\s+/).some((x) => PRIMARY_TOKEN.test(x))) return null;
+  let cond = null;
+  if (m[2]) {
+    const positive = m[2] === '==' || m[2] === '===';
+    if ((positive && t) || (!positive && !t)) cond = { expr: m[1], lit: litValue(m[3]) };
+  } else {
+    const d = flagDef(o.src, m[1]);
+    if (d && t) cond = d;
+  }
+  o._pc = cond;
+  return cond;
+}
+function condsExclusive(pa, pb, withClass) {
+  const collect = (nodes) => nodes.flatMap((n) => {
+    const own = existConds(n).map((c) => ({ ...c, inst: n.inst }));
+    if (withClass && !n.isContainer) {
+      const pc = primaryCond(n);
+      if (pc && n === nodes[nodes.length - 1]) own.push({ ...pc, inst: n.inst });
+    }
+    return own;
+  });
+  const ca = collect(pa);
+  const cb = collect(pb);
+  return ca.some((x) => cb.some((y) => x.inst === y.inst && x.expr === y.expr && x.lit !== y.lit));
+}
+/** True when two siblings of one parent are different states: arms of one ternary, different early returns, a component's early-return states vs what it passes through. */
+function siblingsExclusive(x, y) {
+  if (x.inst === y.inst) {
+    if (guardOf(x) !== guardOf(y)) return true;
+    const cx = chainInfo(x);
+    const cy = chainInfo(y);
+    return Boolean(cx && cy && cx.chain === cy.chain && cx.branch !== cy.branch);
+  }
+  const px = x.parent;
+  const rx = Boolean(px && px.rendered.includes(x));
+  const ry = Boolean(y.parent && y.parent.rendered.includes(y));
+  if (rx !== ry) return guardOf(rx ? x : y) !== null;
+  return false;
+}
+/** True when a and b (forest nodes) can never render together. withClass: also use `X === literal ? "primary" : ""` class conditions. */
+function exclusiveTree(a, b, withClass = false) {
+  const pa = pathTo(a);
+  const pb = pathTo(b);
+  let k = 0;
+  while (k < pa.length && k < pb.length && pa[k] === pb[k]) k += 1;
+  if (k === pa.length || k === pb.length) return false;
+  if (siblingsExclusive(pa[k], pb[k])) return true;
+  return condsExclusive(pa.slice(k), pb.slice(k), withClass);
 }
 
 // ============================== rules ==============================
@@ -1118,6 +1585,13 @@ const fmt = (l) => `${l.file}:${l.line}${l.msg ? ` ${l.msg}` : ''}`;
 const first = (locs, n = 3) => locs.slice(0, n).map(fmt).join('; ') + (locs.length > n ? ` (+${locs.length - n} more)` : '');
 const ownSheets = (u) => u.sheets.filter((s) => !s.vendored && s.name !== 'standalone-ui.css');
 
+// Chrome, for the "which buttons are page actions" test (P9): the app shell BAR only. The page-level header (.shell-bar,
+// role=banner, or a legacy top bar), <nav>, skip links. A <header> inside <main>, a section, an article, an aside, a form,
+// a list item, a table or a dialog is page content, and so is a wrapper such as <div class="shell"> around the whole app.
+const CONTENT_CONTAINER = /^(?:main|section|article|aside|form|li|table|blockquote|dialog|FloatingDialog|Modal|Dialog|Drawer)$/;
+const isShellHeader = (a) => a.name === 'header' && (hasClass(a, /^shell-bar$|^topbar$|^top$|^app-header$|^site-header$/) || attrText(a, 'role') === 'banner' || !ancestors(a).some((x) => CONTENT_CONTAINER.test(x.name) || isDialogEl(x)));
+const inShellChrome = (el) => ancestors(el).some((a) => isShellHeader(a) || /^nav$/i.test(a.name) || hasClass(a, /^shell-bar$|^topbar$|^top$|^skip/));
+// Looser test used for the banner-first check (P2): any header or nav, any shell-* wrapper.
 const inChrome = (el) => ancestors(el).some((a) => /^(?:header|nav)$/i.test(a.name) || hasClass(a, /^shell(?:-|$)|^topbar$|^top$|^skip/));
 const isDialogEl = (el) => attrText(el, 'role') === 'dialog' || attrOf(el, 'aria-modal') || /^(?:dialog|FloatingDialog|Modal|Dialog|Drawer)$/.test(el.name);
 const inDialog = (el) => [el, ...ancestors(el)].some(isDialogEl);
@@ -1139,7 +1613,10 @@ const isPrimaryEl = (el) => {
   if (v && /["']primary["']|^primary$/.test(v.text)) return true;
   return el.attrs.has('primary') && el.attrs.get('primary').type === 'bool';
 };
-const isTabLike = (el) => attrText(el, 'role') === 'tab' || el.attrs.has('aria-selected') || el.attrs.has('aria-pressed') || hasClass(el, /tab|toggle|chip|pill|tree/i);
+// A selector or a disclosure, not an action: tabs, toggles, switches, disclosures (aria-expanded). `aria-current` is NOT one:
+// standard section 9 keeps the selected state in aria-pressed / aria-selected.
+const SELECTOR_ROLES = /^(?:tab|switch|checkbox|radio|menuitemcheckbox|menuitemradio|option|treeitem)$/;
+const isTabLike = (el) => SELECTOR_ROLES.test(attrText(el, 'role') || '') || ['aria-selected', 'aria-pressed', 'aria-expanded', 'aria-checked'].some((n) => el.attrs.has(n)) || hasClass(el, /tab|toggle|chip|pill|tree/i);
 
 // ---- P1
 function ruleP1(u) {
@@ -1175,7 +1652,7 @@ function findToggle(u) {
   if (el) return el;
   for (const e of u.els) {
     if (!e.children.length) continue;
-    const btns = e.children.filter((c) => c.name === 'button').map((c) => innerPlain(c).toLowerCase());
+    const btns = realKids(e).filter((c) => c.name === 'button').map((c) => innerPlain(c).toLowerCase());
     if (btns.includes('mock') && (btns.includes('real') || btns.includes('live'))) return e;
   }
   return null;
@@ -1236,12 +1713,13 @@ function ruleP3(u) {
   const mains = u.els.filter((e) => e.name === 'main' || attrText(e, 'role') === 'main');
   if (!mains.length) return mk(R, 'DRIFT', 'no <main>: page content is not inside the page frame');
   const main = mains[0];
-  const cand = [main, ...ancestors(main), ...main.children.filter((c) => c.name !== 'header' && c.name !== 'nav').slice(0, 3)];
-  const wrapperChildren = main.children.length === 1 ? main.children[0].children.slice(0, 1) : [];
+  const mainKids = realKids(main);
+  const cand = [main, ...ancestors(main), ...mainKids.filter((c) => c.name !== 'header' && c.name !== 'nav').slice(0, 3)];
+  const wrapperChildren = mainKids.length === 1 ? realKids(mainKids[0]).slice(0, 1) : [];
   cand.push(...wrapperChildren);
   if (u.page.viewFile) {
     const vd = u.docs.find((d) => d.path === u.page.viewFile);
-    if (vd) cand.push(...vd.root.children.slice(0, 2));
+    if (vd) cand.push(...realKids(vd.root).slice(0, 2));
   }
   cand.push(...u.els.filter((e) => e.name === 'body' || attrText(e, 'id') === 'root'));
   const classes = new Set(cand.flatMap((e) => classTokens(e)));
@@ -1294,8 +1772,8 @@ function ruleP6(u, tier) {
   const R = 'P6';
   const insp = u.els.filter((e) => hasClass(e, /^inspector(?:-layout)?$/) || e.name === 'InspectorLayout');
   if (insp.length) {
-    const bad = insp.filter((e) => e.children.length < 3);
-    if (bad.length) return mk(R, 'DRIFT', `inspector layout with ${bad[0].children.length} part(s) at ${fmt(loc(bad[0]))}; it is tree + form + output`, [loc(bad[0], 'incomplete inspector')]);
+    const bad = insp.filter((e) => realKids(e).length < 3);
+    if (bad.length) return mk(R, 'DRIFT', `inspector layout with ${realKids(bad[0]).length} part(s) at ${fmt(loc(bad[0]))}; it is tree + form + output`, [loc(bad[0], 'incomplete inspector')]);
     return PASS(R);
   }
   if (u.els.some((e) => e.name === 'InspectorShell')) return PASS(R, 'InspectorShell component');
@@ -1331,28 +1809,49 @@ function ruleP7(u) {
 }
 
 // ---- P9
+// Judged on the render forest (component use sites expanded, attribute JSX at its host, view at the layout slot).
+// Two primaries are one state unless the code proves they exclude each other: arms of one ternary (fragment or element,
+// nested), different early returns (`if`/`else`/`case`/`default` + return), `X === 'a' && <A/>` against `X === 'b' && <B/>`
+// on one expression, `X === 1 ? "primary" : ""` against `X === 2 ? ...` on one expression, a component's early-return
+// states against what it passes through. Anything else counts.
 function ruleP9(u) {
   const R = 'P9';
-  const own = u.els.filter((e) => !e.vendored);
+  const forest = forestOf(u);
+  const own = (forest ? forest.all : u.els).filter((e) => !e.vendored && !e.isContainer && e.name !== '#frag');
+  const excl = forest ? (a, b) => exclusiveTree(a, b, true) : exclusiveFlat;
   const prim = own.filter(isPrimaryEl);
   const looped = prim.filter((e) => !isConditionalClass(e) && inLoop(e));
-  if (looped.length) return mk(R, 'DRIFT', `a primary button is rendered inside a loop (${fmt(loc(looped[0]))}), so it repeats once per item`, looped.map((e) => loc(e, 'primary in a loop')));
+  if (looped.length) return mk(R, 'DRIFT', `a primary button is rendered inside a loop (${fmt(loc(looped[0]))}), so it repeats once per item`, uniqLocs(looped.map((e) => loc(e, 'primary in a loop'))));
   const groups = new Map();
   for (const e of prim) {
     const k = dialogRoot(e);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(e);
+    const key = k || null;
+    if (!groups.has(key)) groups.set(key, { dialog: key, list: [] });
+    groups.get(key).list.push(e);
   }
-  for (const [k, list] of groups) {
-    const n = maxSimultaneous(list);
-    if (n > 1) return mk(R, 'DRIFT', `${n} primary buttons ${k ? 'in one dialog' : 'in one view state'} (${first(list.map((e) => loc(e)))}); exactly one`, list.map((e) => loc(e, 'primary button')));
+  for (const { dialog, list } of groups.values()) {
+    const n = maxSimultaneous(list, excl);
+    if (n > 1) {
+      const where = uniqLocs(list.map((e) => loc(e)));
+      return mk(R, 'DRIFT', `${n} primary buttons ${dialog ? 'in one dialog' : 'in one view state'} (${first(where)}${where.length < n ? `; some of this markup renders once per use site of its component` : ''}); exactly one`, uniqLocs(list.map((e) => loc(e, 'primary button'))));
+    }
   }
-  if (!(groups.get(null) || []).length) {
-    const content = own.filter((e) => isButtonEl(e) && !isTabLike(e) && !inChrome(e) && !inDialog(e));
-    if (content.length) return mk(R, 'DRIFT', `${content.length} button(s) (first at ${fmt(loc(content[0]))}) but none is the primary action`, [loc(content[0], 'no primary')]);
+  if (!(groups.get(null) || { list: [] }).list.length) {
+    const content = own.filter((e) => isButtonEl(e) && !isTabLike(e) && !inShellChrome(e) && !inDialog(e));
+    if (content.length) return mk(R, 'DRIFT', `${uniqLocs(content.map((e) => loc(e))).length} button(s) (first at ${fmt(loc(content[0]))}) but none is the primary action`, [loc(content[0], 'no primary')]);
     return mk(R, 'INFO', 'no action buttons on this page');
   }
   return PASS(R);
+}
+/** One entry per file:line: a component used twice reports its markup once. */
+function uniqLocs(locs) {
+  const seen = new Set();
+  return locs.filter((l) => {
+    const k = `${l.file}:${l.line}:${l.msg}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 // ---- P10
@@ -1591,7 +2090,7 @@ function ruleA1(u) {
     const isBtn = e.name === 'button' || attrText(e, 'role') === 'button';
     const isField = (e.name === 'input' && !/^(?:hidden|submit|button|reset|image)$/i.test(attrText(e, 'type') || '')) || e.name === 'select' || e.name === 'textarea';
     if (isLink || isBtn) {
-      if (!named() && !hasText(e) && !e.children.some((c) => c.name === 'img' && attrText(c, 'alt'))) bad.push(loc(e, `${isLink ? 'link' : 'button'} has no text or aria-label`));
+      if (!named() && !hasText(e) && !realKids(e).some((c) => c.name === 'img' && attrText(c, 'alt'))) bad.push(loc(e, `${isLink ? 'link' : 'button'} has no text or aria-label`));
     } else if (isField) {
       const id = attrText(e, 'id');
       const wrapped = ancestors(e).some((a) => a.name === 'label');
@@ -1695,6 +2194,7 @@ function applyEscapes(results, u) {
   const esc = [];
   const byFile = new Map();
   for (const d of u.docs) byFile.set(d.file, d.escapes || []);
+  if (u._forest) for (const d of u._forest.docs) if (!byFile.has(d.file)) byFile.set(d.file, d.escapes || []);
   for (const s of u.sheets) if (s.parsed.escapes && s.parsed.escapes.length) byFile.set(s.file, s.parsed.escapes);
   return results.map((r) => {
     if (r.status === 'PASS' || r.status === 'INFO' || !r.locs.length) return r;

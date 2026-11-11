@@ -1,0 +1,1 @@
+{ "rule": "P9", "status": "DRIFT", "note": "D: buttons whose primary class is conditional on X === <distinct literal> never share a state" }
