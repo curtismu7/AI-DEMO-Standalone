@@ -48,7 +48,7 @@ scripts/setup.sh --start <lab-name>     # start one lab
 scripts/setup.sh --start-all            # start every lab
 scripts/setup.sh --app <lab-name>       # (re)initialize one lab only
 scripts/setup.sh --skip-install         # setup without npm install/build
-scripts/setup.sh --non-interactive      # never ask; the optional PingGateway is not started (the output says how)
+scripts/setup.sh --non-interactive      # never ask; the optional PingGateway and Customer Agent LAB PingOne apps are not created (the output says how)
 scripts/setup.sh --dry-run              # show what setup would do, change nothing
 scripts/setup.sh --verbose              # show all tool output (brew, npm)
 ```
@@ -65,19 +65,24 @@ scripts/setup.sh --verbose              # show all tool output (brew, npm)
 
 ## What setup does
 
-Eleven steps, one status line each (`[n/11] Step ..... OK`), a summary box at the end:
+16 steps, one status line each (`[n/16] Step ..... OK`), a summary box at the end:
 
 1. **Homebrew** — installs it if missing (macOS's package manager; everything below uses it)
 2. **Node 26** — required version; detects nvm or brew, resolves version-manager shadowing automatically
 3. **gh CLI + access** — installs GitHub's CLI, browser login, and verifies the demo repos are reachable
 4. **Docker** — installs OrbStack and starts it
 5. **hosts entry** — adds `local.ping-devops.com` to `/etc/hosts` (one domain for everything, no more hosts edits ever)
-6. **PingOne** — creates the demo environment and writes `~/Development/.env` (live mode); skipped if already configured
-7. **Authorize snapshot** — checks the PingOne Authorize policy needed by live mode (mock mode needs none)
-8. **Submodules** — downloads all 70 demo app repos
-9. **Shelf + installs** — builds the demo shelf and installs the four main labs' npm dependencies
-10. **UI standard + env** — runs the family's quick consistency checks
-11. **Launcher** — starts the lab-proxy at `https://local.ping-devops.com:8443` and installs a launchd agent so it survives reboots
+6. **TLS certs** — makes a wildcard certificate for `local.ping-devops.com` (trusted via mkcert, self-signed if mkcert is unavailable)
+7. **PingOne** — creates the demo environment and writes `~/Development/.env` (live mode); skipped if already configured
+8. **Authorize snapshot** — checks the PingOne Authorize policy needed by live mode (mock mode needs none)
+9. **Submodules** — downloads all 70 demo app repos
+10. **Shelf + installs** — builds the demo shelf and installs the four main labs' npm dependencies
+11. **Shelf URL** — saves `SHELF_URL` in `~/Development/.env` so every lab's header can link back to the shelf
+12. **UI standard + env** — runs the family's quick consistency checks
+13. **Shared services** — starts each `shared/<service>` compose project, and ping-shared's PingFederate when you have a licence file; skips what is not configured
+14. **PingGateway** — optional: reuses a healthy minimal PingGateway, otherwise asks y/N (default N) when `shared/ping-shared/.env` has `GATEWAY_ISSUER` and `GATEWAY_AUDIENCE`
+15. **Customer Agent LAB: PingOne apps for full Real** — optional: when the lab is checked out, `~/.config/demo-kit/provisioning.json` exists and the lab's own `.env` lacks any of its eight `CAL_*` settings, shows a preview of the two PingOne apps, then asks y/N (default N) before creating them and writing the lab's `.env` (backed up first); with the settings all there it says "already configured". Never asks in `--non-interactive` or `--dry-run`, and a failure is a WARN. The Authorize policy entry and the SE ingress stay manual (the output lists the commands); the SE Agent Gateway accepts only the owner's environment, so a colleague's own PingOne environment cannot use it
+16. **Launcher** — starts the lab-proxy at `https://local.ping-devops.com:8443` and installs a launchd agent so it survives reboots
 
 Then it prints a summary: mode (live/mock), how many labs and containers are running, and the shelf URL.
 

@@ -20,7 +20,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=15
+STEP_TOTAL=16
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""
@@ -108,9 +108,10 @@ Options:
   --no-start       Set up only; start no labs
   --pingone="..."  Force PingOne setup with args (reconfigure), e.g.
                    --pingone="--region com --admin-env-id ID --client-id ID --client-secret SECRET"
-  --no-pingone     Skip PingOne entirely (mock mode)
+  --no-pingone     Skip PingOne entirely (mock mode); also skips the Customer Agent LAB apps below
   --non-interactive  Never ask a question: the optional minimal PingGateway is not started
-                   (the output says how to start it). Also the behaviour whenever stdin
+                   and the optional Customer Agent LAB PingOne apps are not created
+                   (the output says how to do each). Also the behaviour whenever stdin
                    is not a terminal.
   --verbose        Show all tool output (brew, npm) instead of only failures
   --dry-run        Print what would happen without changing anything
@@ -118,6 +119,15 @@ Options:
 
 After setup: https://local.ping-devops.com:8443 (launcher)
 Real/live mode needs ~/Development/.env (written by the PingOne step).
+
+Customer Agent LAB, full Real (optional, asked first): when customer-agent-LAB is checked out,
+~/.config/demo-kit/provisioning.json (or STANDALONE_CRED_FILE) exists and the lab's own .env
+does not yet hold all eight CAL_* settings, setup shows a preview of the two PingOne apps the
+lab needs, then asks y/N (default N) before creating them and writing the lab's .env (backed
+up first). The apps are made in the environment named in that .env; the SE Agent Gateway
+accepts tokens only from the owner's environment, so a colleague's own environment cannot
+use it. The PingOne Authorize policy entry and the SE ingress stay manual: setup prints the
+commands after a successful apply and never runs them.
 USAGE
       exit 0 ;;
     --skip-install) skip_install=1 ;;
@@ -564,6 +574,92 @@ case "$gw_state" in
     esac ;;
 esac
 # ---- end PingGateway step ---------------------------------------------------------------------------------------------
+
+# ---- Customer Agent LAB: PingOne apps for full Real (optional; asks first; never aborts the setup) ------------------------
+# customer-agent-LAB's full Real needs two PingOne apps in the environment named in the lab's own .env. The lab ships
+# scripts/owner/pingone-real-setup.mjs: run plainly it only reads PingOne and prints a plan; --apply creates the apps and writes the
+# eight CAL_* names into the lab's .env (backup first). Owner decision 2026-11-10: this is part of bootstrap, as an offer.
+# It applies only when (1) the lab is checked out, (2) the admin credentials file exists, (3) the lab's .env does not already hold
+# all eight settings. Interactive: preview, then y/N (default N), then --apply. Not interactive, or a dry run: nothing runs (the
+# preview reads the tenant with admin credentials) and one line gives the command. A failure is a WARN and setup carries on.
+# The Authorize policy entry and the SE ingress change shared systems: they are printed after a successful apply, never run.
+# The script's output is shown unchanged. This block reads the lab's .env for NAMES only and never prints a value.
+cal_dir="$root/standalone/customer-agent-LAB"
+cal_script="$cal_dir/scripts/owner/pingone-real-setup.mjs"
+cal_cmd="node standalone/customer-agent-LAB/scripts/owner/pingone-real-setup.mjs"
+cal_creds="${STANDALONE_CRED_FILE:-$HOME/.config/demo-kit/provisioning.json}"
+cal_creds_show="$cal_creds"; case "$cal_creds" in "$HOME"/*) cal_creds_show="~${cal_creds#"$HOME"}" ;; esac
+cal_names="CAL_USER_CLIENT_ID CAL_USER_CLIENT_SECRET CAL_AGENT_CLIENT_ID CAL_AGENT_CLIENT_SECRET CAL_DEMO_USERNAME CAL_AGENT_GATEWAY_URL CAL_GATEWAY_AUDIENCE CAL_GATEWAY_SCOPE"
+# cal_set <NAME>: true when the lab's .env gives NAME a real value: not empty and not an .env.example placeholder (a zero UUID,
+# replace-me, or a host or mail domain ending .example / .invalid: the lab's own rule). Never prints the value.
+cal_set() {
+  local v
+  v="$(grep -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$cal_dir/.env" 2>/dev/null | tail -1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' -e 's/[[:space:]]*$//')" || true
+  [ -n "$v" ] || return 1
+  ! printf '%s' "$v" | grep -Eiq '^(0{8}-0{4}-0{4}-0{4}-0{12}|replace-me)$|(^|[@./])[^@/[:space:]]*\.(example|invalid)($|[:/?#])'
+}
+# cal_last <text>: the script's last non-empty line (its own message), for the WARN line.
+cal_last() { printf '%s\n' "$1" | grep . | tail -1 || true; }
+# cal_remaining: what bootstrap deliberately does not run (README "Owner setup for full Real", steps 2 and 3, then the rebuild).
+cal_remaining() {
+  printf '  Still manual (bootstrap never runs these: they change PingOne Authorize and the shared SE cluster):\n'
+  printf '    1. PingOne Authorize: add the new agent client id to HasValidActorChain. One id, additive only: export first, diff exactly one added id.\n'
+  printf '       Checklist: standalone/customer-agent-LAB/scripts/owner/p1az-add-actor.md\n'
+  printf '    2. SE ingress (writes to the shared SE cluster): cd standalone/customer-agent-LAB && bash scripts/owner/agent-gateway-ingress.sh\n'
+  printf '       then, once its preview looks right:          bash scripts/owner/agent-gateway-ingress.sh --apply\n'
+  printf '    3. Rebuild the lab: cd standalone/customer-agent-LAB && HOST_PORT=5603 docker compose up --build -d\n'
+}
+cal_missing=0
+for cal_n in $cal_names; do cal_set "$cal_n" || cal_missing=$((cal_missing + 1)); done
+cal_state=ask
+if [ "${run_pingone:-1}" = "0" ]; then cal_state=nopingone
+elif [ ! -f "$cal_script" ]; then
+  if [ -n "$(ls -A "$cal_dir" 2>/dev/null)" ]; then cal_state=old; else cal_state=absent; fi
+elif [ "$cal_missing" = 0 ]; then cal_state=done
+elif [ ! -s "$cal_creds" ]; then cal_state=nocreds
+elif [ "$dry_run" = 1 ]; then cal_state=dry
+elif ! is_interactive; then cal_state=noask
+else
+  # The preview and the question come before the step line, so nothing lands in the middle of "[n/N] Customer Agent LAB ....".
+  printf '\n  Customer Agent LAB, full Real: preview of the PingOne apps (reads PingOne with your admin credentials, changes nothing):\n'
+  cal_rc=0; cal_out="$(perl -e 'alarm 120; exec @ARGV' node "$cal_script" < /dev/null 2>&1)" || cal_rc=$?
+  if [ -n "$cal_out" ]; then printf '%s\n' "$cal_out"; fi
+  if [ "$cal_rc" != 0 ]; then
+    cal_state=previewfail
+  else
+    printf '\n  Answering y creates two PingOne apps in the environment named in standalone/customer-agent-LAB/.env and writes that file (backed up first); Real works against the SE Agent Gateway only if that is the environment whose tokens the gateway accepts, and the gateway accepts only the owner'\''s environment.\n'
+    printf '  Create the two apps and write the lab .env now? [y/N] '
+    cal_answer=""; read -r cal_answer || true
+    case "$cal_answer" in
+      y|Y|yes|YES|Yes)
+        cal_rc=0; cal_out="$(perl -e 'alarm 120; exec @ARGV' node "$cal_script" --apply < /dev/null 2>&1)" || cal_rc=$?
+        if [ -n "$cal_out" ]; then printf '%s\n' "$cal_out"; fi
+        if [ "$cal_rc" = 0 ]; then cal_state=applied; else cal_state=applyfail; fi ;;
+      *) cal_state=declined ;;
+    esac
+  fi
+fi
+step "Customer Agent LAB: PingOne apps for full Real"
+case "$cal_state" in
+  nopingone)   step_skip "--no-pingone: mock mode" ;;
+  absent)      step_skip "customer-agent-LAB not checked out (optional)" ;;
+  old)         step_skip "this customer-agent-LAB checkout has no scripts/owner/pingone-real-setup.mjs yet (update the lab, then re-run)" ;;
+  done)        step_ok "already configured" ;;
+  nocreds)     step_skip "optional; to offer it, PingOne admin credentials must be in $cal_creds_show (scripts/pingone-setup.sh writes that file)" ;;
+  dry)         step_skip "dry run: would preview, ask, then run: $cal_cmd --apply" ;;
+  noask)       step_skip "not run (no prompt here); preview: $cal_cmd   then create: $cal_cmd --apply" ;;
+  declined)    step_skip "not created (you said no); later: $cal_cmd (preview), then $cal_cmd --apply" ;;
+  previewfail)
+    if [ "$cal_rc" = 142 ]; then step_warn "the preview did not finish in 2 minutes; nothing was changed; setup carries on; retry: $cal_cmd"
+    else step_warn "the preview failed (exit $cal_rc): $(cal_last "$cal_out"); nothing was changed; setup carries on; retry: $cal_cmd"; fi ;;
+  applyfail)
+    if [ "$cal_rc" = 142 ]; then step_warn "creating the apps did not finish in 2 minutes; setup carries on; check the output above, then retry: $cal_cmd --apply"
+    else step_warn "creating the apps failed (exit $cal_rc): $(cal_last "$cal_out"); setup carries on; re-running reuses apps already made: $cal_cmd --apply"; fi ;;
+  applied)
+    step_ok "two PingOne apps ready; standalone/customer-agent-LAB/.env written (backup first)"
+    cal_remaining ;;
+esac
+# ---- end Customer Agent LAB step ---------------------------------------------------------------------------------------
 
 step "Launcher"
 # All apps are served through ONE domain, already in /etc/hosts - no new hosts entries, ever.

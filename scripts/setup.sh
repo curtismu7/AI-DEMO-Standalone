@@ -164,7 +164,7 @@ Usage:
   scripts/setup.sh --start-top <n>       Like the default, with <n> labs instead of 10.
   scripts/setup.sh --no-start            Set up only; start no labs.
   scripts/setup.sh --skip-install        Set up without npm install/build.
-  scripts/setup.sh --non-interactive     Never ask a question (the optional PingGateway is then not started).
+  scripts/setup.sh --non-interactive     Never ask a question (the optional PingGateway and the Customer Agent LAB PingOne apps are then not started).
   scripts/setup.sh setup [flags]         Re-run PingOne setup alone
                                          (e.g. setup pingone --region com ...)
   scripts/setup.sh teardown [--dry-run]  Delete the PingOne demo environment
