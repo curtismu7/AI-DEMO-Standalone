@@ -29,3 +29,15 @@ privilege-demo-LAB/policies
 privilege-demo-LAB/trace
 # 2026-11-11: mcp-skills-LAB skills (true three-column inspector) and mcp-demo-client-privilege-LAB index converted; their pins are bumped in the same PR.
 mcp-demo-client-privilege-LAB/index
+# 2026-11-11: p1-third-party-exchange-LAB (all 11 pages) converted in the lab repo; its pin is bumped in the same PR.
+p1-third-party-exchange-LAB/admin
+p1-third-party-exchange-LAB/compare
+p1-third-party-exchange-LAB/diagram
+p1-third-party-exchange-LAB/exchange
+p1-third-party-exchange-LAB/live
+p1-third-party-exchange-LAB/realbrowser
+p1-third-party-exchange-LAB/reallocal
+p1-third-party-exchange-LAB/setup
+p1-third-party-exchange-LAB/talk
+p1-third-party-exchange-LAB/walk
+p1-third-party-exchange-LAB/wire
