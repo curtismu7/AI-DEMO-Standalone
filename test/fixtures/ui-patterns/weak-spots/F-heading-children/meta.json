@@ -1,0 +1,1 @@
+{ "rule": "H2", "status": "WARN", "note": "F: heading order is judged across the rendered tree, through imported child components" }

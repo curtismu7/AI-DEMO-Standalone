@@ -31,7 +31,7 @@
  *   P10 button colours read only the shared tokens and resolve to the fixed Ping Red gradient
  *   P11 every modal is a FloatingDialog (advisory)
  *   H1  exactly one h1 and one main landmark
- *   H2  headings do not skip levels (advisory)
+ *   H2  headings do not skip levels, in render order through child components (advisory)
  *   H3  no inline style colours, font-size, or hardcoded hex in markup attributes
  *   T1  theme tokens only: no colour literals in the app's own CSS outside token definitions; no purple hues
  *   T2  font-size floor 10px
@@ -89,7 +89,7 @@ export const RULES = {
   P10: 'button colours read only shared tokens; the primary resolves to the fixed Ping Red gradient',
   P11: 'every modal is a FloatingDialog (advisory)',
   H1: 'exactly one h1 and one main landmark',
-  H2: 'headings do not skip levels (advisory)',
+  H2: 'headings do not skip levels, in render order through child components (advisory)',
   H3: 'no inline style colours or font-size, no hardcoded colour in markup attributes',
   T1: 'theme tokens only: no colour literals in own CSS outside token definitions; purple/violet/indigo hues drift',
   T2: 'font-size floor of 10px',
@@ -1953,15 +1953,59 @@ function ruleH1(u) {
 }
 
 // ---- H2
+// Heading order along the render forest: component use sites are expanded, so a child component's headings sit where the
+// component is used and a skip INSIDE a child is found. Arms of one ternary / different early returns are alternatives:
+// each starts from the level before them and what follows is judged from the lowest level any arm leaves.
 function ruleH2(u) {
   const R = 'H2';
-  const list = (u.order.length ? u.order : u.els).filter((e) => /^h[1-6]$/.test(e.name) && !inDialog(e));
-  let prev = 0;
+  const forest = forestOf(u);
   const skips = [];
-  for (const h of list) {
-    const lvl = Number(h.name[1]);
-    if (prev && lvl > prev + 1) skips.push(loc(h, `h${prev} to h${lvl}`));
-    prev = lvl;
+  const seen = new Set();
+  const note = (h, from, to) => {
+    const l = loc(h, `h${from} to h${to}`);
+    const k = `${l.file}:${l.line}`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      skips.push(l);
+    }
+  };
+  if (!forest) {
+    const list = (u.order.length ? u.order : u.els).filter((e) => /^h[1-6]$/.test(e.name) && !inDialog(e));
+    let prev = 0;
+    for (const h of list) {
+      const lvl = Number(h.name[1]);
+      if (prev && lvl > prev + 1) note(h, prev, lvl);
+      prev = lvl;
+    }
+  } else {
+    const seq = (n) => [...n.rendered, ...[...n.attrBlocks, ...n.children, ...n.slotted].sort((a, b) => origOf(a).index - origOf(b).index)];
+    const visit = (n, prev) => {
+      let cur = prev;
+      if (!n.isContainer && /^h[1-6]$/.test(n.name) && !inDialog(n)) {
+        const lvl = Number(n.name[1]);
+        if (cur && lvl > cur + 1) note(n, cur, lvl);
+        cur = lvl;
+      }
+      return walk(seq(n), cur);
+    };
+    const walk = (nodes, start) => {
+      let cur = start;
+      let runStart = start;
+      let ends = [];
+      nodes.forEach((n, k) => {
+        if (k > 0 && exclusiveTree(nodes[k - 1], n)) {
+          ends.push(cur);
+          cur = runStart;
+        } else {
+          if (ends.length) cur = Math.min(...ends, cur);
+          ends = [];
+          runStart = cur;
+        }
+        cur = visit(n, cur);
+      });
+      return ends.length ? Math.min(...ends, cur) : cur;
+    };
+    walk(forest.roots, 0);
   }
   return skips.length ? mk(R, 'WARN', `heading levels skipped: ${first(skips)}`, skips) : PASS(R);
 }
