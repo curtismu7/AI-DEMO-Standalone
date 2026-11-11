@@ -1,115 +1,204 @@
-# UI check baseline — 2026-11-10
+# UI check baseline, 2026-11-10
 
-First full run of the new per-page checker (`scripts/check-ui-patterns.mjs`) over all
-76 checked-out labs. This is the state **before** any conversion work; it is the
-reference for picking the first apps to convert and for measuring progress.
+First full run of the per-page checker (`scripts/check-ui-patterns.mjs`) over every app in the meta-repo. It is the state **before** any conversion work: the reference for choosing the first apps and for measuring progress.
 
-Numbers were produced with:
+## How the numbers were produced
 
-```
-node scripts/check-ui-patterns.mjs --root ~/Development/AI-DEMO-Standalone/standalone --json
-```
-
-(this machine's submodule pins of 2026-11-10; CI runs the same checker on its own
-checkout, where the enforced allowlist `scripts/ui-pattern-converted.txt` is the gate).
+- **State analysed: the exact submodule pins of `origin/main` of this repo, not the working copies.** All 80 app checkouts on this machine were present; 78 sit exactly on their pin, `demo-shelf-LAB` is ahead of its pin and has uncommitted changes, and `id-jag-standalone-LAB` has uncommitted changes. To avoid measuring local edits, each app was exported with `git archive <pin>` (tracked files only) into a scratch directory and the checker was run over that:
+  `node scripts/check-ui-patterns.mjs --root <scratch> --json`
+- The five apps recommended below had their pin compared with GitHub `main` (`gh api repos/curtismu7/<app>/commits/main`): all five are at their pin.
+- Static analysis only. A clean page means none of the patterns were found, not that the page is right. Not checked: contrast of computed colours (only the shared tokens are checked), 375px overflow, keyboard behaviour, markup built at run time, CSS-in-JS.
+- While preparing this baseline, three checker false-positive classes were found by reading the flagged source and fixed in the same PR, each with a regression fixture: a `({ children })` parameter taken for the JSX slot (made the banner look like it came after the page), early-return states (`if (loading) return <main>`) counted as extra landmarks, and parentheses inside string literals making a button look like it sat in a loop. Any number from an earlier run of this checker is superseded by this document.
 
 ## Headline
 
-- **323 pages** in **76 apps** analysed (4 apps skipped: no UI or not checked out)
-- **5 pages clean** (all in mcp-skills-LAB), **318 with at least one DRIFT rule**
-- 5 clean pages are now enforced via the allowlist; the rest are advisory
+- **323 pages** in **76 apps** analysed; 4 apps have no UI pages (listed at the end).
+- **8 pages are clean** (mcp-skills-LAB, privilege-demo-LAB); **315 pages have at least one DRIFT**.
+- The 8 clean pages are on the allowlist (`scripts/ui-pattern-converted.txt`) and enforced from this PR on; every other page is advisory.
+- WARN findings (advisory, never a failure): H2 64, T1 50, P2 27, P11 13, P1 9, P6 6, M1 5, P10 5 pages with at least one.
 
-## Findings by rule (pages affected)
+## Findings by rule (pages with DRIFT)
 
-| rule | pages | rule | pages |
-|------|-------|------|-------|
-| P1 shell | 263 | A2 focus | 61 |
-| P3 page frame | 243 | V1 vendored CSS | 23 |
-| P9 one primary | 205 | T3 dark theme | 18 |
-| P10 button tokens | 98 | M1 toggle | 11 |
-| H1 one h1/main | 82 | A1 labels | 9 |
-| P2 banner | 74 | T1 literals | 7 |
+| rule | pages with DRIFT | | rule | pages with DRIFT |
+|------|------|-|------|------|
+| P1 | 263 | | T1 | 7 |
+| P3 | 243 | | H3 | 6 |
+| P9 | 201 | | V1 | 5 |
+| P10 | 98 | | C1 | 2 |
+| A2 | 61 | | T2 | 2 |
+| H1 | 60 | | T3 | 2 |
+| P2 | 60 | | P4 | 1 |
+| M1 | 12 | | P6 | 1 |
+| A1 | 9 | | P7 | 1 |
 
-(H3 4, T2 2, P4/P6/P7/C1 ≤ 1 each.)
+P1 (shell-bar), P3 (page frame) and P9 (one primary per view) dominate: most apps predate those conventions, render buttons in lists, or have a page whose only buttons are secondary. P1 and P3 are normally one edit in the app's shared header or main element, which clears every page of the app at once.
 
-P1/P3/P9 dominate: most apps predate the shell-bar/page-frame/primary-button
-conventions, or render buttons in loops (cards, tables).
+## Every app
 
-## First-run apps (the shelf's default list), per app
+Columns: pages found, pages with no DRIFT, pages with DRIFT, DRIFT findings (a finding is one rule on one page), the rules that drift most (with the number of pages when the app has more than one).
 
-| app | pages | findings | dominant rules |
-|-----|-------|----------|----------------|
-| mcp-demo-client-privilege-LAB | 1 | 8 | P1 P3 P9 P10 + M1 C1 (static HTML page) |
-| privilege-a2a-anthropic-demo-LAB | 0 | — | headless (no UI pages found) |
-| id-jag-standalone-LAB | 9 | 27 | P10 (36+ button-token literals), P9, P2 |
-| privilege-demo-LAB | 7 | 18 | P2 (banner after content), P9, H1 |
-| pingone-LAB | 4 | 16 | P1 (legacy `.top`), P3, P9, P10 |
-| pingfederate-LAB | 5 | 14 | P1, P3, P9 |
-| cimd-LAB | 6 | 10 | P1, P9 (fewest of the first-run set) |
-| gateway-claims-LAB | 9 | 26 | P1, P3, P9 on every page |
-| hostile-a2a-LAB | 5 | 12 | P1/P3/P9 family |
-| data-protection-LAB | 7 | 18 | P1, P3, P9 |
+| app | tier | pages | clean | drift | findings | rules that drift most (pages) |
+|-----|------|-------|-------|-------|----------|-------------------------------|
+| a2a-lab-LAB | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×2 P9×2 |
+| agent-audit-trail-LAB | Demo | 6 | 0 | 6 | 22 | A2×6 P1×6 P3×6 P9×4 |
+| agent-gateway-inspector-LAB | Tester | 1 | 0 | 1 | 4 | A2 P1 P3 P9 |
+| agent-governance-LAB | Demo | 9 | 0 | 9 | 21 | P1×9 P3×9 P9×3 |
+| agent-kill-switch-LAB | Demo | 1 | 0 | 1 | 4 | A2 P1 P10 P3 |
+| agent-mcp-door-demo-LAB | Demo | 1 | 0 | 1 | 2 | P1 P3 |
+| agent-preferences-lab | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×2 P9×2 |
+| agent-registry-demo-LAB | Demo | 5 | 0 | 5 | 16 | H1×5 P1×5 P3×5 P9×1 |
+| agentcore-pingone-demo-LAB | Demo | 6 | 0 | 6 | 17 | P1×6 P9×6 P3×5 |
+| aggregate-entitlement-LAB | Tester | 3 | 0 | 3 | 12 | A2×3 P1×3 P3×3 P9×3 |
+| ai-gateway-client-LAB | Tester | 2 | 0 | 2 | 10 | H1×2 P10×2 P2×2 P3×2 |
+| ai-guard-sidecar-LAB | Demo | 1 | 0 | 1 | 5 | A2 P1 P3 P9 |
+| ai-policies-LAB | Demo | 8 | 0 | 8 | 21 | P1×8 P3×8 P9×5 |
+| attack-gallery-LAB | Demo | 8 | 0 | 8 | 24 | P1×8 P2×8 P9×5 P3×3 |
+| chatgpt-mcp-flow-LAB | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×3 P9×1 |
+| ciba-hitl-lab | Demo | 2 | 0 | 2 | 10 | A2×2 H1×2 P1×2 P10×2 |
+| cimd-LAB | Demo | 6 | 0 | 6 | 10 | P1×6 P9×4 |
+| coding-agents-LAB | Demo | 6 | 0 | 6 | 20 | P1×6 P3×6 T1×6 P9×2 |
+| customer-agent-LAB | Demo | 6 | 0 | 6 | 12 | P3×6 P9×6 |
+| data-protection-LAB | Demo | 7 | 0 | 7 | 18 | P1×7 P3×7 P9×4 |
+| delegation-lab-LAB | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×2 P9×2 |
+| demo-field-guide-LAB | Tool | 1 | 0 | 1 | 3 | C1 P1 P10 |
+| demo-map-LAB | null | 1 | 0 | 1 | 3 | A2 P10 P9 |
+| demo-shelf-LAB | Tool | 1 | 0 | 1 | 4 | H3 P1 P10 P9 |
+| diagram-prove-lab | Tool | 1 | 0 | 1 | 4 | P1 P2 P3 P9 |
+| diagram-studio-LAB | Tool | 1 | 0 | 1 | 4 | P1 P2 P3 P9 |
+| env-map-LAB | Tool | 1 | 0 | 1 | 4 | A2 H1 P10 P9 |
+| federated-identity-LAB | Demo | 9 | 0 | 9 | 27 | P1×9 P3×9 P9×9 |
+| field-notes-LAB | Tool | 2 | 0 | 2 | 8 | A2×2 H1×2 P10×2 P9×2 |
+| gateway-claims-LAB | Demo | 9 | 0 | 9 | 26 | P1×9 P9×9 P3×8 |
+| gateway-suite-LAB | Demo | 2 | 0 | 2 | 9 | A2×2 H1×2 P1×2 P10×2 |
+| hitl-mfa-lab-LAB | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×2 P9×2 |
+| hostile-a2a-LAB | Demo | 5 | 0 | 5 | 12 | P1×5 P3×5 P9×2 |
+| hostile-mcp-LAB | Demo | 6 | 0 | 6 | 14 | P1×6 P3×6 P9×2 |
+| id-jag-standalone-LAB | Demo | 9 | 0 | 9 | 18 | P10×9 P9×7 P3×1 P4×1 |
+| idjag-runner-LAB | Tester | 7 | 0 | 7 | 39 | M1×7 P10×7 P2×7 P3×6 |
+| intent-par-inspector-LAB | Demo | 5 | 0 | 5 | 23 | H1×5 P1×5 P2×5 P3×5 |
+| intent-purpose-behaviour-LAB | Demo | 5 | 0 | 5 | 12 | P1×5 P3×4 P9×3 |
+| jev-lab-LAB | Demo | 2 | 0 | 2 | 11 | A2×2 H1×2 P1×2 P10×2 |
+| jit-lab-LAB | Demo | 1 | 0 | 1 | 5 | A2 H1 P1 P10 |
+| mcp-auth-conformance-LAB | Tester | 6 | 0 | 6 | 18 | H1×6 P1×6 P3×6 |
+| mcp-demo-client-privilege-LAB | Demo | 1 | 0 | 1 | 8 | A1 C1 H3 M1 |
+| mcp-discovery-LAB | Tester | 1 | 0 | 1 | 3 | P1 P3 P9 |
+| mcp-elicitation-LAB | Tester | 1 | 0 | 1 | 2 | P1 P9 |
+| mcp-gateway-lab-LAB | Demo | 3 | 0 | 3 | 10 | P1×3 P10×3 P3×2 P9×2 |
+| mcp-skills-LAB | Tester | 6 | 5 | 1 | 1 | P6×1 |
+| mcp-surface-LAB | Demo | 11 | 0 | 11 | 41 | P1×11 P2×11 P3×11 P9×8 |
+| mcp-tools-LAB | Tester | 8 | 0 | 8 | 33 | A2×8 P1×8 P3×8 P9×6 |
+| meridian-a2a-hop-LAB | Demo | 1 | 0 | 1 | 4 | A1 P1 P10 P3 |
+| mock-authorize-LAB | Tester | 5 | 0 | 5 | 12 | P1×5 P3×5 P9×2 |
+| muse-LAB | Demo | 4 | 0 | 4 | 30 | P10×4 P2×4 P3×4 M1×3 |
+| no-tool-no-promise-LAB | Demo | 1 | 0 | 1 | 4 | A2 P1 P3 P9 |
+| obo-lab-LAB | Demo | 1 | 0 | 1 | 5 | A2 H1 P1 P10 |
+| observability-LAB | Demo | 7 | 0 | 7 | 25 | P1×7 P10×7 P3×6 P9×5 |
+| p1-third-party-exchange-LAB | Demo | 11 | 0 | 11 | 44 | P1×11 P10×11 P9×11 P3×9 |
+| p1az-inspector-LAB | Tester | 3 | 0 | 3 | 5 | P1×3 P3×2 |
+| personal-agent-demo-LAB | Demo | 1 | 0 | 1 | 4 | P1 P2 P3 P9 |
+| ping-gateway-route-LAB | Demo | 6 | 0 | 6 | 32 | A2×6 H1×6 P1×6 P2×6 |
+| pingcli-LAB | Demo | 5 | 0 | 5 | 6 | P9×5 P10×1 |
+| pingfederate-LAB | Demo | 5 | 0 | 5 | 14 | P1×5 P3×5 P9×4 |
+| pingone-events-LAB | Demo | 6 | 0 | 6 | 14 | P10×6 P3×5 P9×3 |
+| pingone-LAB | Demo | 4 | 0 | 4 | 16 | P1×4 P10×4 P3×4 P9×4 |
+| pingone-mcp-inspector-LAB | Tester | 8 | 0 | 8 | 39 | A2×8 H1×8 P1×8 P2×8 |
+| pingone-signin-LAB | Demo | 8 | 0 | 8 | 35 | A2×8 H1×8 P1×8 P3×7 |
+| poppy-agent-tester-LAB | Demo | 2 | 0 | 2 | 8 | P1×2 P10×2 P3×2 P9×2 |
+| privilege-demo-LAB | Demo | 7 | 3 | 4 | 4 | P9×4 |
+| privilege-k8-kits-LAB | null | 2 | 0 | 2 | 12 | H3×2 P1×2 P10×2 M1×1 |
+| privilege-logging-LAB | Tester | 8 | 0 | 8 | 12 | P10×8 P9×4 |
+| privilege-map-LAB | Demo | 2 | 0 | 2 | 6 | P1×2 P2×2 P3×2 |
+| progressive-trust-ladder-LAB | Demo | 1 | 0 | 1 | 3 | P1 P2 P9 |
+| saas-access-LAB | Demo | 9 | 0 | 9 | 22 | P1×9 P3×9 P9×4 |
+| secrets-vault-LAB | Demo | 9 | 0 | 9 | 25 | P1×9 P3×9 P9×7 |
+| session-LAB | Demo | 1 | 0 | 1 | 3 | P1 P3 P9 |
+| stolen-token-LAB | Tester | 5 | 0 | 5 | 20 | A2×5 H1×5 P1×5 P3×5 |
+| token-workbench-LAB | Demo | 2 | 0 | 2 | 8 | P1×2 P2×2 P3×2 P9×2 |
+| worker-demo-LAB | Demo | 1 | 0 | 1 | 2 | P1 P9 |
 
-## What the checker cannot see (stated limits)
+Not analysed (no UI pages found):
 
-- Static analysis only: no computed contrast in the browser, no 375px overflow,
-  no keyboard behaviour. The browser checks in light/dark/375px still apply.
-- Runtime-built markup (`innerHTML`, `createElement`), CSS-in-JS, and values set
-  at run time (customer accent/skin/theme from storage) are invisible.
-- A clean run means "none of these patterns found", not "the page is right".
+- deploy-test-LAB (skipped: no UI files)
+- mcp-resource-server-LAB (skipped: no UI files)
+- ping-services-stub-LAB (skipped: no UI files)
+- privilege-a2a-anthropic-demo-LAB (skipped: no UI files)
 
-## Method for the five first apps
 
-Picked from this baseline by: first-run-list order (how often an app is shown),
-fewest findings, variety of rule families, and whether one PR can fix an app.
-Each entry: exact findings, size, and the first step.
+## The first-run list, at a glance
 
-### 1. cimd-LAB — S/M (6 pages, 10 findings)
+| app | tier | pages | clean | findings | dominant rules |
+|-----|------|-------|-------|----------|----------------|
+| mcp-demo-client-privilege-LAB | Demo | 1 | 0 | 8 | A1 C1 H3 M1 |
+| privilege-a2a-anthropic-demo-LAB | | 0 | | | no UI pages (headless) |
+| id-jag-standalone-LAB | Demo | 9 | 0 | 18 | P10×9 P9×7 P3×1 P4×1 |
+| privilege-demo-LAB | Demo | 7 | 3 | 4 | P9×4 |
+| pingone-LAB | Demo | 4 | 0 | 16 | P1×4 P10×4 P3×4 P9×4 |
+| pingfederate-LAB | Demo | 5 | 0 | 14 | P1×5 P3×5 P9×4 |
+| cimd-LAB | Demo | 6 | 0 | 10 | P1×6 P9×4 |
+| gateway-claims-LAB | Demo | 9 | 0 | 26 | P1×9 P9×9 P3×8 |
+| hostile-a2a-LAB | Demo | 5 | 0 | 12 | P1×5 P3×5 P9×2 |
+| data-protection-LAB | Demo | 7 | 0 | 18 | P1×7 P3×7 P9×4 |
 
-- P1 on all 6 pages: one shared cause — `<header>` without `.shell-bar` at
-  `web/src/App.jsx:125`
-- P9 on 4 pages: primary rendered inside a loop at `web/src/DiagramView.jsx:95`
-  plus "buttons but none primary" pages
-- One PR: convert the single shared header and fix the DiagramView loop button.
-  **First step:** replace the `App.jsx:125` header with the `.shell-bar` markup
-  from shared/ui-standard-mock.html.
+## Recommended first five
 
-### 2. pingfederate-LAB — M (5 pages, 14 findings)
+Criteria: (a) shown most (the owner's first-run list, `scripts/first-run-labs.txt`), (b) fewest findings, (c) variety (React and static HTML, Demo and Tester), (d) small enough for one PR. "Locations" counts distinct file:line spots, which is a better size guide than findings (one shared header counts once but shows on every page). Sizes: S is under about half a day, M about a day, L several PRs.
 
-- P1 on all pages: legacy `.top` header at `web/src/App.jsx:146`
-- P3 on all pages: `<main>` (App.jsx:191) has no centred max-width frame
-- P9 on 4 pages: primary in a loop (`web/src/views/Shelf.jsx:41`)
-- **First step:** add `.shell-bar` + the standard page frame to App.jsx —
-  two shared edits fix P1+P3 everywhere; then promote the Shelf row button.
+### 1. privilege-demo-LAB — Demo, React, first-run — S (3 of 7 pages already clean and enforced from this PR)
 
-### 3. pingone-LAB — M (4 pages, 16 findings)
+Pages left: policies, approvals, trace, learn. Only rule P9 is left, 6 locations, 4 findings:
 
-- P1 (legacy `.top`, App.jsx:139), P3 (no frame, App.jsx:185) on all 4 pages —
-  same two-fix shape as pingfederate-LAB
-- P10 on all pages: buttons read `--on-lab` (`web/src/app.css:67`), not shared
-  tokens — a real brand-token drift, not just shell
-- **First step:** App.jsx shell+frame swap, then replace `--on-lab` on button
-  rules in app.css with `--on-accent`/`--control-border`.
+- `web/src/pages/PoliciesPage.jsx:150`, `:174` and `web/src/components/TestRequest.jsx:73`: three primary buttons in one view state (Confirm reset, Save as Active, Test request)
+- `web/src/pages/ApprovalsPage.jsx:62`: the per-row Approve is a primary inside a list, so it repeats
+- `web/src/pages/TracePage.jsx:28`: two buttons, none primary (Refresh is the page action)
+- `web/src/story/StoryPanel.jsx:63`: the Learn page's only buttons are story steps, none primary
 
-### 4. hostile-a2a-LAB — S (5 pages, 12 findings)
+**First step:** TracePage Refresh gets `className="primary"`; on Policies keep one primary (Save as Active) and demote the other two. Then add `privilege-demo-LAB/policies` and `/trace` to the allowlist in the same PR.
 
-- P1: legacy `.top` header at `web/src/App.jsx:58`; P3: no page frame (App.jsx:76)
-- P9: StoryPanel.jsx:61 renders buttons with no primary action
-- Smallest of the family: two shared edits + one button class.
-  **First step:** shell-bar swap in App.jsx, then mark the StoryPanel CTA.
+### 2. cimd-LAB — Demo, React, first-run — S
 
-### 5. privilege-demo-LAB — M (7 pages, 18 findings, different rule mix)
+6 pages, 8 locations, 10 findings:
 
-- P2 on all 7 pages: page content (e.g. `<h1>` in PoliciesPage.jsx:119) renders
-  before the banner that AppShell.jsx:86 mounts — a layout-order bug in the
-  shared AppShell, fixed once for all pages
-- H1 on 5 pages: no `<main>` landmark; P9 on 6 pages
-- Adds variety: exercises P2/H1 rather than P1/P3.
-  **First step:** move the banner mount above the view slot in AppShell.jsx,
-  then add `<main>` around the slot.
+- P1 on all 6 pages, one cause: `web/src/App.jsx:125`, a `<header className="bar">` that is not the `shell-bar`
+- P9 on 4 pages: the real-sign-in submit `App.jsx:153` and the diagram `Simulate` `web/src/DiagramView.jsx:95` are both primary next to the view's own primary (`views/PfView.jsx:26`, `:109`, `:133`; `views/LabView.jsx:30`; `views/H2View.jsx:165`)
 
-Not picked: mcp-demo-client-privilege-LAB (8 findings on one static HTML page
-but mixes 8 rule families incl. C1 contrast — better as a dedicated conversion);
-id-jag-standalone-LAB and gateway-claims-LAB (27/26 findings across many pages
-and components — an L-sized PR each); privilege-a2a-anthropic-demo-LAB (headless,
-no UI pages to convert).
+**First step:** replace the header at `App.jsx:125` with the `.shell-bar` markup from `shared/ui-standard-mock.html` (clears P1 everywhere), then demote `Simulate` to a plain button. The banner already comes first.
+
+### 3. hostile-a2a-LAB — Demo, React, first-run — S
+
+5 pages, 6 locations, 12 findings:
+
+- P1 on 5 pages: legacy `.top` header, `web/src/App.jsx:58`
+- P3 on 5 pages: `<main>` without a page frame, `web/src/App.jsx:76`
+- P9: `web/src/pages/RoundTrip.jsx:90`, `:102`, `:113` (three primary step buttons at once), and `web/src/story/StoryPanel.jsx:61` (the gallery page has buttons but no primary)
+
+**First step:** shell-bar and page frame in `App.jsx` (two shared edits clear 10 of the 12 findings), then keep only the current step's button primary in RoundTrip.
+
+### 4. mcp-skills-LAB — Tester, React, not on the first-run list — S (5 of 6 pages already clean and enforced from this PR)
+
+It is the only app with clean pages today, so finishing it gives the first fully enforced app and the only Tester example. One finding left, page `skills`:
+
+- P6 `web/src/pages/Skills.jsx:90`: `<div className="inspector">` has 2 parts (the tree `nav` and one `section`), the standard is tree + form + output
+
+**First step:** split the right-hand section into a form part (Get by URI, Activate) and an output part, or decide that a 2-part inspector is acceptable and relax P6 for it. That is a design decision, not a mechanical fix. Then add `mcp-skills-LAB/skills`.
+
+### 5. mcp-demo-client-privilege-LAB — Demo, static HTML (no React), first-run #1 — M
+
+1 page (`index`), 14 locations across 8 rule families, which is why it is M rather than S, but it is the most-shown app and the only vanilla-HTML example:
+
+- P1 `public/index.html:17` (`.topbar`), P3 `:45` (no frame), P9 `:69` (buttons, none primary: Sign In should be)
+- A1 unlabelled fields `public/index.html:85`, `:98`, `:112`, `:113`, `:120`
+- H3 `public/app.js:143`, `:144` (script sets `style.color` and `style.borderColor`; use a state class)
+- P10 `public/styles.css:98` (button border reads the app's own `--line`)
+- M1 no visible Mock / Real toggle (rule 19)
+- C1 the app redefines `--muted` and `--line` in `public/styles.css:4-5`: muted text on surface is 3.08:1 in light mode (needs 4.5), the primary button boundary is 2.44:1 (needs 3)
+
+**First step:** swap `.topbar` for the `shell-bar` markup and frame the `<main>`; then drop the app's colour token overrides in `styles.css` (clears P10 and C1 together).
+
+### Not picked, and why
+
+- **pingfederate-LAB** (M, 5 pages, 10 locations) and **pingone-LAB** (M, 4 pages, 10 locations + P10 `web/src/app.css:67` reads `--on-lab`): next in line; same two shared edits (header `App.jsx:146`/`:139`, frame `App.jsx:191`/`:185`) plus 8 (pingfederate) and 7 (pingone) primary-button spots.
+- **gateway-claims-LAB** (9 pages, 26 findings): P1/P3 are two edits, but P9 needs a primary chosen on every one of 9 pages.
+- **data-protection-LAB** (7 pages, 10 locations): same shape as pingfederate-LAB, with 8 button spots to fix in the tab components.
+- **id-jag-standalone-LAB** (L): 69 locations, mostly its own `--th-*` / `--ijp-*` / `--brand-*` tokens read by buttons in 6 CSS files (P10). A theming migration, not a one-PR conversion.
+- **privilege-a2a-anthropic-demo-LAB**: no UI pages (headless).
+
