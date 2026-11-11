@@ -16,6 +16,7 @@ hostile-a2a-LAB/roundtrip
 hostile-a2a-LAB/run
 mcp-skills-LAB/approvals
 mcp-skills-LAB/diagram
+mcp-skills-LAB/skills
 mcp-skills-LAB/overview
 mcp-skills-LAB/source
 mcp-skills-LAB/verifier
@@ -26,3 +27,5 @@ privilege-demo-LAB/home
 privilege-demo-LAB/learn
 privilege-demo-LAB/policies
 privilege-demo-LAB/trace
+# 2026-11-11: mcp-skills-LAB skills (true three-column inspector) and mcp-demo-client-privilege-LAB index converted; their pins are bumped in the same PR.
+mcp-demo-client-privilege-LAB/index
