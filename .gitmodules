@@ -248,3 +248,6 @@
 [submodule "standalone/privilege-owasp-lab-LAB"]
 	path = standalone/privilege-owasp-lab-LAB
 	url = https://github.com/curtismu7/privilege-owasp-lab-LAB.git
+[submodule "standalone/pf-privilege-obo-LAB"]
+	path = standalone/pf-privilege-obo-LAB
+	url = https://github.com/curtismu7/pf-privilege-obo-LAB
