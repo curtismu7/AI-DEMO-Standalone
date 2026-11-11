@@ -242,3 +242,6 @@
 [submodule "standalone/privilege-k8-kits-LAB"]
 	path = standalone/privilege-k8-kits-LAB
 	url = https://github.com/curtismu7/privilege-k8-kits-LAB.git
+[submodule "standalone/ai-demo-standalone-LAB"]
+	path = standalone/ai-demo-standalone-LAB
+	url = https://github.com/curtismu7/ai-demo-standalone-LAB.git
