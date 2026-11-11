@@ -229,6 +229,8 @@ The shared `ping-shared` project (`shared/ping-shared`) runs the same PingFedera
 
 Setup also offers ping-shared's minimal PingGateway when `shared/ping-shared/.env` has `GATEWAY_ISSUER` and `GATEWAY_AUDIENCE`: it reuses a healthy one, otherwise asks y/N (default N) and never starts it in a non-interactive or dry run. What each lab needs for Real (PingOne, PingFederate, a gateway, owner-only) and which labs are not yet standalone: `docs/REAL-PREREQUISITES.md`, also printed at the end of setup.
 
+Setup also offers the PingOne apps that Customer Agent LAB's full Real needs. When customer-agent-LAB is checked out, `~/.config/demo-kit/provisioning.json` exists and the lab's own `.env` does not yet hold all eight `CAL_*` settings, it shows the preview from `standalone/customer-agent-LAB/scripts/owner/pingone-real-setup.mjs`, then asks y/N (default N) before creating the two apps and writing the lab's `.env` (backed up first). It never runs in `--non-interactive` or `--dry-run` (it prints the command), `--no-pingone` skips it, and a failure is a WARN: setup carries on. The Authorize policy entry and the SE ingress stay manual: setup prints the commands after a successful apply and never runs them. The SE Agent Gateway accepts tokens only from the owner's environment, so a colleague's own PingOne environment cannot use it.
+
 ```sh
 scripts/pingfederate-setup.sh
 ```

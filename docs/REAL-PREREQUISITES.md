@@ -16,7 +16,8 @@ What each lab needs for Real (Mock needs nothing):
   C  A PingFederate: a local one from ping-shared (your own licence, you type YES) or an SE PingFederate URL.
   D  A gateway: ping-shared's minimal PingGateway (offered above when configured), or your own Privilege Agent Gateway.
   E  Owner only: customer-agent-LAB full Real (owner's PingOne environment and its "Demo PingGateway MCP" resource,
-     the SE Agent Gateway, a P1AZ policy entry; scripts/owner/ is run by the owner only).
+     the SE Agent Gateway, a P1AZ policy entry). Setup (bootstrap) offers its PingOne apps and asks first; the policy
+     entry and the SE ingress stay manual. A colleague's own environment cannot use the SE gateway.
   Not yet standalone (Real still needs AI-DEMO2; needs a repoint): ping-services-stub-LAB, ping-gateway-route-LAB, muse-LAB,
   jit-lab-LAB (PF path), p1az-inspector-LAB, mcp-tools-LAB, pingone-mcp-inspector-LAB, privilege-a2a-anthropic-demo-LAB,
   observability-LAB, demo-map-LAB, pingcli-LAB, pingone-events-LAB. Their Mock works.
@@ -130,10 +131,24 @@ These need the owner's tenants and are not set up by a colleague.
 
 - `customer-agent-LAB` full Real: the owner's PingOne environment, the PingOne resource "Demo PingGateway MCP", the
   SE Agent Gateway and a P1AZ policy entry (settings `CAL_USER_*`, `CAL_AGENT_*`, `CAL_AGENT_GATEWAY_URL`,
-  `PINGONE_ENVIRONMENT_ID`). Run only by the owner, never by an agent or a colleague, from
-  `standalone/customer-agent-LAB/scripts/owner/`: `pingone-real-setup.mjs` (read-only unless `--apply`),
-  `agent-gateway-ingress.sh`, `p1az-add-actor.md` (a console checklist: the policy editor API refuses worker tokens).
-  README "Mock and live modes" and "Set up Live (owner)", `.env.example`.
+  `PINGONE_ENVIRONMENT_ID`). The scripts are in `standalone/customer-agent-LAB/scripts/owner/` and agents never run
+  them: `pingone-real-setup.mjs` (read-only unless `--apply`), `agent-gateway-ingress.sh`, `p1az-add-actor.md` (a
+  console checklist: the policy editor API refuses worker tokens). README "Mock and live modes" and "Owner setup for
+  full Real", `.env.example`.
+  - **Bootstrap offers the PingOne apps.** `scripts/setup.sh` shows the preview of `pingone-real-setup.mjs`, then asks
+    y/N (default N) before `--apply`, which creates the two apps in the environment named in the lab's own `.env` and
+    writes the eight `CAL_*` settings into that `.env` (backed up first). It applies only when the lab is checked out,
+    `~/.config/demo-kit/provisioning.json` (or `STANDALONE_CRED_FILE`) exists and the lab's `.env` does not already hold
+    all eight settings; with them all set it says "already configured". It never asks or runs in `--non-interactive`
+    or `--dry-run` (it prints the command instead), `--no-pingone` skips it, and a failure is a WARN with the script's
+    message: setup carries on.
+  - **The Authorize policy entry and the SE ingress stay manual.** After a successful apply, setup prints the commands
+    and never runs them: the policy entry (`p1az-add-actor.md`: additive only, export first, diff exactly one added id),
+    the SE ingress (`bash scripts/owner/agent-gateway-ingress.sh`, then `--apply`; it writes to a shared cluster), then
+    `HOST_PORT=5603 docker compose up --build -d` in the lab.
+  - **A colleague's own PingOne environment cannot use the SE Agent Gateway.** The gateway accepts tokens only from the
+    owner's environment, and the "Demo PingGateway MCP" resource exists only there, so in another environment the preview
+    stops with a WARN (the resource is not found) and Mock keeps working.
 - `meridian-a2a-hop-LAB`: Real is a PingOne sign-in plus two Privilege gateway doors on the SE gateway; the owner's
   `docs/live-identity.md` names the identities. Mock needs nothing.
 - **NOT YET STANDALONE: needs a repoint.** `muse-LAB`: Real needs a PingOne environment and Authorize rules, and
