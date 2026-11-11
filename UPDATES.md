@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.9** — shelf update: closed What's new and Updates banners now fold to a one-line strip with a Show button instead of disappearing. Run the update command below to get it.
+**Version 2.10** — new lab: privilege-k8-kits, a download hub for the Agent Privilege Gateway K8 deployment kits (single-gateway and multi-gateway HA). Run the update command below to get it.

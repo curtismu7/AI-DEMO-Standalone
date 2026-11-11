@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.10 (2026-11-10)
+
+**New labs**
+- privilege-k8-kits (Tool, port 7809): download hub for the Agent Privilege Gateway Kubernetes deployment kits — the single-gateway quick-start package and the multi-gateway HA package, plus the shared deployment guide.
+
 ## 2.9 (2026-11-10)
 
 **Improved**
