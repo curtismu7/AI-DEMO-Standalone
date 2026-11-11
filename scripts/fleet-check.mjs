@@ -62,7 +62,21 @@ export function classifyToggle(files) {
   for (const { file, text } of files) {
     if (isTestFile(file)) continue;
     if (/\.(post|put)\(\s*['"`]\/(api\/)?mode['"`]/.test(text)) route = true;
-    if (/data-testid=["']mode-real["']|\bModeToggle\b/.test(text)) ui = true;
+    // fetch-style calls: method POST/PUT aimed at a /mode endpoint on the same line
+    else if (/["'`]\/api\/mode["'`]/.test(text) && /method:\s*["'`](?:POST|PUT)["'`]/i.test(text)) route = true;
+    // a named helper: const postMode = ... '/api/mode'
+    else if (/\b(?:post|set)Mode\s*=\s*[^;\n]*["'`]\/(?:api\/)?mode["'`]/.test(text)) route = true;
+    // a call through a POST-by-name helper: postJson('/api/mode', ...) / sendJson / putJson
+    else if (/\b(?:post|send|put)Json\(\s*["'`]\/(?:api\/)?mode["'`]/.test(text)) route = true;
+    // an api-helper object member: setMode: (mode) => call('POST'|'PUT', '/api/mode', ...)
+    else if (/\b(?:set|post|switch)Mode\s*:\s*\([^)]*\)\s*=>\s*\w+\(\s*["'`](?:POST|PUT)["'`]\s*,\s*["'`]\/(?:api\/)?mode["'`]/i.test(text)) route = true;
+    if (/data-testid=["']mode-(?:real|live)["']|\bModeToggle\b/.test(text)) ui = true;
+    // a dynamic testid: data-testid={`mode-${m}`} in a .map() over mock/real/live
+    else if (/data-testid=\{`mode-\$\{[^}]+\}`\}/.test(text) && /['"`](?:mock|real|live)['"`]/.test(text)) ui = true;
+    // an untested group: role="group" labelled Mode whose buttons pick mock/real
+    else if (/role=["']group["'][^>]*aria-label=["'][^"']*Mode/i.test(text) && /pick(?:Mode)?\(["'`](?:mock|real|live)["'`]\)/.test(text)) ui = true;
+    // a server-rendered page: id="mock-btn"/"real-btn" wired to setMode(...)/POST mode in the same file
+    else if (/id=["'](?:mock|real)-btn["']/.test(text) && /setMode\(["'`](?:mock|real)["'`]\)/.test(text)) ui = true;
   }
   if (route && ui) return 'switch';
   if (ui) return 'display-only';
