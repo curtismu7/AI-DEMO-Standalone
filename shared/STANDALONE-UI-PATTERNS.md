@@ -207,9 +207,11 @@ P9 and H2 are judged on what the page renders, not on the flat list of elements 
   used: a primary inside a component used in one ternary arm belongs to that arm, a component used twice counts twice,
   and one used in a `.map()` repeats. A component's early-return states are exclusive with the children passed through
   it. Another page's view is never expanded. The page's own view is mounted at the layout's `{children}` slot.
-- **JSX in an attribute** (`render={() => <b/>}`, `actions={<b/>}`, `banner={<>..</>}`) is parsed. Assumption: it renders
-  where its host element renders. The checker does not read the receiving component to see where inside it the prop is
-  used; if the host sits in a ternary arm or a dialog, so does the attribute JSX.
+- **JSX in an attribute** (`render={() => <b/>}`, `actions={<b/>}`, `banner={<>..</>}`) is parsed. It renders where the
+  receiving component renders the prop (`{actions}`, `{props.actions && ..}`, `{render()}` in that component's definition),
+  so an `actions` prop that lands in a `<nav>` is chrome and a `footer` prop that lands in a dialog is that dialog's own
+  state. Assumption: when the receiving component cannot be read (not found under the app root, or the prop is not rendered
+  as `{name}` / `{props.name}`), the JSX counts at its host element, in the host's ternary arm, dialog or loop.
 - **Chrome.** Only the app shell bar is chrome (`.shell-bar`, `role="banner"`, a page-level legacy top bar, `<nav>`, skip
   links): its buttons are not page actions. A `<header>` inside `<main>`, a section, an article, an aside, a form, a list
   item, a table or a dialog is page content, so a primary-styled button in it is counted and a plain action button in it
