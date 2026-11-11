@@ -1933,7 +1933,11 @@ function ruleP10(u) {
           continue;
         }
         for (const m of d.value.matchAll(/var\(\s*(--[\w-]+)/g)) {
-          if (!SHARED_TOKENS.has(m[1]) && !/^--(?:font|space|radius|gap|shadow|dg|lane|control)/.test(m[1])) bad.push({ file: r.file, line: d.line, msg: `button ${d.prop} reads ${m[1]}, not a shared token (brand/vertical tokens are not allowed on buttons)` });
+          if (SHARED_TOKENS.has(m[1]) || /^--(?:font|space|radius|gap|shadow|dg|lane|control)/.test(m[1])) continue;
+          // An app alias (--th-border: var(--border)) is fine when its chain terminates in a shared token.
+          const resolved = resolveVars(`var(${m[1]})`, maps.light);
+          if (!resolved.includes(m[1])) continue;
+          bad.push({ file: r.file, line: d.line, msg: `button ${d.prop} reads ${m[1]}, not a shared token (brand/vertical tokens are not allowed on buttons)` });
         }
         if (primaryRule && (d.prop === 'background' || d.prop === 'background-image' || d.prop === 'background-color') && !/var\(\s*--accent-gradient/.test(d.value)) {
           bad.push({ file: r.file, line: d.line, msg: `primary button ${d.prop} must resolve to var(--accent-gradient), found ${d.value.slice(0, 40)}` });
@@ -1946,7 +1950,6 @@ function ruleP10(u) {
       bad.push({ file: x.file, line: lineIndexer(x.text)(m.index), msg: `${m[1]} is overridden at run time (customer accent): not statically verifiable`, warn: true });
     }
   }
-  void maps;
   const hard = bad.filter((b) => !b.warn);
   if (hard.length) return mk(R, 'DRIFT', first(hard), hard);
   if (bad.length) return mk(R, 'WARN', first(bad), bad);

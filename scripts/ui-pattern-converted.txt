@@ -26,3 +26,14 @@ privilege-demo-LAB/home
 privilege-demo-LAB/learn
 privilege-demo-LAB/policies
 privilege-demo-LAB/trace
+p1-third-party-exchange-LAB/admin
+p1-third-party-exchange-LAB/compare
+p1-third-party-exchange-LAB/diagram
+p1-third-party-exchange-LAB/exchange
+p1-third-party-exchange-LAB/live
+p1-third-party-exchange-LAB/realbrowser
+p1-third-party-exchange-LAB/reallocal
+p1-third-party-exchange-LAB/setup
+p1-third-party-exchange-LAB/talk
+p1-third-party-exchange-LAB/walk
+p1-third-party-exchange-LAB/wire
