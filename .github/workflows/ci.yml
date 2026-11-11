@@ -94,6 +94,6 @@ jobs:
         with:
           node-version: 26
       - name: Mutation tests (each rule catches what it claims)
-        run: node scripts/check-ui-patterns.test.mjs
+        run: node --test test/ui-patterns.test.mjs test/ui-patterns-mutation.test.mjs
       - name: Enforced pages pass
         run: node scripts/check-ui-patterns.mjs --require-checkout
