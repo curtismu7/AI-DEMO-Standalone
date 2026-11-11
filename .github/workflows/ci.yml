@@ -88,11 +88,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v5
         with:
           node-version: 26
+      - name: Check out the apps that have enforced pages
+        # Only the apps named in the allowlist, not every submodule: one private or unreachable lab must not fail this job.
+        run: |
+          for app in $(sed 's/#.*//' scripts/ui-pattern-converted.txt | awk -F/ 'NF { print $1 }' | sort -u); do
+            git submodule update --init --depth 1 "standalone/$app"
+          done
       - name: Mutation tests (each rule catches what it claims)
         run: node --test test/ui-patterns.test.mjs test/ui-patterns-mutation.test.mjs
       - name: Enforced pages pass
