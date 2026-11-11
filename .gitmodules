@@ -245,3 +245,6 @@
 [submodule "standalone/ai-demo-standalone-LAB"]
 	path = standalone/ai-demo-standalone-LAB
 	url = https://github.com/curtismu7/ai-demo-standalone-LAB.git
+[submodule "standalone/privilege-owasp-lab-LAB"]
+	path = standalone/privilege-owasp-lab-LAB
+	url = https://github.com/curtismu7/privilege-owasp-lab-LAB.git

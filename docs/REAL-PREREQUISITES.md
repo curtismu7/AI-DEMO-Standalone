@@ -34,7 +34,8 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   `progressive-trust-ladder-LAB`, `stolen-token-LAB`, `mcp-auth-conformance-LAB`, `privilege-map-LAB`,
   `personal-agent-demo-LAB`, `agent-mcp-door-demo-LAB`, `gateway-claims-LAB`, `chatgpt-mcp-flow-LAB`,
   `agent-gateway-inspector-LAB`, `pingone-signin-LAB`, `session-LAB`, `intent-par-inspector-LAB`,
-  `agentcore-pingone-demo-LAB` (Real answers 409 until the owner wires a live engine), `demo-field-guide-LAB`.
+  `agentcore-pingone-demo-LAB` (Real answers 409 until the owner wires a live engine), `demo-field-guide-LAB`,
+  `privilege-owasp-lab-LAB` (Real runs the live-evidence card against a Privilege console the owner points it at; Mock streams the recorded deck table).
 - Live is a local simulation, no credential: `agent-governance-LAB`, `ai-policies-LAB`, `coding-agents-LAB`,
   `data-protection-LAB`, `federated-identity-LAB`, `intent-purpose-behaviour-LAB`, `mcp-surface-LAB`,
   `saas-access-LAB`, `secrets-vault-LAB`.
