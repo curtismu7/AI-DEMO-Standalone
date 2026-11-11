@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixture</title>
+<link rel="stylesheet" href="standalone-ui.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="shell-bar"><span class="shell-bar__title">Fixture lab</span></header>
+<div class="banner" role="note" id="banner">Simulated: no real tenant is called.</div>
+<main class="page-frame">
+  <h1>Fixture</h1>
+  <p>Body text.</p>
+  <div class="mode-toggle" role="group" aria-label="Mode"><button type="button" aria-pressed="true">Mock</button><button type="button" aria-pressed="false">Real</button></div>
+  <button type="button" class="primary">Run</button>
+</main>
+<script>fetch('/api/mode').then((r) => r.json()).then((m) => { document.getElementById('banner').textContent = m.mode === 'real' ? 'Real: calls go to your tenant.' : 'Simulated: no real tenant is called.'; });</script>
+</body>
+</html>

@@ -211,6 +211,16 @@ node scripts/fleet-check.mjs --json     # same data for other tools; --strict ex
 
 It reads the app list from the shelf registry on GitHub and shallow-clones each app, so it never relies on a local checkout (a local checkout can sit on an old branch). Per app it reports the vendored `standalone-ui.css` (canonical, stale or none, against GitHub's copy), the `check-css.sh` failures, whether `scripts/check-ui-standard.sh` exists and its pin matches, the rule 19 Mock/Real toggle, and the latest CI result on main. The toggle column is a static look at the source (a POST `/mode` route and a toggle in the UI); it does not start the app, so prove a switch in a browser. Needs `gh` signed in with access to the repos under this meta-repo owner.
 
+## Do the pages follow the UI patterns? (UI pattern check)
+
+```
+node scripts/check-ui-patterns.mjs                   # every page of every app under standalone/
+node scripts/check-ui-patterns.mjs --app cimd-LAB    # one app
+node scripts/check-ui-patterns.mjs --list-advisory   # the next pages to convert, fewest findings first
+```
+
+A static check (no browser, no network, no dependencies) that judges each page against the rules in `shared/STANDALONE-UI-PATTERNS.md` section 11 (shell, banner first, page frame, one primary button, button tokens, headings, theme tokens, no purple, accessibility, Mock/Real toggle, token contrast). Pages listed in `scripts/ui-pattern-converted.txt` are enforced: a DRIFT on one fails CI (job `ui-patterns`). Every other page is advisory and only reported. To convert a page, fix it, then add its `<app>/<page>` line to that file in the same PR. The first measurement of all apps is in `docs/ui-check-baseline-2026-11-10.md`. `scripts/check-ui-patterns.sh` still works as a wrapper.
+
 ## PingFederate (for apps that need it)
 
 Some apps (for example id-jag-standalone) need a PingFederate. The setup script checks for one first. If one answers, it asks for its admin login. If none is running, it installs the official image in Docker and binds it to 127.0.0.1 only.

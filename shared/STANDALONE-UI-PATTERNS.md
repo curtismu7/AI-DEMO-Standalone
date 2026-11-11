@@ -6,9 +6,11 @@ and selectors). This file owns the **layout and component patterns** — what a 
 made of. The visual reference is `shared/ui-standard-mock.html` (open it in a browser);
 the mock is normative: if this doc and the mock disagree, fix one of them.
 
-Check conformance with `scripts/check-ui-patterns.sh` (run from this repo's root).
-It is advisory on first run: it reports PASS / DRIFT / INFO per pattern so existing apps can
-converge in their next PR.
+Check conformance with `node scripts/check-ui-patterns.mjs` (run from this repo's root; the older
+`scripts/check-ui-patterns.sh` is a thin wrapper around it). It checks every PAGE of every app against
+the rules in section 11 and enforces an allowlist: a page listed in `scripts/ui-pattern-converted.txt`
+must have no DRIFT (CI fails otherwise); every other page is advisory and only reported. To convert a
+page: fix it, then add its `<app>/<page>` line to the allowlist in the same PR.
 
 ## Baseline, 2026-11-03
 
@@ -149,3 +151,40 @@ pinned by `return-link.sha256`).
 - No colours (CSS standard §1). No restyling of shared controls, `.banner`, chips or
   diagram boxes — only layout. New pattern-level styles that would be reused across
   apps belong in the shared stylesheet, not in each app.
+
+## 11. The static check: rules and allowlist
+
+`node scripts/check-ui-patterns.mjs` (options: `--root <dir>`, `--app <name>`, `--json`, `--strict`,
+`--list-advisory`, `--verbose`, `--rules`) reads each app's files, with no browser and no network. A page is a
+served `.html` file, or a view of a React app (found from its route table). Its markup, the CSS it loads and its
+inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only DRIFT on an enforced page fails.
+
+| Rule | What it checks |
+| --- | --- |
+| P1 | One `shell-bar` (or InspectorShell) and one page header, styled (section 1) |
+| P2 | The simulation banner is the first content element, has text, and does not hardcode "live" (section 2) |
+| P3 | Content in `<main>` inside a centred max-width frame (section 3) |
+| P4 | Cards bordered, top edge from tokens (section 4) |
+| P6 | Inspector layout has tree + form + output where used (section 6) |
+| P7 | Chips carry text and a semantic tone, never colour alone (section 7) |
+| P9 | Exactly one primary button per view state; a dialog is its own state (section 9) |
+| P10 | Button colours read only shared tokens; the primary resolves to the fixed Ping Red gradient |
+| P11 | Every modal is a FloatingDialog (section 8d); advisory |
+| H1 | Exactly one `h1` and one `main` landmark |
+| H2 | Heading levels do not skip; advisory |
+| H3 | No inline style colours or font-size, no colour literals in markup attributes |
+| T1 | Theme tokens only in the app's own CSS; no purple, violet or indigo hues |
+| T2 | Font-size floor of 10px |
+| T3 | Dark and light themes both defined |
+| A1 | Buttons, links and form controls have an accessible name |
+| A2 | No `outline: none` without a replacement focus style |
+| A3 | Every `img` has `alt` |
+| V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
+| M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
+| C1 | Token contrast: primary gradient, chips, muted text, borders, focus ring (4.5:1 text, 3:1 non-text) |
+
+Not checked statically: contrast of colours computed in the browser, horizontal overflow at 375px, keyboard
+behaviour, markup built at run time (`innerHTML`, `createElement`), CSS-in-JS. Keep doing the browser checks
+in light, dark and 375px. A clean run means none of these patterns were found, not that the page is right.
+An unavoidable exception is written as a comment `ui-pattern: allow <RULE> <reason of 8+ characters>` on the
+finding's line or the line above; every escape is listed in the report.
