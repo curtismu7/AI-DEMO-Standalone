@@ -12,3 +12,5 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
 **Version 2.10** — new lab: privilege-k8-kits, a download hub for the Agent Privilege Gateway K8 deployment kits (single-gateway and multi-gateway HA). Run the update command below to get it.
+
+**New lab 2.11**: pf-privilege-obo-lab - the simulated PingFederate to Privilege OBO chain, with the measured issues panel. Run `./setup.sh` to get it.

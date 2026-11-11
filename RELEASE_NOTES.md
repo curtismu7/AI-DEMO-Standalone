@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.11 (2026-11-11)
+
+**New labs**
+- pf-privilege-obo-lab (Demo, port 7812): the simulated PingFederate to Privilege on-behalf-of chain - user SSO, RFC 8693 token exchange (sub = user, act.sub = agent), the Privilege federated-identity check, grant tiers, an Active Cedar policy and Pass Agent Token passthrough - as an interactive flow walk with eight scenarios and a twelve-card issues panel of measured traps and fixes.
+
 ## 2.10 (2026-11-10)
 
 **New labs**
