@@ -413,8 +413,22 @@ function chainInfo(el) {
   }
   return el._chain;
 }
+/** The early-return branch an element renders in (`if (loading) return <main>..`): a separate state of its component, or null. */
+function guardOf(el) {
+  if (el._guard !== undefined) return el._guard;
+  let g = null;
+  for (let e = el; e && e.name !== '#root'; e = e.parent) {
+    if (/\bif\s*\([^;{}]*\)\s*\{?\s*return\s*\(?\s*$/.test(gapBefore(e))) {
+      g = e;
+      break;
+    }
+  }
+  el._guard = g;
+  return g;
+}
 /** True when a and b are in different arms of the same ternary (somewhere up their ancestry). */
 function exclusive(a, b) {
+  if (guardOf(a) !== guardOf(b)) return true;
   const ca = [];
   for (let e = a; e && e.name !== '#root'; e = e.parent) ca.push(chainInfo(e));
   for (let e = b; e && e.name !== '#root'; e = e.parent) {
@@ -450,10 +464,17 @@ function inLoop(el) {
     for (let mm = m.exec(gap); mm; mm = m.exec(gap)) last = mm;
     if (last) {
       const rest = gap.slice(last.index + last[0].length);
+      // string-aware: parens inside string/template literals do not count
       let depth = 1;
-      for (const ch of rest) {
+      for (let k = 0; k < rest.length && depth > 0; ) {
+        const ch = rest[k];
+        if (ch === '"' || ch === "'" || ch === '`') {
+          k = skipQuoted(rest, k);
+          continue;
+        }
         if (ch === '(') depth += 1;
         else if (ch === ')') depth -= 1;
+        k += 1;
       }
       if (depth > 0) return true;
     }
@@ -1007,6 +1028,10 @@ function buildUnit(app, page, cache) {
     if (seenCss.has(p)) return;
     seenCss.add(p);
     const sheet = cache.parseCssFile(p);
+    if (!sheet.relDone) {
+      for (const r of sheet.rules) r.file = rel(p);
+      sheet.relDone = true;
+    }
     sheets.push({ path: p, file: rel(p), parsed: sheet, vendored: isVendored(p), name: path.basename(p), importer });
     for (const imp of sheet.imports) {
       const m = /@import\s+(?:url\()?\s*["']?([^"')\s;]+)/i.exec(imp);
@@ -1044,12 +1069,24 @@ function buildUnit(app, page, cache) {
   const layoutDocs = docs.filter((d) => !d.vendored && (page.chrome.includes(d.path) || page.kind !== 'view'));
   const viewDoc = page.viewFile ? docs.find((d) => d.path === page.viewFile) : null;
   const slotRe = /\{\s*(?:props\.)?children\s*\}|<(?:Page|Active|Outlet|CurrentView|View|Screen|Content)(?=[\s/>])/;
+  // `({ children })` in a parameter list is not the slot; the JSX `{children}` is
+  const findSlot = (src) => {
+    for (const m of src.matchAll(new RegExp(slotRe.source, 'g'))) {
+      if (m[0][0] === '{') {
+        const before = src.slice(0, m.index).trimEnd().slice(-1);
+        const after = src.slice(m.index + m[0].length).trimStart()[0];
+        if ((before === '(' || before === ',') && (after === ')' || after === ',' || after === '=')) continue;
+      }
+      return m.index;
+    }
+    return -1;
+  };
   let layout = null;
   let slot = -1;
   if (viewDoc) {
     const names = (page.viewName ? [page.viewName] : []).concat([...(app.viewNames || [])]);
     const cands = layoutDocs.filter((d) => d.path !== viewDoc.path).map((d) => {
-      let s = d.src.search(slotRe);
+      let s = findSlot(d.src);
       for (const n of names) {
         const k = d.src.search(new RegExp(`<${n.replace(/\$/g, '\\$')}(?=[\\s/>])`));
         if (k !== -1 && (s === -1 || k < s)) s = k;
@@ -1175,7 +1212,7 @@ function ruleP2(u, tier) {
   if (!isComp && !hasText(banner)) return mk(R, 'DRIFT', `the banner is empty: ${fmt(loc(banner))}`, [loc(banner, 'empty banner')]);
   const before = list.slice(0, bi).filter((e) => !inChrome(e) && !isBannerEl(e) && !e.vendored && !ancestors(e).some(isBannerEl) && (CONTENT_TAG.test(e.name) || hasClass(e, /^(?:card|panel|page-title|hero)$/)) && !(e.name === 'input' && attrText(e, 'type') === 'hidden'));
   if (before.length) return mk(R, 'DRIFT', `${before[0].name === 'p' ? 'text' : `<${before[0].name}>`} at ${fmt(loc(before[0]))} comes before the banner (${fmt(loc(banner))}); the banner must be the first content element`, [loc(before[0], 'before the banner')]);
-  if (!dynamic && /\b(?:live|real|production)\b/i.test(plain) && !/\b(?:mock|simulat|fake|offline|demo|sample|not real)\b/i.test(plain)) {
+  if (!dynamic && /\b(?:live|real|production)\b/i.test(plain) && !/\b(?:mock|simulat|fake|offline|demo|sample|not real)/i.test(plain)) {
     return mk(R, 'DRIFT', `the banner text is static and says live/real, never mock: "${plain.slice(0, 60)}" (${fmt(loc(banner))})`, [loc(banner, 'hardcoded live banner')]);
   }
   if (!dynamic && findToggle(u)) return mk(R, 'WARN', `the banner text is static ("${plain.slice(0, 50)}") while the page has a Mock / Real toggle: it cannot state the current mode (${fmt(loc(banner))})`, [loc(banner, 'static banner')]);
