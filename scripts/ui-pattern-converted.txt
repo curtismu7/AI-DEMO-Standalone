@@ -1,0 +1,9 @@
+# Pages enforced by scripts/check-ui-patterns.mjs (one <app>/<page> per line).
+# A DRIFT finding on one of these pages fails CI. Every other page is advisory.
+# Convert a page, then add its line here in the same PR.
+# Baseline 2026-11-10: the five pages that pass every rule today.
+mcp-skills-LAB/approvals
+mcp-skills-LAB/diagram
+mcp-skills-LAB/overview
+mcp-skills-LAB/source
+mcp-skills-LAB/verifier

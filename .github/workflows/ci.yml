@@ -81,3 +81,19 @@ jobs:
       - uses: actions/checkout@v5
       - name: Lab-proxy config guard
         run: shared/lab-proxy/check-config.sh
+
+  ui-patterns:
+    # Per-page UI pattern check. Fails only when an ENFORCED page (scripts/ui-pattern-converted.txt)
+    # has a DRIFT finding, or the allowlist is stale. Every other page is advisory.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - name: Mutation tests (each rule catches what it claims)
+        run: node scripts/check-ui-patterns.test.mjs
+      - name: Enforced pages pass
+        run: node scripts/check-ui-patterns.mjs --require-checkout
