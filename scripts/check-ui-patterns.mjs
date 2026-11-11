@@ -1362,6 +1362,14 @@ function makeResolver(u) {
   };
 }
 
+/** Where inside a component's definition a prop is rendered (`{actions}`, `{props.actions && ..}`, `{render()}`): a text index, or -1. */
+function receiverSpot(r, name) {
+  if (!/^[A-Za-z_$][\w$]*$/.test(name) || name === 'children') return -1;
+  const text = r.doc.src.slice(r.def.start, r.def.end);
+  const m = new RegExp(String.raw`(?<![(\w$])\{\s*(?:props\.)?${name.replace(/\$/g, '\\$')}\b\s*(?=[}&?(.])`).exec(text);
+  return m ? r.def.start + m.index : -1;
+}
+
 /** Build the forest of a unit: { roots, all } where `all` lists every element clone. */
 function buildForest(u) {
   const resolve = makeResolver(u);
@@ -1405,6 +1413,22 @@ function buildForest(u) {
         state.n += 1;
         const inst2 = state.n;
         c.rendered = topEls(r.doc, r.def).map((e) => clone(e, c, inst2, [...stack, r.def]));
+        // JSX passed as a prop renders where the component renders that prop; when that spot is not found it stays at the host
+        const inside = c.rendered.flatMap((x) => [x, ...descendantsOf(x)]).filter((x) => !x.isContainer);
+        for (const ab of [...c.attrBlocks]) {
+          const spot = receiverSpot(r, ab.attrName);
+          if (spot < 0) continue;
+          let target = null;
+          for (const x of inside) {
+            if (x.src !== r.doc.src || x.index > spot || spot >= x.innerEnd) continue;
+            if (!target || x.innerStart >= target.innerStart) target = x;
+          }
+          if (!target) continue;
+          c.attrBlocks.splice(c.attrBlocks.indexOf(ab), 1);
+          ab.parent = target;
+          ab.sortIndex = spot;
+          target.attrBlocks.push(ab);
+        }
       }
     }
     return c;
@@ -1979,7 +2003,7 @@ function ruleH2(u) {
       prev = lvl;
     }
   } else {
-    const seq = (n) => [...n.rendered, ...[...n.attrBlocks, ...n.children, ...n.slotted].sort((a, b) => origOf(a).index - origOf(b).index)];
+    const seq = (n) => [...n.rendered, ...[...n.attrBlocks, ...n.children, ...n.slotted].sort((a, b) => (a.sortIndex ?? origOf(a).index) - (b.sortIndex ?? origOf(b).index))];
     const visit = (n, prev) => {
       let cur = prev;
       if (!n.isContainer && /^h[1-6]$/.test(n.name) && !inDialog(n)) {

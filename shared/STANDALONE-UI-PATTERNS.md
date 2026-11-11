@@ -144,7 +144,8 @@ pinned by `return-link.sha256`).
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.
 - Destructive actions use `--danger-text` text, not a filled red button.
 - Selected tab/toggle state lives in `aria-selected` / `aria-pressed` (shared rule
-  fills it accent). No extra state classes.
+  fills it accent). No extra state classes. `aria-current` is a navigation hint, not a selected
+  state: a button that only carries `aria-current` is a plain action to the checker (P9).
 
 ## 10. What app CSS may not do
 
@@ -167,11 +168,11 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | P4 | Cards bordered, top edge from tokens (section 4) |
 | P6 | Inspector layout has tree + form + output where used (section 6) |
 | P7 | Chips carry text and a semantic tone, never colour alone (section 7) |
-| P9 | Exactly one primary button per view state; a dialog is its own state (section 9) |
+| P9 | Exactly one primary button per view state, judged on what renders (components expanded at their use sites); a dialog is its own state (section 9) |
 | P10 | Button colours read only shared tokens; the primary resolves to the fixed Ping Red gradient |
 | P11 | Every modal is a FloatingDialog (section 8d); advisory |
 | H1 | Exactly one `h1` and one `main` landmark |
-| H2 | Heading levels do not skip; advisory |
+| H2 | Heading levels do not skip, in render order through child components; advisory |
 | H3 | No inline style colours or font-size, no colour literals in markup attributes |
 | T1 | Theme tokens only in the app's own CSS; no purple, violet or indigo hues |
 | T2 | Font-size floor of 10px |
@@ -181,10 +182,71 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | A3 | Every `img` has `alt` |
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
-| C1 | Token contrast: primary gradient, chips, muted text, borders, focus ring (4.5:1 text, 3:1 non-text) |
+| C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |
 
-Not checked statically: contrast of colours computed in the browser, horizontal overflow at 375px, keyboard
+Not checked statically: contrast of colours computed in the browser (only the shared tokens and the focus ring are), horizontal overflow at 375px, keyboard
 behaviour, markup built at run time (`innerHTML`, `createElement`), CSS-in-JS. Keep doing the browser checks
 in light, dark and 375px. A clean run means none of these patterns were found, not that the page is right.
 An unavoidable exception is written as a comment `ui-pattern: allow <RULE> <reason of 8+ characters>` on the
 finding's line or the line above; every escape is listed in the report.
+
+### What P9 and H2 follow (the render forest)
+
+P9 and H2 are judged on what the page renders, not on the flat list of elements in its files:
+
+- **Ternary arms, early returns and conditions.** Arms of a ternary are alternatives whether they are single elements,
+  components or fragments (`cond ? (<>..</>) : (<>..</>)`), also chained (`a ? X : b ? Y : Z`) and nested. So are the
+  states of one function written as `if (..) return`, `else return`, `case x: return`, `default: return`, and sibling
+  conditions on one expression with different literals (`tab === "a" && <A/>` next to `tab === "b" && <B/>`; also through
+  `const isA = tab === "a"`). Exclusivity that is not written this way (a variable assigned in an `if`, a loose boolean)
+  is not proven, so both count.
+- **Conditional primary class.** `className={step === 0 ? "btn primary" : "btn"}` on several buttons, each with a
+  different literal of the same expression, is at most one primary at a time. Literals of different expressions,
+  `>=`, a variable instead of a literal, or one button that is always primary are not proven and count together.
+- **Components.** A component used on the page (same file, or imported from under the app root) is expanded where it is
+  used: a primary inside a component used in one ternary arm belongs to that arm, a component used twice counts twice,
+  and one used in a `.map()` repeats. A component's early-return states are exclusive with the children passed through
+  it. Another page's view is never expanded. The page's own view is mounted at the layout's `{children}` slot.
+- **JSX in an attribute** (`render={() => <b/>}`, `actions={<b/>}`, `banner={<>..</>}`) is parsed. Assumption: it renders
+  where its host element renders. The checker does not read the receiving component to see where inside it the prop is
+  used; if the host sits in a ternary arm or a dialog, so does the attribute JSX.
+- **Chrome.** Only the app shell bar is chrome (`.shell-bar`, `role="banner"`, a page-level legacy top bar, `<nav>`, skip
+  links): its buttons are not page actions. A `<header>` inside `<main>`, a section, an article, an aside, a form, a list
+  item, a table or a dialog is page content, so a primary-styled button in it is counted and a plain action button in it
+  still needs a primary on the page.
+- **Selectors and disclosures** (`aria-selected`, `aria-pressed`, `aria-expanded`, `aria-checked`, `role` tab, switch,
+  checkbox, radio, or a tab/toggle/chip/pill class) are not actions: they never need a primary, and they are not counted
+  unless they are styled `.primary`. `aria-current` is not a selector (section 9), so a button with only `aria-current` is a
+  plain action.
+- **A conditional button in the app layout** (for example `{signedOut && <button className="primary">Sign in</button>}`
+  in `App.jsx`) counts as page content on every page. A layout primary plus a view primary is two primaries; make the
+  layout button secondary, or put it in an early-return state of the layout.
+- **H2** walks the same tree in render order. Arms of one ternary and different early returns each start from the heading
+  level before them, and what follows is judged from the lowest level any of them leaves. A skip inside a child component
+  is reported at the component's own file and line.
+- **C1 focus ring.** The ring is resolved from the CSS: the `--focus` token, or the `outline` / `outline-color` of the
+  most specific `:focus-visible` rule that reaches each focusable element in the shell bar, with a `--focus` override
+  scoped to the bar honoured. It is compared (3:1, non-text) with the bar's own background and, for content, with
+  `--bg`, `--surface` and `--surface-2`, in light and dark. The shared ring is dark blue in the light theme and measures
+  2.29:1 on the dark bar. When that shared token is what fails and the app does not override the ring on the bar, C1 is a
+  **WARN** that names the token and the surface; the owner decides whether the shared token should change. When the app's
+  own CSS sets the ring to something faint on the bar (for example `button:focus-visible { outline: 2px solid var(--brand-blue) }`, which also applies inside the bar),
+  or a content ring fails, C1 is **DRIFT**. The usual fix is `.shell-bar :focus-visible { outline: 3px solid var(--on-box); outline-offset: 2px; }`.
+
+Honest limits, still: the check is static. It does not compute colours beyond the tokens and the ring, and it does not see
+markup built at run time (`innerHTML`, `createElement`), CSS-in-JS, or values set at run time (customer accent, skin). It does
+not follow render helpers called as functions (`{renderRow()}`), components held in variables (`const C = cond ? A : B;
+<C/>`, `{ a: A, b: B }[tab]`) or a prop used as a component; that markup counts once where it is written. A conditional
+that is not written as one of the shapes above is not proven exclusive, so a state-dependent primary can be flagged although
+only one renders (rewrite it as a ternary, an early return or a literal comparison, or write a `ui-pattern: allow` escape
+with the reason).
+
+### Checker changelog
+
+- 2026-11-10 (weak spots A-H): fragments are nodes, so fragment arms, nested and chained ternaries and `else`/`case`/`default`
+  returns are exclusive states; JSX in attributes is parsed; P9 and H2 follow components (same file and imported) to their use
+  sites, so a component's primary counts once per use site and heading order runs through child components; sibling buttons
+  with a conditional primary class on distinct literals of one expression are exclusive; only the shell bar is chrome and
+  a disclosure is not an action; C1 checks the focus ring on the shell bar and on content surfaces. Documented, unchanged:
+  layout-level conditional buttons count as page content; `aria-current` is not a selected state.
+- 2026-11-10 (first release, #174): per-page rules P1-P11, H1-H3, T1-T3, A1-A3, V1, M1, C1, the allowlist and the mutation tests.
