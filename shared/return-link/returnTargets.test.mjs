@@ -8,10 +8,12 @@ const loc = (url) => { const u = new URL(url); return { hostname: u.hostname, pa
 const proxy = (search) => loc(`https://labs.example/a2a-lab/${search}`);
 const direct = (search) => loc(`http://127.0.0.1:5150/${search}`);
 
-test('the target list is fixed and frozen: customer-agent only', () => {
-  assert.deepEqual(Object.keys(RETURN_TARGETS), ['customer-agent']);
+test('the target list is fixed and frozen: customer-agent + ai-demo-standalone', () => {
+  assert.deepEqual(Object.keys(RETURN_TARGETS), ['customer-agent', 'ai-demo-standalone']);
   assert.deepEqual({ ...RETURN_TARGETS['customer-agent'] },
     { label: 'Customer Agent LAB', proxyPath: '/customer-agent/', directUrl: 'http://127.0.0.1:5603/' });
+  assert.deepEqual({ ...RETURN_TARGETS['ai-demo-standalone'] },
+    { label: 'AI Demo Standalone', proxyPath: '/ai-demo-standalone/', directUrl: 'http://127.0.0.1:7810/' });
   assert.ok(Object.isFrozen(RETURN_TARGETS) && Object.isFrozen(RETURN_TARGETS['customer-agent']));
   assert.throws(() => { 'use strict'; RETURN_TARGETS.evil = {}; });
 });
@@ -21,6 +23,11 @@ test('a valid hand-off reads from, uc and vertical', () => {
     { from: 'customer-agent', label: 'Customer Agent LAB', uc: 'UC47', vertical: 'banking' });
   assert.deepEqual(readReturnContext('?from=customer-agent&uc=UC47'),
     { from: 'customer-agent', label: 'Customer Agent LAB', uc: 'UC47', vertical: null });
+});
+
+test('ai-demo-standalone hand-off reads uc; unknown still gives no strip', () => {
+  assert.deepEqual(readReturnContext('?from=ai-demo-standalone&uc=UC12'),
+    { from: 'ai-demo-standalone', label: 'AI Demo Standalone', uc: 'UC12', vertical: null });
 });
 
 test('unknown or prototype-ish from gives no strip', () => {

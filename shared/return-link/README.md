@@ -1,9 +1,12 @@
 # return-link: "Opened from <app>" strip and the Back button
 
-When Customer Agent LAB hands a use case to another standalone app, it navigates the **same tab** to that app with ids only:
-`?from=customer-agent&uc=<id>&vertical=<id>&user=<persona id>` (customer-agent-LAB `web/src/handoff.js`). The receiving app shows
-`ReturnLink`: a strip "Opened from Customer Agent LAB · UC47" with a **Back to Customer Agent LAB** button, and the same button,
-compact, in its header. Back returns to the dashboard with `?returned=<this app id>&uc=<uc>`, where the chat resumes.
+When a source app (Customer Agent LAB, AI Demo Standalone) hands a use case to another standalone app, it navigates the
+**same tab** to that app with ids only: `?from=<source app id>&uc=<id>&vertical=<id>&user=<persona id>` (customer-agent-LAB
+`web/src/handoff.js`; ai-demo-standalone-LAB `server/src/usecases.js`). The receiving app shows `ReturnLink`: a strip
+"Opened from <source label> · UC47" with a **Back to <source label>** button, and the same button, compact, in its header.
+Back returns to the source's dashboard with `?returned=<this app id>&uc=<uc>`, where the chat resumes. The target list
+(`returnTargets.js`) currently has two sources: customer-agent (`/customer-agent/`, :5603) and ai-demo-standalone
+(`/ai-demo-standalone/`, :7810).
 
 ## Rules it enforces
 
