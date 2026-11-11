@@ -48,6 +48,7 @@ scripts/setup.sh --start <lab-name>     # start one lab
 scripts/setup.sh --start-all            # start every lab
 scripts/setup.sh --app <lab-name>       # (re)initialize one lab only
 scripts/setup.sh --skip-install         # setup without npm install/build
+scripts/setup.sh --non-interactive      # never ask; the optional PingGateway is not started (the output says how)
 scripts/setup.sh --dry-run              # show what setup would do, change nothing
 scripts/setup.sh --verbose              # show all tool output (brew, npm)
 ```

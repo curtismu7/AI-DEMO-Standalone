@@ -227,6 +227,8 @@ Some apps (for example id-jag-standalone) need a PingFederate. The setup script 
 
 The shared `ping-shared` project (`shared/ping-shared`) runs the same PingFederate as a compose service and is what `scripts/bootstrap.sh` starts. It owns it: nothing depends on AI-DEMO2. It needs the same licence file, and it never accepts Ping's terms for you. With no licence file, setup prints `PingFederate skipped: no licence file at <path>` and carries on; the labs' Mock mode needs no PingFederate. `shared/ping-shared/scripts/ping-shared.sh up pingfederate` starts it by hand (it asks for the YES), and one instance per host is kept: a PingFederate already running on 4732 is reused. See `shared/ping-shared/README.md`.
 
+Setup also offers ping-shared's minimal PingGateway when `shared/ping-shared/.env` has `GATEWAY_ISSUER` and `GATEWAY_AUDIENCE`: it reuses a healthy one, otherwise asks y/N (default N) and never starts it in a non-interactive or dry run. What each lab needs for Real (PingOne, PingFederate, a gateway, owner-only) and which labs are not yet standalone: `docs/REAL-PREREQUISITES.md`, also printed at the end of setup.
+
 ```sh
 scripts/pingfederate-setup.sh
 ```
