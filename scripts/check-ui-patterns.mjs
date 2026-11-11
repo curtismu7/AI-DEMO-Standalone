@@ -1387,10 +1387,12 @@ function buildForest(u) {
   }
   // the page's own view: mounted at the layout slot when no component in the layout names it
   let viewSpec = null;
+  let viewDef = null;
   if (u.page.viewFile) {
     const vdoc = jsxDocs.find((d) => d.path === u.page.viewFile);
     if (vdoc) {
       const def = exportedDef(vdoc, 'default') || defsOf(vdoc).find((x) => x.name === u.page.ownViewName);
+      viewDef = def || null;
       if (def && !referenced.has(def) && topEls(vdoc, def).length) viewSpec = { doc: vdoc, def };
     }
   }
@@ -1413,6 +1415,7 @@ function buildForest(u) {
         state.n += 1;
         const inst2 = state.n;
         c.rendered = topEls(r.doc, r.def).map((e) => clone(e, c, inst2, [...stack, r.def]));
+        if (r.def === viewDef) for (const x of c.rendered) x.isViewRoot = true;
         // JSX passed as a prop renders where the component renders that prop; when that spot is not found it stays at the host
         const inside = c.rendered.flatMap((x) => [x, ...descendantsOf(x)]).filter((x) => !x.isContainer);
         for (const ab of [...c.attrBlocks]) {
@@ -1438,7 +1441,11 @@ function buildForest(u) {
     if (def) state.defs.add(def);
     state.n += 1;
     const inst = state.n;
-    for (const e of els) roots.push(clone(e, null, inst, def ? [def] : []));
+    for (const e of els) {
+      const root = clone(e, null, inst, def ? [def] : []);
+      if (def && def === viewDef) root.isViewRoot = true;
+      roots.push(root);
+    }
   };
   for (const d of unitDocs) {
     if (d.kind !== 'jsx') {
@@ -1459,6 +1466,7 @@ function buildForest(u) {
     state.defs.add(viewSpec.def);
     state.n += 1;
     const vroots = topEls(viewSpec.doc, viewSpec.def).map((e) => clone(e, null, state.n, [viewSpec.def]));
+    for (const v of vroots) v.isViewRoot = true;
     let host = null;
     if (u.layout && u.slot >= 0) {
       for (const c of state.all) {
@@ -1612,9 +1620,10 @@ const ownSheets = (u) => u.sheets.filter((s) => !s.vendored && s.name !== 'stand
 
 // Chrome, for the "which buttons are page actions" test (P9): the app shell BAR only. The page-level header (.shell-bar,
 // role=banner, or a legacy top bar), <nav>, skip links. A <header> inside <main>, a section, an article, an aside, a form,
-// a list item, a table or a dialog is page content, and so is a wrapper such as <div class="shell"> around the whole app.
+// a list item, a table or a dialog is page content, and so is anything the page's own view renders, and a wrapper such as
+// <div class="shell"> around the whole app.
 const CONTENT_CONTAINER = /^(?:main|section|article|aside|form|li|table|blockquote|dialog|FloatingDialog|Modal|Dialog|Drawer)$/;
-const isShellHeader = (a) => a.name === 'header' && (hasClass(a, /^shell-bar$|^topbar$|^top$|^app-header$|^site-header$/) || attrText(a, 'role') === 'banner' || !ancestors(a).some((x) => CONTENT_CONTAINER.test(x.name) || isDialogEl(x)));
+const isShellHeader = (a) => a.name === 'header' && (hasClass(a, /^shell-bar$|^topbar$|^top$|^app-header$|^site-header$/) || attrText(a, 'role') === 'banner' || ![a, ...ancestors(a)].some((x) => (x !== a && (CONTENT_CONTAINER.test(x.name) || isDialogEl(x))) || x.isViewRoot));
 const inShellChrome = (el) => ancestors(el).some((a) => isShellHeader(a) || /^nav$/i.test(a.name) || hasClass(a, /^shell-bar$|^topbar$|^top$|^skip/));
 // Looser test used for the banner-first check (P2): any header or nav, any shell-* wrapper.
 const inChrome = (el) => ancestors(el).some((a) => /^(?:header|nav)$/i.test(a.name) || hasClass(a, /^shell(?:-|$)|^topbar$|^top$|^skip/));

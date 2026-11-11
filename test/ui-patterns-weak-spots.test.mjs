@@ -4,7 +4,8 @@
 // and the page "home" is judged:
 //   clean*   -> the rule is PASS (or INFO) and the page has no DRIFT at all  (the natural code now passes)
 //   broken*  -> the rule has meta.status (or meta.variants[name]) and no OTHER rule drifts  (a real violation is still caught)
-// meta.json: { rule, status, note, also?: [rule ids that may drift too], variants?: { name: "DRIFT" | "WARN" | "OK" },
+// meta.json: { rule, status, note, also?: [rule ids that may drift too], alsoVariants?: { name: [rule ids] },
+//              variants?: { name: "DRIFT" | "WARN" | "OK" },
 //              match?: { name: "regex the rule's detail must match" } }
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,7 +68,8 @@ for (const c of cases) {
         assert.deepEqual(drift, [], `the page should have no DRIFT at all, got ${drift}`);
       } else {
         assert.equal(row.status, expected, `${meta.rule} should be ${expected}, got ${row.status}: ${row.detail}`);
-        const other = drift.filter((r) => r !== meta.rule && !(meta.also || []).includes(r));
+        const allowed = [...(meta.also || []), ...((meta.alsoVariants || {})[v] || [])];
+        const other = drift.filter((r) => r !== meta.rule && !allowed.includes(r));
         assert.deepEqual(other, [], `only ${meta.rule} may drift, also drifting: ${other}`);
         if (meta.match && meta.match[v]) assert.match(row.detail, new RegExp(meta.match[v]), 'the message names what is wrong');
       }

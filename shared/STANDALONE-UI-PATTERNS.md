@@ -214,8 +214,8 @@ P9 and H2 are judged on what the page renders, not on the flat list of elements 
   as `{name}` / `{props.name}`), the JSX counts at its host element, in the host's ternary arm, dialog or loop.
 - **Chrome.** Only the app shell bar is chrome (`.shell-bar`, `role="banner"`, a page-level legacy top bar, `<nav>`, skip
   links): its buttons are not page actions. A `<header>` inside `<main>`, a section, an article, an aside, a form, a list
-  item, a table or a dialog is page content, so a primary-styled button in it is counted and a plain action button in it
-  still needs a primary on the page.
+  item, a table or a dialog, or anywhere in what the page's own view renders, is page content, so a primary-styled button
+  in it is counted and a plain action button in it still needs a primary on the page.
 - **Selectors and disclosures** (`aria-selected`, `aria-pressed`, `aria-expanded`, `aria-checked`, `role` tab, switch,
   checkbox, radio, or a tab/toggle/chip/pill class) are not actions: they never need a primary, and they are not counted
   unless they are styled `.primary`. `aria-current` is not a selector (section 9), so a button with only `aria-current` is a

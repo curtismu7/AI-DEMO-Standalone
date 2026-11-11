@@ -1,1 +1,10 @@
-{ "rule": "P9", "status": "DRIFT", "note": "E: only the app shell bar is chrome; a <header> in page content is content; a disclosure is not a primary" }
+{
+  "rule": "P9",
+  "status": "DRIFT",
+  "note": "E: only the app shell bar is chrome; a <header> in page content is content; a disclosure is not a primary",
+  "alsoVariants": {
+    "broken-view-header": [
+      "P1"
+    ]
+  }
+}
