@@ -44,7 +44,8 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   `delegation-lab-LAB`, `hitl-mfa-lab-LAB`, `mcp-gateway-lab-LAB`, `agent-preferences-lab`, `ai-demo-standalone-LAB`.
 - Testers and tools: `hostile-a2a-LAB`, `attack-gallery-LAB`, `ai-guard-sidecar-LAB`, `diagram-studio-LAB`,
   `diagram-prove-lab`, `deploy-test-LAB`, `demo-shelf-LAB`, `privilege-k8-kits-LAB` (serves packaged zips and a PDF
-  from its own folders; offline, no tenant).
+  from its own folders; offline, no tenant), `privilege-owasp-lab-LAB` (OWASP Agentic AI Top 10 with Privilege
+  coverage; Mock is static deck wording offline, Real is one read-only PingOne call).
 
 ## B. Your own PingOne environment and apps
 
