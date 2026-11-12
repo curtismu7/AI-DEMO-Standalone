@@ -48,7 +48,8 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   from its own folders; offline, no tenant), `privilege-owasp-lab-LAB` (OWASP Agentic AI Top 10 with Privilege
   coverage; Mock is static deck wording offline, Real is one read-only PingOne call), `privilege-api-explorer-LAB` (Privilege console API explorer; Mock is the in-process mock console, Real signs in with the owner's user API key/secret — see its docs/live-checks.md),
   `mcp-scanner-lab-LAB` (scans an MCP server's tools for over-broad scopes, injection and shadow risks on demo fixtures
-  or pasted metadata; offline, no tenant).
+  or pasted metadata; offline, no tenant), `mfa-admin-mcp-lab` (administers PingOne MFA/FIDO policies, notification
+  policies, delivery settings and OATH tokens through MCP tools; mock by default, live is owner-run).
 
 ## B. Your own PingOne environment and apps
 

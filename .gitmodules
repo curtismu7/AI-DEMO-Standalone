@@ -260,3 +260,6 @@
 [submodule "standalone/appfire-agent-governance-LAB"]
 	path = standalone/appfire-agent-governance-LAB
 	url = https://github.com/curtismu7/appfire-agent-governance-LAB
+[submodule "standalone/mfa-admin-mcp-lab"]
+	path = standalone/mfa-admin-mcp-lab
+	url = https://github.com/curtismu7/mfa-admin-mcp-lab.git
