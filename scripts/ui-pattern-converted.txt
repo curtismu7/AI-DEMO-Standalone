@@ -41,3 +41,14 @@ p1-third-party-exchange-LAB/setup
 p1-third-party-exchange-LAB/talk
 p1-third-party-exchange-LAB/walk
 p1-third-party-exchange-LAB/wire
+
+# 2026-11-11: agent-registry-demo-LAB (all 5 pages, shell-bar + one-primary + rule-19 TopMenu) and
+# ai-gateway-client-LAB (both pages, InspectorShell main + frame + banner-first + /api/mode) converted;
+# their pins are bumped in the same PR.
+agent-registry-demo-LAB/registry
+agent-registry-demo-LAB/lifecycle
+agent-registry-demo-LAB/gateway
+agent-registry-demo-LAB/start-boxes
+agent-registry-demo-LAB/raw
+ai-gateway-client-LAB/flow
+ai-gateway-client-LAB/templates
