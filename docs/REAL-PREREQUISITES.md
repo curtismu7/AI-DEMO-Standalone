@@ -45,7 +45,7 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
 - Testers and tools: `hostile-a2a-LAB`, `attack-gallery-LAB`, `ai-guard-sidecar-LAB`, `diagram-studio-LAB`,
   `diagram-prove-lab`, `deploy-test-LAB`, `demo-shelf-LAB`, `privilege-k8-kits-LAB` (serves packaged zips and a PDF
   from its own folders; offline, no tenant), `privilege-owasp-lab-LAB` (OWASP Agentic AI Top 10 with Privilege
-  coverage; Mock is static deck wording offline, Real is one read-only PingOne call).
+  coverage; Mock is static deck wording offline, Real is one read-only PingOne call), `privilege-api-explorer-LAB` (Privilege console API explorer; Mock is the in-process mock console, Real signs in with the owner's user API key/secret — see its docs/live-checks.md).
 
 ## B. Your own PingOne environment and apps
 
