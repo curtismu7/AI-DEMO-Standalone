@@ -47,7 +47,8 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   from its own folders; offline, no tenant), `privilege-owasp-lab-LAB` (OWASP Agentic AI Top 10 with Privilege
   coverage; Mock is static deck wording offline, Real is one read-only PingOne call),
   `mcp-scanner-lab-LAB` (scans an MCP server's tools for over-broad scopes, injection and shadow risks on demo fixtures
-  or pasted metadata; offline, no tenant).
+  or pasted metadata; offline, no tenant), `privilege-api-explorer-LAB` (browses and runs Privilege console API operations
+  with the owner's user API key and secret — never committed, owner-only; Mock/browse needs no credential).
 
 ## B. Your own PingOne environment and apps
 
