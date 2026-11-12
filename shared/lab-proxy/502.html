@@ -25,7 +25,7 @@
   a.btn:hover, button.primary:hover { filter: brightness(1.1); }
   .status { font-size: 0.85rem; min-height: 1.2em; margin-top: 0.75rem; color: #9aa7b3; }
   .status.err { color: #ff8a8d; }
-  .spin { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid #fcfcfc;
+  .spin { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid currentColor;
     border-right-color: transparent; border-radius: 50%; animation: s 0.8s linear infinite;
     vertical-align: -0.1em; margin-right: 0.4em; }
   @keyframes s { to { transform: rotate(360deg); } }
@@ -47,47 +47,71 @@
     <p class="status" id="status" role="status"></p>
   </main>
   <script>
-    // The proxy path is the lab id: /pingone-lab -> shelf id "pingone-lab" (PROXY_PATHS keys match).
+    "use strict";
     var path = location.pathname.replace(/^\/+|\/+$/g, "").split("/")[0] || "";
-    document.getElementById("lab").textContent = path;
-    var btn = document.getElementById("start");
-    var status = document.getElementById("status");
     var shelf = "https://local.ping-devops.com:8443/demo-shelf";
-    // Never offer Start for the shelf itself.
-    if (!path || /shelf/i.test(path)) btn.style.display = "none";
+    var btn = document.getElementById("start");
+    var statusEl = document.getElementById("status");
+    var lab = document.getElementById("lab");
+    lab.textContent = path;
+    var polling = false;
 
-    btn.addEventListener("click", function () {
+    function say(html, isErr) {
+      statusEl.className = isErr ? "status err" : "status";
+      statusEl.innerHTML = html;
+    }
+
+    function waitUntilUp() {
+      polling = true;
+      var tries = 0;
+      var tick = function () {
+        if (!polling) return;
+        tries++;
+        fetch(location.href, { method: "GET", cache: "no-store" })
+          .then(function (r) {
+            if (r.ok || r.status === 401 || r.status === 302) { polling = false; location.reload(); return; }
+            if (tries % 5 === 0) say('<span class="spin"></span>Still starting — the first start can take a few minutes…');
+            setTimeout(tick, 2000);
+          })
+          .catch(function () {
+            if (tries % 5 === 0) say('<span class="spin"></span>Still starting — the first start can take a few minutes…');
+            setTimeout(tick, 2000);
+          });
+      };
+      setTimeout(tick, 2000);
+    }
+
+    function humanError(e, detail) {
+      var m = /^too-many-running:(\d+):(\d+)$/.exec(e || "");
+      if (m) return "the demo limit is reached — " + m[1] + " demos are running and the limit is " + m[2] + ". Stop one on the shelf first (or use Stop all there).";
+      if (e === "busy") return "a start for this lab is already running — wait a moment and try again.";
+      if (e === "unknown-demo") return "this lab is not registered on the shelf — start it from the shelf instead.";
+      if (e === "no-compose-file") return "this lab has no compose file — it cannot be started from here.";
+      return detail || e || "unknown error";
+    }
+
+    btn.onclick = function () {
+      if (polling) return;
       btn.disabled = true;
-      status.className = "status";
-      status.innerHTML = '<span class="spin"></span>Starting ' + path + " — first start builds the image and can take a few minutes…";
+      say('<span class="spin"></span>Starting ' + path + " — the first start builds the image and can take a few minutes…");
       fetch(shelf + "/api/demos/" + encodeURIComponent(path) + "/start", { method: "POST" })
-        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
-        .then(function (res) {
-          if (!res.ok) {
-            var why = res.body && (res.body.detail || res.body.error) || "unknown error";
-            status.className = "status err";
-            status.textContent = "Could not start it (" + why + "). Use the Start button on the shelf instead.";
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (b) {
+          if (!b.ok) {
             btn.disabled = false;
+            say("Could not start it: " + humanError(b.error, b.detail), true);
             return;
           }
-          status.innerHTML = '<span class="spin"></span>Started. Waiting for the lab to answer…';
-          var tries = 0;
-          var poll = setInterval(function () {
-            tries++;
-            fetch(location.href, { method: "HEAD", cache: "no-store" })
-              .then(function (r) {
-                if (r.ok || r.status === 401 || r.status === 302) { clearInterval(poll); location.reload(); }
-                else if (tries > 60) { clearInterval(poll); status.textContent = "Started but not answering yet — reload in a moment."; }
-              })
-              .catch(function () { if (tries > 60) { clearInterval(poll); status.textContent = "Started but not answering yet — reload in a moment."; } });
-          }, 2000);
+          say('<span class="spin"></span>Started. Waiting for the lab to answer…');
+          waitUntilUp();
         })
         .catch(function () {
-          status.className = "status err";
-          status.textContent = "Could not reach the shelf's start agent. Use the Start button on the shelf instead.";
           btn.disabled = false;
+          say("Could not reach the shelf's start agent. Use the Start button on the shelf instead.", true);
         });
-    });
+    };
   </script>
 </body>
 </html>
