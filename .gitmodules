@@ -251,3 +251,6 @@
 [submodule "standalone/pf-privilege-obo-LAB"]
 	path = standalone/pf-privilege-obo-LAB
 	url = https://github.com/curtismu7/pf-privilege-obo-LAB
+[submodule "standalone/privilege-api-explorer-LAB"]
+	path = standalone/privilege-api-explorer-LAB
+	url = https://github.com/curtismu7/privilege-api-explorer-LAB
