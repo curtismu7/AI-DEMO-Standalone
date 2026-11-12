@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.12** — new lab: ai-demo-standalone-lab, the AI Demo dashboard standalone: 31 of the 87 use cases run in-app against a mock PDP with full evidence views (chain map, token cards, receipts); the rest open their shelf lab. Run the update command below to get it.
+**Version 2.13** — new lab: mfa-admin-mcp-lab, administer PingOne's MFA administration MCP tool set (MFA settings, FIDO passkey policies, notification policies, OATH tokens, delivery settings) through MCP tools with safety classes and a confirm gate. Mock by default; Live is owner-run. Run the update command below to get it.
