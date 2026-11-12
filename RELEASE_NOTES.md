@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.12 (2026-11-12)
+
+**New lab**
+- ai-demo-standalone-lab (Demo, port 7810): the AI Demo standalone - the AI-DEMO2 dashboard as a standalone lab. All 87 use cases in one catalog; 31 run in-app against the mock PDP (token, gateway, policy, HITL obligations) covering foundations, attacks (token theft, takeover, bad client), controls (overscoped tokens, gateway search filter, public tools), HITL (step-up, consent, CIBA) and A2A hand-off; the rest open their shelf lab. Evidence views (chain map, token cards, demo hops, receipts), a scripted assistant, a talk track and a Quick Config dialog. Hardened with a real-browser e2e in CI and a Docker smoke.
+
 ## 2.11 (2026-11-11)
 
 **New labs**

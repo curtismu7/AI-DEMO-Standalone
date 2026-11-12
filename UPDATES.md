@@ -11,6 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.10** — new lab: privilege-k8-kits, a download hub for the Agent Privilege Gateway K8 deployment kits (single-gateway and multi-gateway HA). Run the update command below to get it.
-
-**New lab 2.11**: pf-privilege-obo-lab - the simulated PingFederate to Privilege OBO chain, with the measured issues panel. Run `./setup.sh` to get it.
+**Version 2.12** — new lab: ai-demo-standalone-lab, the AI Demo dashboard standalone: 31 of the 87 use cases run in-app against a mock PDP with full evidence views (chain map, token cards, receipts); the rest open their shelf lab. Run the update command below to get it.
