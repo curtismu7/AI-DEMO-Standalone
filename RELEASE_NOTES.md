@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.13 (2026-11-12)
+
+**New lab**
+- mfa-admin-mcp-lab (Tester, port 7815): administer PingOne's early-access MFA administration MCP tool set — environment MFA settings, device-authentication and FIDO passkey policies, notification policies, OATH tokens, and email/phone/WhatsApp delivery settings — through MCP tools instead of console pages. Safety classes (read/write/destructive), a confirm gate with exact-argument hashing, a metadata poison scan, a redacted audit log, and an inspector layout with talk track. Mock by default (26 MFA mock tools + a general-admin sample, role-gated viewer/admin); Live is owner-run against the hosted PingOne MCP server. Fork of pingone-mcp-inspector-LAB.
+
 ## 2.12 (2026-11-12)
 
 **New lab**
