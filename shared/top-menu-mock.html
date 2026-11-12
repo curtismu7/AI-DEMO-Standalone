@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Top Menu standard - mock</title>
+<style>
+  /* tokens from shared/standalone-ui.css (subset for the mock) */
+  :root {
+    color-scheme: light;
+    --bg: #fcfcfc; --surface: #ffffff; --surface-2: #eff0f1;
+    --text: #051727; --text-body: #263746; --muted: #556070; --border: #556070;
+    --accent: #d20e0f; --accent-deep: #aa0005; --on-accent: #ffffff;
+    --accent-soft: #fde8e8; --focus: #12538d; --danger-text: #aa0005;
+    --accent-gradient: linear-gradient(90deg, #d20e0f 55%, #aa0005);
+    --box-dark: #051727; --on-box: #fcfcfc;
+    --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #051727; --surface: #172033; --surface-2: #0f2236;
+      --text: #fcfcfc; --text-body: #d5dde5; --muted: #9aa7b3; --border: #9aa7b3;
+      --accent: #d20e0f; --on-accent: #ffffff; --focus: #7ab3e0;
+    }
+  }
+  [data-theme="dark"] {
+    --bg: #051727; --surface: #172033; --surface-2: #0f2236;
+    --text: #fcfcfc; --text-body: #d5dde5; --muted: #9aa7b3; --border: #9aa7b3;
+    --accent: #d20e0f; --on-accent: #ffffff; --focus: #7ab3e0;
+  }
+  html { font-size: var(--fs, 16px); }
+  body { margin: 0; font-family: var(--font-primary); font-size: 14px; background: var(--bg); color: var(--text-body); }
+
+  /* ===== the standardized top menu (shell-bar) ===== */
+  .shell-bar {
+    display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+    padding: 0.65rem 1.25rem; background: var(--box-dark); color: var(--on-box);
+    border-bottom: 3px solid transparent; border-image: var(--accent-gradient) 1;
+  }
+  /* brand + nav stay on the top line, left; the control rows stack to their right */
+  /* Sign in stands alone, centered horizontally, pinned to the TOP LINE */
+  .shell-signin {
+    position: absolute; left: 50%; top: 0.65rem; transform: translateX(-50%);
+    display: inline-flex; align-items: center;
+  }
+  .shell-bar { position: relative; }
+  /* signed-in state: who + sign out ride the centered slot too */
+  .shell-signin .ctl { color: var(--on-box); font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
+  .shell-logo { width: 1.9rem; height: 1.9rem; border-radius: 4px; background: var(--accent); color: var(--on-box); display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; }
+  .shell-nav { display: flex; gap: 0.25rem; flex: 1; flex-wrap: wrap; }
+  .shell-nav a { padding: 0.3rem 0.75rem; border-radius: 999px; color: var(--on-box); border: 1px solid transparent; text-decoration: none; font-size: 0.85rem; }
+  .shell-nav a:hover { border-color: var(--on-box); }
+  .shell-nav a[aria-current="page"] { background: var(--accent-gradient); color: var(--on-accent); font-weight: 600; }
+  .shell-right { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; font-size: 0.85rem; margin-left: auto; }
+  .shell-row { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+
+  .shell-bar button, .shell-bar select, .shell-bar a.shelf-btn {
+    font: inherit; font-size: 0.85rem; height: 32px; box-sizing: border-box;
+    padding: 0 0.7rem; border-radius: 8px;
+    background: transparent; color: var(--on-box); border: 1px solid rgba(252,252,252,0.55);
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;
+  }
+  .shell-bar button:hover, .shell-bar select:hover, .shell-bar a.shelf-btn:hover { border-color: var(--on-box); }
+  .shell-bar button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .shell-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .shell-bar select { color: var(--text); background: var(--surface); }
+  .shell-bar :focus-visible { outline: 3px solid var(--on-box); outline-offset: 2px; }
+
+  /* labelled control wrapper */
+  .ctl { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; color: var(--on-box); opacity: 0.9; height: 32px; }
+  .ctl select { height: 32px; }
+
+  /* segmented mock/real */
+  .seg { display: inline-flex; }
+  .seg button:first-child { border-radius: 8px 0 0 8px; }
+  .seg button:last-child { border-radius: 0 8px 8px 0; border-left: none; }
+
+  /* sign-in is the one primary */
+  .shell-bar button.primary { background: var(--accent-gradient); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+
+  /* Mock/Real stands out: accent-tinted select */
+  .shell-bar select.mode-select { background: var(--accent); color: var(--on-accent); border-color: var(--accent-deep); font-weight: 700; }
+  .shell-bar select.mode-select:hover { border-color: var(--on-accent); }
+  .shell-bar select.mode-select option { color: var(--text); background: var(--surface); }
+
+  @media (max-width: 600px) { .shell-bar { gap: 0.75rem; padding: 0.6rem 1rem; } .shell-nav { order: 3; flex-basis: 100%; } }
+
+  /* ===== demo page below ===== */
+  main { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .banner { border-left: 4px solid var(--accent); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; border-top: 4px solid var(--accent); padding: 1rem; margin-top: 1rem; }
+  h1 { color: var(--text); font-size: 1.4rem; }
+  h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .kv { display: grid; grid-template-columns: minmax(10rem, max-content) 1fr; gap: 0.35rem 1rem; }
+  .kv dt { color: var(--muted); font-weight: 600; }
+  .kv dd { margin: 0; font-family: var(--font-mono); font-size: 0.85rem; }
+  .note { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <!-- ================= THE STANDARD TOP MENU ================= -->
+  <header class="shell-bar">
+    <span class="shell-brand">
+      <span class="shell-logo">PING</span>
+      PingOne Events Lab <span style="opacity:0.75;font-weight:600;">(Mock)</span>
+    </span>
+    <nav class="shell-nav" aria-label="Sections">
+      <a href="#" aria-current="page">Events</a>
+      <a href="#">Delivery</a>
+      <a href="#">Pipeline</a>
+      <a href="#">Setup</a>
+    </nav>
+    <!-- Sign in stands alone: absolutely centered on the bar, spanning all rows -->
+    <span class="shell-signin">
+      <button type="button" class="primary">Sign in</button>
+    </span>
+    <span class="shell-right">
+      <!-- row 1 -->
+      <span class="shell-row">
+        <!-- 3) Mock/Real: dropdown like theme, accent-colored so it stands out -->
+        <label class="ctl">Mode
+          <select class="mode-select" aria-label="Mock or Real">
+            <option selected>Mock</option><option disabled title="Real is not configured. Mock keeps working.">Real</option>
+          </select>
+        </label>
+        <!-- 6) Vertical (industry) selector — only where the lab has verticals -->
+        <label class="ctl">Vertical
+          <select aria-label="Vertical"><option>retail</option><option>banking</option></select>
+        </label>
+        <!-- 7) Present button — only where the lab has presenter mode -->
+        <button type="button" aria-pressed="false">Present (P)</button>
+      </span>
+      <!-- row 2 -->
+      <span class="shell-row">
+        <!-- 9) Talk track toggle — only where the lab has a presenter script -->
+        <button type="button" aria-pressed="false" title="Show the presenter script alongside the page">Talk track</button>
+        <!-- 2) Shelf button -->
+        <a class="shelf-btn" href="https://local.ping-devops.com:8443/demo-shelf" title="Open the demo shelf (launcher)">Shelf</a>
+        <!-- 10) Help / About — docs link and version popover -->
+        <a class="shelf-btn" href="#" title="Open the lab's documentation">Help</a>
+        <button type="button" title="About this lab">v1.4.2</button>
+        <!-- 8) Reset button -->
+        <button type="button">Reset</button>
+      </span>
+      <!-- row 3: theme + text size -->
+      <span class="shell-row">
+        <label class="ctl">Theme
+          <select aria-label="Theme">
+            <option>Auto</option><option>Light</option><option>Dark</option>
+          </select>
+        </label>
+        <label class="ctl">Text size
+          <select aria-label="Font size">
+            <option>S</option><option selected>M</option><option>L</option>
+          </select>
+        </label>
+        <span class="seg" role="group" aria-label="Font size stepper">
+          <button type="button" aria-label="Smaller text">A−</button>
+          <button type="button" aria-label="Larger text">A+</button>
+        </span>
+      </span>
+    </span>
+  </header>
+
+  <!-- ================= demo page body ================= -->
+  <main>
+    <p class="banner" role="note"><strong>Mock:</strong> a simulated PingOne inside this lab. Nothing leaves this machine.</p>
+    <h1>Standard top menu - mock</h1>
+    <p class="note">Every -LAB app gets exactly this menu, in this order, on every page. Controls a lab does not need are simply absent — the order of the rest never changes.</p>
+    <div class="card">
+      <h2>Order (left to right)</h2>
+      <dl class="kv">
+        <dt>1. Mock / Real</dt><dd>row 1 · select · Mock / Real dropdown, wired to /api/mode</dd>
+        <dt>2. Vertical</dt><dd>row 1 · select · industry scenario, where the lab has verticals</dd>
+        <dt>3. Present</dt><dd>row 1 · toggle · presenter mode, where the lab has it</dd>
+        <dt>4. Talk track</dt><dd>row 2 · toggle · the presenter script, where the lab has one</dd>
+        <dt>5. Shelf</dt><dd>row 2 · link · back to the demo shelf (launcher)</dd>
+        <dt>6. Help</dt><dd>row 2 · link · the lab's documentation</dd>
+        <dt>7. About / version</dt><dd>row 2 · button · version popover</dd>
+        <dt>8. Reset</dt><dd>row 2 · action · reset the lab's data</dd>
+        <dt>9. Theme</dt><dd>row 3 · select · Light / Dark / Auto</dd>
+        <dt>10. Text size</dt><dd>row 3 · select S/M/L + A−/A+ steppers</dd>
+        <dt>Sign in</dt><dd>stands alone · centered on the top line; visible only in Real mode when the lab needs auth</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Variants shown</h2>
+      <p class="note">Mock mode: the Mode dropdown disables Real with a reason when unconfigured. Sign in appears only when Real is the active mode (shown here for layout). At 600px the bar wraps; nav drops to its own row.</p>
+    </div>
+  </main>
+</body>
+</html>
