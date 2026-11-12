@@ -118,6 +118,22 @@ All apps are reached through ONE domain, already in `/etc/hosts` - never `127.0.
 
 The shared lab-proxy (`shared/lab-proxy/`) routes by a `lab` cookie into each app's Docker compose network; `scripts/lab-proxy-watchdog.sh` attaches the proxy to each running app's network (setup, `setup.sh update`, and its launchd agent every 5 min), so an app appears once its compose stack is up. Adding an app to the proxy = one entry location + two cookie-map lines in `shared/lab-proxy/nginx.conf`.
 
+### One command for the labs (`labs`)
+
+`scripts/labs` is a launcher over the same sources the shelf and `setup.sh` use (shelf registry, `lib-labs.sh` history, `PROXY_PATHS` in the shelf server, starter sets in `demo-shelf-LAB/data/starter-sets.json`). If `~/.local/bin` is on PATH it is just `labs`:
+
+```sh
+labs list                    # every lab, up/down, its proxy URL
+labs status                  # only the running ones
+labs up token workbench-LAB  # start by group or name (groups: the shelf's starter sets)
+labs up --history 6          # start your last 6 labs (shelf last-running.json)
+labs down --all              # stop every lab project (never touches AI-DEMO2)
+labs restart hostile-a2a; labs url token
+```
+
+The shelf's "Start a set" dropdown uses the same starter-sets file, so a set added there appears in both the shelf UI and the CLI.
+
+
 ## Ports, and what to do if a port is taken
 
 Each app sets its own ports; ranges and variables are in each app's README. Default host ports (from the shelf registry and each app's compose file):

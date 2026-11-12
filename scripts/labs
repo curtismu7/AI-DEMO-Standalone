@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+# labs — one-command launcher for the standalone lab family.
+#
+# Usage:
+#   labs list                     all labs + running state + proxy URL
+#   labs status                   only the labs running now
+#   labs up <name...> | <group>   start (build if needed); name = dir under standalone/ or shelf id
+#   labs down <name...> | <group> stop
+#   labs restart <name...>        stop + start
+#   labs url <name>               print the lab-proxy URL(s) for a lab
+#   labs up --history [n]         start the labs you had running (shelf last-running), default 10
+#   labs down --all               stop every lab compose project (family only, not AI-DEMO2)
+#
+# Groups (edit LAB_GROUPS below):
+#   token    oauth/token labs        maps    map/inspector labs
+#   agent    agent/A2A labs          mock    mock/stub infrastructure
+#
+# Resolution mirrors scripts/lib-labs.sh: the shelf seed + .data/demos.local.json registry
+# (composeFile per lab id) first, then the usual docker-compose.yml fallbacks.
+
+set -euo pipefail
+
+root="${LABS_ROOT:-$HOME/Development/AI-DEMO-Standalone}"
+
+# Groups come from the shelf's data/starter-sets.json — the same file the shelf's
+# "Start a set" dropdown reads. Built at startup by load_groups(); a lab dir name is
+# derived from each registry id via the shelf registry's composeFile, with a
+# dir-name fallback. Custom groups: add a set there, or set LABS_EXTRA_GROUPS="name:dir dir ...".
+
+# shelf ids (registry ids) that differ from the directory name: dir -> id
+DIR_TO_ID=(
+  "id-jag-standalone-LAB:id-jag-standalone"
+  "idjag-runner-LAB:idjag-runner"
+  "token-workbench-LAB:token-workbench"
+  "hostile-a2a-LAB:hostile-a2a"
+  "hostile-mcp-LAB:hostile-mcp"
+  "pingone-signin-LAB:pingone-signin-lab"
+  "agentcore-pingone-demo-LAB:agentcore-pingone-demo-lab"
+  "demo-map-LAB:demo-map-lab"
+  "privilege-map-LAB:privilege-map-lab"
+  "pingone-events-LAB:pingone-events-lab"
+  "pingcli-LAB:pingcli-lab"
+  "mcp-skills-LAB:mcp-skills-lab"
+  "aggregate-entitlement-LAB:aggregate-entitlement-lab"
+  "env-map-LAB:env-map-lab"
+  "pingone-LAB:pingone-lab"
+  "pingfederate-LAB:pingfederate-lab"
+  "cimd-LAB:cimd-lab"
+  "customer-agent-LAB:customer-agent-lab"
+)
+
+c_info=$'\e[36m'; c_ok=$'\e[32m'; c_dim=$'\e[2m'; c_warn=$'\e[33m'; c_off=$'\e[0m'
+
+die() { echo "labs: $*" >&2; exit 1; }
+
+# load_groups: build LAB_GROUPS from the shelf's data/starter-sets.json, mapping each
+# registry id to its lab dir (registry composeFile's first path segment, or the DIR_TO_ID
+# alias). Sets with no resolvable dir are skipped. Extra groups from $LABS_EXTRA_GROUPS.
+LAB_GROUPS=()
+load_groups() {
+  local out
+  out="$(node -e '
+    const fs = require("fs"), path = require("path");
+    const root = process.argv[1];
+    const read = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
+    const reg = [...(read(path.join(root, "standalone/demo-shelf-LAB/data/demos.json"))?.demos || []),
+                 ...(read(path.join(root, "standalone/demo-shelf-LAB/.data/demos.local.json"))?.demos || [])];
+    const idToDir = new Map();
+    for (const d of reg) {
+      if (!d.composeFile) continue;
+      idToDir.set(d.id, d.composeFile.split("/")[0]);
+    }
+    let sets = [];
+    try { sets = JSON.parse(fs.readFileSync(path.join(root, "standalone/demo-shelf-LAB/data/starter-sets.json"), "utf8")).sets || []; } catch {}
+    for (const s of sets) {
+      if (!s || !s.id || !Array.isArray(s.demos)) continue;
+      const dirs = [...new Set(s.demos.map((id) => idToDir.get(id)).filter(Boolean))]
+        .filter((d) => fs.existsSync(path.join(root, "standalone", d)));
+      if (dirs.length) console.log(s.id + ":" + dirs.join(" "));
+    }
+  ' "$root" 2>/dev/null || true)"
+  while IFS= read -r line; do [ -n "$line" ] && LAB_GROUPS+=("$line"); done <<< "$out"
+  [ -n "${LABS_EXTRA_GROUPS:-}" ] && LAB_GROUPS+=("$LABS_EXTRA_GROUPS")
+  return 0
+}
+
+reg_lookup() { # reg_lookup <dir-name> -> shelf id (may be empty)
+  local d="$1" e
+  for e in "${DIR_TO_ID[@]}"; do [ "${e%%:*}" = "$d" ] && { echo "${e#*:}"; return; }; done
+}
+
+# compose_file <dir>: absolute path of the compose file that deploys a lab
+compose_file() {
+  local dir="$1" id f
+  local seed="$root/standalone/demo-shelf-LAB/data/demos.json"
+  id="$(reg_lookup "$dir")"; id="${id:-$dir}"
+  if [ -f "$seed" ]; then
+    f="$(node -e '
+      const [seed, id] = process.argv.slice(1);
+      try {
+        const l = (JSON.parse(require("fs").readFileSync(seed, "utf8")).demos || []);
+        const hit = l.find((x) => x.id === id);
+        if (hit && hit.composeFile) console.log(hit.composeFile);
+      } catch {}' "$seed" "$id" 2>/dev/null)"
+    [ -n "$f" ] && [ -f "$root/standalone/$f" ] && { echo "$root/standalone/$f"; return 0; }
+  fi
+  # local registry entries
+  local local_reg="$root/standalone/demo-shelf-LAB/.data/demos.local.json"
+  if [ -f "$local_reg" ]; then
+    f="$(node -e '
+      const [reg, dir] = process.argv.slice(1);
+      try {
+        const l = (JSON.parse(require("fs").readFileSync(reg, "utf8")).demos || []);
+        const hit = l.find((x) => (x.composeFile || "").split("/")[0] === dir);
+        if (hit && hit.composeFile) console.log(hit.composeFile);
+      } catch {}' "$local_reg" "$dir" 2>/dev/null)"
+    [ -n "$f" ] && { [ -f "$root/standalone/$f" ] && { echo "$root/standalone/$f"; return 0; } \
+      || [ -f "$f" ] && { echo "$f"; return 0; }; }
+  fi
+  for f in docker-compose.yml compose.yml deploy/docker-compose.yml; do
+    [ -f "$root/standalone/$dir/$f" ] && { echo "$root/standalone/$dir/$f"; return 0; }
+  done
+  return 1
+}
+
+# expand args -> one lab dir per line; groups and shelf ids accepted
+expand() {
+  local a g e dir
+  for a in "$@"; do
+    for g in "${LAB_GROUPS[@]}"; do
+      if [ "${g%%:*}" = "$a" ]; then
+        for e in ${g#*:}; do echo "$e"; done
+        a=""
+        break
+      fi
+    done
+    [ -z "$a" ] && continue
+    dir="$a"
+    [ -d "$root/standalone/$dir" ] || {
+      # accept shelf id too
+      for e in "${DIR_TO_ID[@]}"; do
+        [ "${e#*:}" = "$a" ] && { dir="${e%%:*}"; break; }
+      done
+    }
+    [ -d "$root/standalone/$dir" ] || die "unknown lab or group: $a (try: labs list)"
+    echo "$dir"
+  done | sort -u
+}
+
+project_running() { # project_running <dir> -> 0 if its compose file is among running projects
+  local d="$1" cf; cf="$(compose_file "$d")" || return 1
+  docker compose ls --format json 2>/dev/null | grep -qF "$cf"
+}
+
+proxy_path_for() { # proxy path from the shelf's PROXY_PATHS map (server/src/app.js); fall back to dir name
+  local dir="$1" id
+  id="$(reg_lookup "$dir")"; id="${id:-$dir}"
+  node -e '
+    const fs = require("fs");
+    const [id, dir] = process.argv.slice(1);
+    let map = {};
+    try {
+      const src = fs.readFileSync(process.env.HOME + "/Development/AI-DEMO-Standalone/standalone/demo-shelf-LAB/server/src/app.js", "utf8");
+      const m = src.match(/const PROXY_PATHS = \{([\s\S]*?)\n  \};/);
+      if (m) for (const kv of m[1].matchAll(/'"'"'([^'"'"']+)'"'"'\s*:\s*'"'"'([^'"'"']+)'"'"'/g)) map[kv[1]] = kv[2];
+    } catch {}
+    console.log(map[id] || "/" + dir.replace(/-LAB$/, ""));
+  ' "$id" "$dir" 2>/dev/null
+}
+
+cmd_list() {
+  printf '%-42s %-8s %s\n' "LAB" "STATE" "PROXY"
+  for d in "$root"/standalone/*-LAB; do
+    d="$(basename "$d")"
+    local state="down" pp
+    if project_running "$d"; then state="${c_ok}up${c_off}"; else state="${c_dim}down${c_off}"; fi
+    pp="$(proxy_path_for "$d")"
+    printf '%-42s %-8s %s\n' "$d" "$state" "https://local.ping-devops.com:8443${pp}"
+  done
+}
+
+cmd_status() {
+  local any=0 d
+  for d in "$root"/standalone/*-LAB; do
+    d="$(basename "$d")"
+    if project_running "$d"; then echo "up   $d"; any=1; fi
+  done
+  [ "$any" = 0 ] && echo "no labs running" >&2
+}
+
+do_up() {
+  local d cf
+  for d in "$@"; do
+    cf="$(compose_file "$d")" || { echo "${c_warn}skip${c_off} $d (no compose file)"; continue; }
+    if project_running "$d"; then
+      echo "${c_dim}already up${c_off}  $d"
+    else
+      echo "${c_info}up${c_off}        $d ($cf)"
+      (cd "$root/standalone/$d" && HOST_PORT= docker compose -f "$cf" up --build -d) || die "failed to start $d"
+    fi
+  done
+}
+
+do_down() {
+  local d cf
+  for d in "$@"; do
+    cf="$(compose_file "$d")" || { echo "${c_warn}skip${c_off} $d (no compose file)"; continue; }
+    if project_running "$d"; then
+      echo "down        $d"
+      (cd "$root/standalone/$d" && docker compose -f "$cf" down) || die "failed to stop $d"
+    else
+      echo "${c_dim}already down${c_off} $d"
+    fi
+  done
+}
+
+cmd_up() {
+  if [ "${1:-}" = "--history" ]; then
+    shift
+    local n="${1:-10}" dirs
+    dirs="$(bash -c "source '$root/scripts/lib-labs.sh' 2>/dev/null; root='$root'; top_labs $n" 2>/dev/null || true)"
+    [ -n "$dirs" ] || die "could not read shelf history"
+    # shellcheck disable=SC2086
+    do_up $dirs
+  else
+    [ $# -ge 1 ] || die "usage: labs up <name|group>... (try: labs list)"
+    do_up "$(expand "$@")"
+  fi
+}
+
+cmd_down() {
+  if [ "${1:-}" = "--all" ]; then
+    shift
+    local p
+    while IFS= read -r p; do
+      case "$p" in *-LAB*) docker compose -f "$p" down >/dev/null 2>&1 && echo "down  $p";; esac
+    done < <(docker compose ls -a --format json 2>/dev/null | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{for(const x of JSON.parse(s||"[]")){const f=(x.ConfigFiles||"").split(",")[0].trim();if(f)console.log(f)}})')
+  else
+    [ $# -ge 1 ] || die "usage: labs down <name|group>... | --all"
+    do_down "$(expand "$@")"
+  fi
+}
+
+cmd_restart() {
+  [ $# -ge 1 ] || die "usage: labs restart <name|group>..."
+  local names; names="$(expand "$@")"
+  do_down $names; do_up $names
+}
+
+cmd_url() {
+  [ $# -ge 1 ] || die "usage: labs url <name...>"
+  local d pp
+  for d in $(expand "$@"); do
+    pp="$(proxy_path_for "$d")"
+    echo "https://local.ping-devops.com:8443$pp  ($d)"
+  done
+}
+
+load_groups
+case "${1:-}" in
+  list)    shift; cmd_list "$@" ;;
+  status)  shift; cmd_status "$@" ;;
+  up)      shift; cmd_up "$@" ;;
+  down)    shift; cmd_down "$@" ;;
+  restart) shift; cmd_restart "$@" ;;
+  url)     shift; cmd_url "$@" ;;
+  ""|-h|--help|help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "unknown command: $1 (try: labs list)" ;;
+esac
