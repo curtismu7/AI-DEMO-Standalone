@@ -40,7 +40,8 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
 - Live is a local simulation, no credential: `agent-governance-LAB`, `ai-policies-LAB`, `coding-agents-LAB`,
   `data-protection-LAB`, `federated-identity-LAB`, `intent-purpose-behaviour-LAB`, `mcp-surface-LAB`,
   `saas-access-LAB`, `secrets-vault-LAB`.
-- Mock scaffolds of a product contract (the README says what is real and what is not): `a2a-lab-LAB`,
+- Mock scaffolds of a product contract (the README says what is real and what is not): `appfire-agent-governance-LAB`
+  (Appfire agentic-AI demo; Ping governs the agent-facing front end over a simulated HIVE back end — no tenant), `a2a-lab-LAB`,
   `delegation-lab-LAB`, `hitl-mfa-lab-LAB`, `mcp-gateway-lab-LAB`, `agent-preferences-lab`, `ai-demo-standalone-LAB`.
 - Testers and tools: `hostile-a2a-LAB`, `attack-gallery-LAB`, `ai-guard-sidecar-LAB`, `diagram-studio-LAB`,
   `diagram-prove-lab`, `deploy-test-LAB`, `demo-shelf-LAB`, `privilege-k8-kits-LAB` (serves packaged zips and a PDF
