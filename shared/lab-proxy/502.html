@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lab not running</title>
+<style>
+  /* Tokens mirror shared/standalone-ui.css; this page is served by nginx with no stylesheet. */
+  :root { color-scheme: light dark; }
+  body { margin: 0; font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.5; background: #051727; color: #fcfcfc; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; }
+  .panel { max-width: 560px; margin: 2rem 1rem; background: #172033; border: 1px solid #556070;
+    border-radius: 10px; border-top: 4px solid #d20e0f; padding: 1.5rem 1.75rem; }
+  h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+  .lab { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 0.85rem; color: #9aa7b3;
+    word-break: break-all; margin: 0 0 1rem; }
+  p { margin: 0.5rem 0; color: #d5dde5; }
+  .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; align-items: center; }
+  button, a.btn { font: inherit; font-weight: 600; min-height: 40px; padding: 8px 18px; border-radius: 8px;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  button.primary, a.btn.primary { background: linear-gradient(90deg, #d20e0f 55%, #aa0005); color: #fff; border: none; }
+  button.primary:disabled { opacity: 0.6; cursor: wait; }
+  a.btn { background: transparent; color: #fcfcfc; border: 1px solid #9aa7b3; }
+  a.btn:hover, button.primary:hover { filter: brightness(1.1); }
+  .status { font-size: 0.85rem; min-height: 1.2em; margin-top: 0.75rem; color: #9aa7b3; }
+  .status.err { color: #ff8a8d; }
+  .spin { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid #fcfcfc;
+    border-right-color: transparent; border-radius: 50%; animation: s 0.8s linear infinite;
+    vertical-align: -0.1em; margin-right: 0.4em; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  @media (prefers-color-scheme: light) { body { background: #fcfcfc; color: #051727; }
+    .panel { background: #ffffff; border-color: #556070; }
+    p, .lab, .status { color: #263746; } .lab, .status { color: #556070; }
+    a.btn { color: #051727; } }
+</style>
+</head>
+<body>
+  <main class="panel">
+    <h1>This lab isn't running</h1>
+    <p class="lab" id="lab">…</p>
+    <p>It was stopped — labs stay down until started, so nothing runs on this machine that you didn't ask for.</p>
+    <div class="actions">
+      <button type="button" class="primary" id="start">Start this lab</button>
+      <a class="btn" href="https://local.ping-devops.com:8443/demo-shelf">Back to the shelf</a>
+    </div>
+    <p class="status" id="status" role="status"></p>
+  </main>
+  <script>
+    // The proxy path is the lab id: /pingone-lab -> shelf id "pingone-lab" (PROXY_PATHS keys match).
+    var path = location.pathname.replace(/^\/+|\/+$/g, "").split("/")[0] || "";
+    document.getElementById("lab").textContent = path;
+    var btn = document.getElementById("start");
+    var status = document.getElementById("status");
+    var shelf = "https://local.ping-devops.com:8443/demo-shelf";
+    // Never offer Start for the shelf itself.
+    if (!path || /shelf/i.test(path)) btn.style.display = "none";
+
+    btn.addEventListener("click", function () {
+      btn.disabled = true;
+      status.className = "status";
+      status.innerHTML = '<span class="spin"></span>Starting ' + path + " — first start builds the image and can take a few minutes…";
+      fetch(shelf + "/api/demos/" + encodeURIComponent(path) + "/start", { method: "POST" })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            var why = res.body && (res.body.detail || res.body.error) || "unknown error";
+            status.className = "status err";
+            status.textContent = "Could not start it (" + why + "). Use the Start button on the shelf instead.";
+            btn.disabled = false;
+            return;
+          }
+          status.innerHTML = '<span class="spin"></span>Started. Waiting for the lab to answer…';
+          var tries = 0;
+          var poll = setInterval(function () {
+            tries++;
+            fetch(location.href, { method: "HEAD", cache: "no-store" })
+              .then(function (r) {
+                if (r.ok || r.status === 401 || r.status === 302) { clearInterval(poll); location.reload(); }
+                else if (tries > 60) { clearInterval(poll); status.textContent = "Started but not answering yet — reload in a moment."; }
+              })
+              .catch(function () { if (tries > 60) { clearInterval(poll); status.textContent = "Started but not answering yet — reload in a moment."; } });
+          }, 2000);
+        })
+        .catch(function () {
+          status.className = "status err";
+          status.textContent = "Could not reach the shelf's start agent. Use the Start button on the shelf instead.";
+          btn.disabled = false;
+        });
+    });
+  </script>
+</body>
+</html>
