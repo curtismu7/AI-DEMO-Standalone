@@ -254,3 +254,6 @@
 [submodule "standalone/privilege-api-explorer-LAB"]
 	path = standalone/privilege-api-explorer-LAB
 	url = https://github.com/curtismu7/privilege-api-explorer-LAB
+[submodule "standalone/mcp-scanner-lab-LAB"]
+	path = standalone/mcp-scanner-lab-LAB
+	url = https://github.com/curtismu7/mcp-scanner-lab-lab.git
