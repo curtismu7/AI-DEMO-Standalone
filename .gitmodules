@@ -251,3 +251,6 @@
 [submodule "standalone/pf-privilege-obo-LAB"]
 	path = standalone/pf-privilege-obo-LAB
 	url = https://github.com/curtismu7/pf-privilege-obo-LAB
+[submodule "standalone/mcp-scanner-lab-LAB"]
+	path = standalone/mcp-scanner-lab-LAB
+	url = https://github.com/curtismu7/mcp-scanner-lab-lab.git
