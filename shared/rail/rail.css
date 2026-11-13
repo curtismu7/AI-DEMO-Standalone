@@ -1,0 +1,31 @@
+/* rail.css: chrome for the shared Rail (collapsible sidebar). Colours come from the standalone-ui.css tokens. */
+
+.rail-wrap { display: flex; align-items: stretch; min-width: 0; }
+.rail-wrap--right { flex-direction: row-reverse; }
+
+.rail { min-width: 0; }
+.rail-wrap--collapsed .rail {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The toggle strip: always visible, hugs the rail's page edge. */
+.rail__toggle {
+  flex: none;
+  width: 18px;
+  border: none;
+  background: var(--surface, canvas);
+  color: var(--text-body, canvastext);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.5rem 0.1rem;
+  border-right: 1px solid var(--border, color-mix(in srgb, canvastext 15%, transparent));
+}
+.rail-wrap--right .rail__toggle { border-right: none; border-left: 1px solid var(--border, color-mix(in srgb, canvastext 15%, transparent)); }
+.rail__toggle:hover { background: var(--accent, highlight); color: var(--on-accent, highlighttext); }
+
+/* Collapsed: the wrap keeps only the toggle strip. */
+.rail-wrap { position: relative; }
+.rail-wrap--collapsed { width: 18px; }
