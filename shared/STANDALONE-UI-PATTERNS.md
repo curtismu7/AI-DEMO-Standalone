@@ -133,6 +133,11 @@ copy. Current catalogue: `floating-dialog` (every modal), `talk-track`, `help-di
 `doctor` (server), `health` (server), `shelf-link-server` (server). Rule: when two labs need the same feature,
 build it here third time at the latest — "shared means change it once and every app gets it."
 
+CSS too: the `.pill`, `.chip`, `.story`, `.presenter-say` and `.mode-toggle` blocks are now canonical in
+`shared/standalone-ui.css` (§ "Shared component blocks"). New labs must not re-declare them; existing labs
+drop their private copies as they touch the page (their copies currently win the cascade, so nothing breaks
+until then).
+
 ### 8d.1 Shared dialog services: talk track and help (owner, 2026-11-13)
 
 Two app features are dialog services: every standalone app renders them through the same shared components, only
