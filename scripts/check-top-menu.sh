@@ -23,8 +23,9 @@ APPS=(
   "$HOME/Development/session-lab-node26"
 )
 # Plus every standalone/ lab that has vendored the component (discovered, not hardcoded).
+# Server-rendered labs vendor just top-menu.css with a sha256 pin; both count.
 for dir in "$root"/standalone/*/web/src/top-menu; do
-  [ -f "$dir/TopMenu.jsx" ] && APPS+=("$(dirname "$(dirname "$(dirname "$dir")")")")
+  { [ -f "$dir/TopMenu.jsx" ] || [ -f "$dir/top-menu.css" ]; } && APPS+=("$(dirname "$(dirname "$(dirname "$dir")")")")
 done
 
 for app in "${APPS[@]}"; do
@@ -34,7 +35,9 @@ for app in "${APPS[@]}"; do
     echo "SKIP   $name (no web/src/top-menu yet)"
     continue
   fi
-  for f in TopMenu.jsx top-menu.css; do
+  for f in top-menu.css TopMenu.jsx; do
+    # server-rendered labs vendor only the css; TopMenu.jsx is optional
+    if [ "$f" = "TopMenu.jsx" ] && [ ! -f "$vendored/TopMenu.jsx" ]; then continue; fi
     if [ ! -f "$vendored/$f" ]; then echo "MISSING $name web/src/top-menu/$f"; rc=1; continue; fi
     want="$(hash "$canonical_dir/$f")"
     have="$(hash "$vendored/$f")"

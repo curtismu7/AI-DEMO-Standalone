@@ -30,13 +30,14 @@ set -euo pipefail
 
 # ── style ─────────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
+  BOLD=$'\033[1m'; RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
 else
-  BOLD=''; RED=''; GREEN=''; BLUE=''; RESET=''
+  BOLD=''; RED=''; GREEN=''; BLUE=''; YELLOW=''; RESET=''
 fi
 info() { echo "${BLUE}${BOLD}==>${RESET} $*"; }
 ok()   { echo "${GREEN}✓${RESET}  $*"; }
 err()  { echo "${RED}✗${RESET} $*" >&2; }
+warn() { echo "${YELLOW}!${RESET}  $*"; }
 fatal() { err "$*"; exit 1; }
 
 ask() { # ask <prompt> <envvar-name>
@@ -274,8 +275,40 @@ fi
 secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/secret" \
   -H "authorization: Bearer $access" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
-[[ -z "$secret" ]] && { err "secret mint failed:"; printf '%s\n' "$secret_json" >&2; exit 1; }
+[[ -z "$secret" ]] && { err "secret mint failed:"; exit 1; }
 ok "worker minted in the new environment"
+
+# ── 4b. per-env NATIVE app (authorization code + PKCE) ───────────────────────
+# The user token path (ping-services-stub-LAB's pi.flow sign-in) needs a user app,
+# not the worker: worker client_credentials tokens are scope-less and carry no sub.
+# The app authenticates with CLIENT_SECRET_POST (what PINGONE_USER_TOKEN_ENDPOINT_AUTH_METHOD
+# names) and its redirect URI is the family's standard BFF callback.
+user_app_json="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications" \
+  -H "authorization: Bearer $access" -H 'content-type: application/json' \
+  -d '{"name":"Standalone Labs User","description":"Authorization-code user app for the standalone labs (pi.flow sign-in)","protocol":"OPENID_CONNECT","type":"NATIVE","enabled":true,"grantTypes":["AUTHORIZATION_CODE","REFRESH_TOKEN"],"tokenEndpointAuthMethod":"CLIENT_SECRET_POST","redirectUris":["https://local.ping-devops.com:4000/api/auth/oauth/user/callback"],"postLogoutRedirectUris":["https://local.ping-devops.com:4000"]}')"
+user_app_id="$(printf '%s' "$user_app_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+# The create response does not carry the secret (the worker path had the same surprise —
+# measured); mint it separately, same POST /secret as the worker.
+user_secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$user_app_id/secret" \
+  -H "authorization: Bearer $access" \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
+if [[ -z "$user_app_id" || -z "$user_secret" ]]; then
+  # A previous run may have created it (secret is not re-mintable here); look it up and warn.
+  user_app_id="$(curl -s --max-time 30 "$api/environments/$new_env/applications?filter=name%20eq%20%22Standalone%20Labs%20User%22" \
+    -H "authorization: Bearer $access" \
+    | python3 -c '
+import sys, json
+try:
+    apps = json.load(sys.stdin).get("_embedded", {}).get("applications", [])
+except Exception:
+    apps = []
+print(apps[0]["id"] if apps else "")' 2>/dev/null || true)"
+  if [[ -n "$user_app_id" ]]; then
+    warn "user app exists from a previous run; PINGONE_USER_CLIENT_SECRET not refreshed — reset it in the PingOne console if the lab's sign-in fails."
+  else
+    warn "user app creation failed — pi.flow sign-in labs will fall back to their own configuration"
+  fi
+fi
 
 # ── 5. write the shared settings file ─────────────────────────────────────────
 # Merge, never overwrite: this file is shared by every lab and the owner's other
@@ -295,6 +328,14 @@ new_keys=$(mktemp)
   echo "PINGONE_WORKER_CLIENT_SECRET=$secret"
   echo "PINGONE_WORKER_ID=$app_id"
   echo "PINGONE_WORKER_SECRET=$secret"
+  # The user app (authorization code + PKCE, pi.flow sign-in). Empty values are
+  # skipped by the merge below only if absent — write them so later runs update.
+  if [[ -n "${user_app_id:-}" && -n "${user_secret:-}" ]]; then
+    echo "PINGONE_USER_CLIENT_ID=$user_app_id"
+    echo "PINGONE_USER_CLIENT_SECRET=$user_secret"
+    echo "PINGONE_USER_REDIRECT_URI=https://local.ping-devops.com:4000/api/auth/oauth/user/callback"
+    echo "PINGONE_USER_TOKEN_ENDPOINT_AUTH_METHOD=client_secret_post"
+  fi
 } > "$new_keys"
 if [[ -f "$ENV_FILE" ]]; then
   python3 - "$ENV_FILE" "$new_keys" <<'PYEOF'
