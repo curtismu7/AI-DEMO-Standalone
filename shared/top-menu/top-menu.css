@@ -20,8 +20,8 @@
   gap: 0.35rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--on-box);
-  opacity: 0.9;
+  /* Same theme-aware text as the control fill: black on light, white on dark (owner, 2026-11-13). */
+  color: var(--tm-ctl-fg);
 }
 
 .top-menu button,
