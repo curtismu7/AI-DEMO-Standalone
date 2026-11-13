@@ -125,6 +125,22 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 - First user: the evidence actor card (`shared/evidence/ActorCard.jsx`). `scripts/check-ui-patterns.sh` reports a
   hand-rolled dialog as P11 WARN (advisory, never a failure) so apps converge when they next touch the page.
 
+### 8d.1 Shared dialog services: talk track and help (owner, 2026-11-13)
+
+Two app features are dialog services: every standalone app renders them through the same shared components, only
+the content changes. Both are movable, resizable and pop-out-able because they are FloatingDialogs.
+
+- **Talk track** — `shared/talk-track/TalkTrackDialog.jsx` (vendored to `web/src/talk-track/`). Props: `isOpen`,
+  `onClose`, `talk` (array of `{ id, title, say }`), `title`, `storageKey`. The TopMenu `talkTrack` prop toggles it;
+  the panel is a `noBackdrop`-style FloatingDialog docked right, `singletonKey="talk-track"`, so only one is open.
+- **Help** — `shared/help-dialog/HelpDialog.jsx` (vendored to `web/src/help-dialog/`). Props: `isOpen`, `onClose`,
+  `sections` (array of `{ heading, body | body[] }`), `docsUrl`, `title`, `storageKey`. The TopMenu Help button
+  opens it instead of navigating away; the full-docs URL is shown in the footer.
+- Both need `shared/floating-dialog/` vendored beside them. Never edit a lab's copy; change the shared component,
+  re-vendor (the sha256 pin convention, same as `return-link`).
+- New labs get both for free by vendoring and wiring; a lab that hand-rolls its talk-track or help panel is
+  reported by `scripts/check-ui-patterns.sh` as P11 WARN until converted.
+
 ## 8e. Return link: the way back after a hand-off (2026-11-09)
 
 An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
