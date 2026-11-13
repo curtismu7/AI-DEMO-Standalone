@@ -158,6 +158,14 @@ pinned by `return-link.sha256`).
 ## 9. Buttons and tabs
 
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.
+- **Important buttons are Ping red (owner, 2026-11-13).** The one action that matters most on a view — sign in,
+  submit, start/run, confirm — uses `class="primary"` (the Ping Red gradient, white label). Never a bare
+  unstyled button for the action the page exists for. One primary per view still applies: pick the single
+  most important action and make it red; everything else is secondary.
+- **Sign-in is a dialog (owner, 2026-11-13).** The sign-in form renders in a `FloatingDialog` (section 8d) —
+  movable, resizable, pop-out — not as a page or a bare inline form. It must close itself on successful
+  sign-in (the app's auth state change is the signal), and the signed-in state replaces the button that
+  opened it. Shared component: `shared/signin-dialog/SignInDialog.jsx` (vendored to `web/src/signin-dialog/`).
 - Destructive actions use `--danger-text` text, not a filled red button.
 - Selected tab/toggle state lives in `aria-selected` / `aria-pressed` (shared rule
   fills it accent). No extra state classes. `aria-current` is a navigation hint, not a selected
