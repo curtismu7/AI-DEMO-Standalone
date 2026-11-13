@@ -125,6 +125,14 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 - First user: the evidence actor card (`shared/evidence/ActorCard.jsx`). `scripts/check-ui-patterns.sh` reports a
   hand-rolled dialog as P11 WARN (advisory, never a failure) so apps converge when they next touch the page.
 
+### 8d.2 Shared services catalogue (owner, 2026-11-13)
+
+Reusable per-feature chrome lives under `shared/<name>/` with a README; vendor byte-for-byte, never edit a lab's
+copy. Current catalogue: `floating-dialog` (every modal), `talk-track`, `help-dialog`, `signin-dialog`, `rail`
+(collapsible sidebar), `story` (StoryPanel + fill.js), `json`, `untrusted`, `error-boundary`, `trace` (server),
+`doctor` (server), `health` (server), `shelf-link-server` (server). Rule: when two labs need the same feature,
+build it here third time at the latest — "shared means change it once and every app gets it."
+
 ### 8d.1 Shared dialog services: talk track and help (owner, 2026-11-13)
 
 Two app features are dialog services: every standalone app renders them through the same shared components, only
