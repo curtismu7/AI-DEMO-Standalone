@@ -131,6 +131,8 @@ gateway moved to another port is not found by the probe. Not fixed here.
 - `aggregate-entitlement-LAB`: `AGG_ENT_GW_URL`, `AGG_ENT_GW_APPS`, `AGG_ENT_GW_KEY_<NAME>`. README "Real mode settings".
 - `privilege-logging-LAB`: `PRIV_LOG_GATEWAY_URL`, `PRIV_LOG_AGENT_KEY`, optionally a search URL or kubectl proxy.
 - `gateway-suite-LAB`: `CENTRAL_AGENT_A2A_URL` and an optional bearer. `.env.example`.
+- `workload-identity-LAB`: `WI_REAL_GATEWAY_URL` and `WI_REAL_CLIENT_SECRET` in the compose-side `.env`; unset keeps Real
+  refused with the reason. README "Real mode settings".
 
 ## E. Owner only
 
