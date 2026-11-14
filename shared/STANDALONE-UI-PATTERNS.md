@@ -130,7 +130,7 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 Reusable per-feature chrome lives under `shared/<name>/` with a README; vendor byte-for-byte, never edit a lab's
 copy. Current catalogue: `floating-dialog` (every modal), `talk-track`, `help-dialog`, `signin-dialog`, `rail`
 (collapsible sidebar), `story` (StoryPanel + fill.js), `json`, `untrusted`, `error-boundary`, `trace` (server),
-`doctor` (server), `health` (server), `shelf-link-server` (server). **2026-11-14:** `json` now has two faces: `Json.jsx` (plain, untrusted-raw payloads) and `JsonView.jsx` (Rule 24: colored, theme-aware, Colored/Raw toggle, marks — the standard for every JSON pane; vendored with its `JsonView.sha256` pin). Rule: when two labs need the same feature,
+`doctor` (server), `health` (server), `shelf-link-server` (server). **2026-11-14 (amended):** `json` has two faces: `Json.jsx` (plain, untrusted-raw payloads) and **`JsonPane.jsx` + `JsonPane.css` (Rule 24: THE standard for every JSON pane — a Formatted form | Raw colored-JSON toggle, one choice per page; JWTs in three colored segments; colors from theme tokens; vendored with sha256 pins). Promoted from appfire-agent-governance-LAB; `JsonView.jsx` is retired. Rule: when two labs need the same feature,
 build it here third time at the latest — "shared means change it once and every app gets it."
 
 CSS too: the `.pill`, `.chip`, `.story`, `.presenter-say` and `.mode-toggle` blocks are now canonical in
