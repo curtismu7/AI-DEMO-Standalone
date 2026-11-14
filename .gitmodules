@@ -263,3 +263,6 @@
 [submodule "standalone/mfa-admin-mcp-lab"]
 	path = standalone/mfa-admin-mcp-lab
 	url = https://github.com/curtismu7/mfa-admin-mcp-lab.git
+[submodule "standalone/workload-identity-LAB"]
+	path = standalone/workload-identity-LAB
+	url = https://github.com/curtismu7/workload-identity-LAB
