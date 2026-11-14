@@ -49,7 +49,11 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   coverage; Mock is static deck wording offline, Real is one read-only PingOne call), `privilege-api-explorer-LAB` (Privilege console API explorer; Mock is the in-process mock console, Real signs in with the owner's user API key/secret — see its docs/live-checks.md),
   `mcp-scanner-lab-LAB` (scans an MCP server's tools for over-broad scopes, injection and shadow risks on demo fixtures
   or pasted metadata; offline, no tenant), `mfa-admin-mcp-lab` (administers PingOne MFA/FIDO policies, notification
-  policies, delivery settings and OATH tokens through MCP tools; mock by default, live is owner-run).
+  policies, delivery settings and OATH tokens through MCP tools; mock by default, live is owner-run),
+  `workload-identity-LAB` (federated agents: the agent authenticates with a JWT from its own identity
+  platform — signature/issuer/audience/required-claims check chain, Pass Agent Token passthrough; Mock is
+  the in-process IdP/gateway/backend with zero outbound, Real is owner-run against SE PingFederate +
+  Privilege and needs no lab-side secret beyond the PF client credential).
 
 ## B. Your own PingOne environment and apps
 
