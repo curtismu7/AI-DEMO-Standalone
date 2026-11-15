@@ -50,6 +50,8 @@ export function parseJsonText(s) {
 }
 
 const prim = (v) => v === null || typeof v !== "object";
+// An object, or a list of objects, goes UNDER its label at full width (a deep payload must not spend a label column per level); scalars and chip lists stay beside it.
+const nestedValue = (v) => !prim(v) && !(Array.isArray(v) && v.every(prim));
 const date = (n) => (Number.isFinite(n) && n > 1e9 && n < 1e11 ? `${new Date(n * 1000).toISOString().replace("T", " ").slice(0, 19)} UTC` : null);
 
 export function kindOf(v, key = "") {
@@ -158,7 +160,7 @@ function Form({ value, hot, k = "", depth = 0 }) {
     return (
       <dl className="jform" data-depth={Math.min(depth, 3)}>
         {entries.map(([key, v]) => (
-          <div key={key} className="jform__row" data-hot={hot.has(key) ? "true" : undefined} data-alert={ALERT.has(key) ? "true" : undefined}>
+          <div key={key} className="jform__row" data-hot={hot.has(key) ? "true" : undefined} data-alert={ALERT.has(key) ? "true" : undefined} data-nested={nestedValue(v) ? "true" : undefined}>
             <dt className="jform__k">{visible(key)}</dt>
             <dd className="jform__d">{prim(v) ? <Value v={v} k={key} hot={hot} /> : <Form value={v} hot={hot} k={key} depth={depth + 1} />}</dd>
           </div>

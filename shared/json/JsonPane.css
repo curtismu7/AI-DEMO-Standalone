@@ -32,6 +32,7 @@
 .jform__row { display: grid; grid-template-columns: minmax(84px, 28%) minmax(0, 1fr); gap: 4px 10px; align-items: start; }
 .jform__k { margin: 0; padding-top: 3px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--j-key); overflow-wrap: anywhere; }
 .jform__d { margin: 0; min-width: 0; }
+.jform__row[data-nested="true"] { grid-template-columns: minmax(0, 1fr); }
 .jform__v { display: block; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .jform__v--string { color: var(--j-string); }
 .jform__v--number { color: var(--j-number); }
