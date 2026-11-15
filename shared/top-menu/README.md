@@ -13,7 +13,9 @@ Row 1: 1. `mode` — Mock/Real dropdown, accent-filled so it stands out, wired t
 Row 2: 4. `talkTrack` — talk-track/script toggle (kept separate from Present; render
             only where a script exists)
         5. `shelfUrl` — Shelf link back to the launcher (or pass an existing `<ShelfLink/>` as `children`)
-        6. `help` — link to the lab's documentation
+        6. `help` — the lab's documentation: a link (new tab) when `href` is given, otherwise a
+            button that calls `onClick` (default: go to `#readme`); optional `label` (default
+            "Help") and `title`
         7. `version` — About/version button (from the lab's VERSION file)
         8. `onReset` — Reset button
 Row 3: 9. `theme` — Light / Dark / Auto dropdown
@@ -21,6 +23,15 @@ Row 3: 9. `theme` — Light / Dark / Auto dropdown
 Plus:  `showSignIn` + `signedIn` — Sign in (the bar's one primary), shown only when Real
             mode is active and the lab needs auth; shows "Signed in as …" + Sign out when in
        `extra` / `children` — lab-specific controls, same chrome
+
+`mode.realHint` is the Real option's tooltip while Real is unavailable; pass
+`mode.realHintAlways: true` to show it while Real is available too (off by default, so a
+lab's existing option titles do not change).
+
+Colours: the controls' fill, text and border read only the shared tokens (`--surface-2`,
+`--text`), so they follow the theme and the `P10` pattern check passes. No colour
+literals and no component-local colour variables here; a lab that needs a different
+look changes the shared tokens, never this file.
 
 ## Vendor into an app
 
