@@ -5,6 +5,7 @@
 #   1. the vendored shared stylesheet is byte-identical to shared/standalone-ui.css in this repo
 #   2. the vendored PingFederate installer (if present) is byte-identical to scripts/pingfederate-setup.sh
 #   2b. the vendored shelf-register helper (if present) is byte-identical to scripts/shelf-register.mjs
+#   2c. the vendored VerifyMark.jsx / VerifyMark.css (if present) are byte-identical to shared/verify-mark/
 #   3. the README meets the README standard checklist (title, tier, repo URL, port section, run-from-clone, no internal names)
 #   4. scripts/check-css.sh reports no FAIL
 #   5. package.json requires Node 26 and CI uses Node 26 only
@@ -43,6 +44,13 @@ for app in "$@"; do
   else
     say note "no shelf-register.mjs (the app will not add itself to the shelf)"
   fi
+
+  # 2c. vendored VerifyMark (the Verified / In progress badge)
+  for vm in VerifyMark.jsx VerifyMark.css; do
+    while IFS= read -r f; do
+      if cmp -s "$f" "$root/shared/verify-mark/$vm"; then say ok "$vm identical: ${f#$app/}"; else say FAIL "$vm differs from canonical: ${f#$app/}"; fi
+    done < <(find "$app" -name "$vm" -not -path '*/node_modules/*' -not -path '*/dist/*' 2>/dev/null)
+  done
 
   # 3. README checklist
   r="$app/README.md"
