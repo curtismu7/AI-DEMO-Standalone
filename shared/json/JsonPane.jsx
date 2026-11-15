@@ -173,8 +173,9 @@ function Form({ value, hot, k = "", depth = 0 }) {
 
 // ---- The pane ---------------------------------------------------------------------------------------------------------------------------------
 // value: an object or array (or a string holding one) gets the Form | JSON choice; `hot` (optional array of key names) stands those keys out in both views; a string (a token, or text) is shown as it is, a token in its three colours.
-export function Json({ value, label, testId, toggle = true, hot }) {
+export function Json({ value: given, label, testId, toggle = true, hot }) {
   const mode = useView();
+  const value = given === undefined ? "" : given; // a missing value is an empty pane, never the word "undefined"
   const hotSet = hot && hot.length ? new Set([...HOT, ...hot]) : HOT;
   const fromText = typeof value === "string" ? parseJsonText(value) : undefined;
   const data = fromText !== undefined ? fromText : value;
