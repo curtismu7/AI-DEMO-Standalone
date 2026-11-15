@@ -16,7 +16,10 @@ so every Privilege demo shows the same thing the same way.
 | `gatewayTrace.js` | `server/src/gatewayTrace.js` | builds the records server-side; dependency-free |
 | `gateway-trace.sha256` | beside the files | byte-for-byte pin; re-pin after any change |
 
-Vendor byte-for-byte; never hand-edit. The lab adds a pin test (copy the shape of its JsonPane pin test) so a drifted copy fails CI.
+Vendor byte-for-byte; never hand-edit. The lab adds a pin test so a drifted copy fails CI: hash every vendored file and compare it to
+`gateway-trace.sha256`. The pin file lists the server file as plain `gatewayTrace.js` beside the web files, so `shasum -c` run in the web
+folder fails on it; the test maps that one name to `server/src/gatewayTrace.js` (a worked example: gateway-claims-LAB `scripts/gateway-trace.test.mjs`).
+The vendored `gateway-trace.test.jsx` calls `setJsonView` from the lab's `components/JsonPane`, so the lab's JsonPane must export it (the canonical one does).
 
 ## Use
 
@@ -31,7 +34,7 @@ const result = await door.list('my-app', 'caller');            // result.wire = 
 res.json({ ...view(result), trace: traceFromDoor(result) });   // rpcMethod: 'tools/call' for a call
 ```
 
-Server (Mock, a simulated gateway): `mockTrace({ url, authorization, rpc, status, body, decisions, record })`. The URL host
+Server (Mock, a simulated gateway): `mockTrace({ url, authorization, rpc, status, body, decisions, record })` (`rpc` and `body` may be `null` when the simulation has no JSON-RPC message to show; do not invent one). The URL host
 must be a non-real one (`.invalid`), and every decision is `checked` because the simulation computed it.
 A lab that makes its own HTTP call to the real gateway uses `realTrace(...)` or `failureTrace(...)`.
 
