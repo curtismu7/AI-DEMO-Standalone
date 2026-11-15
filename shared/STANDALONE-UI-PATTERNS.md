@@ -130,7 +130,7 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 Reusable per-feature chrome lives under `shared/<name>/` with a README; vendor byte-for-byte, never edit a lab's
 copy. Current catalogue: `floating-dialog` (every modal), `talk-track`, `help-dialog`, `signin-dialog`, `rail`
 (collapsible sidebar), `story` (StoryPanel + fill.js), `json`, `untrusted`, `error-boundary`, `trace` (server),
-`doctor` (server), `health` (server), `shelf-link-server` (server). **2026-11-14 (amended):** `json` has two faces: `Json.jsx` (plain, untrusted-raw payloads) and **`JsonPane.jsx` + `JsonPane.css` (Rule 24: THE standard for every JSON pane — a Formatted form | Raw colored-JSON toggle, one choice per page; JWTs in three colored segments; colors from theme tokens; vendored with sha256 pins). Promoted from appfire-agent-governance-LAB; `JsonView.jsx` is retired. Rule: when two labs need the same feature,
+`doctor` (server), `health` (server), `shelf-link-server` (server). **2026-11-14 (amended):** `json` has two faces: `Json.jsx` (plain, untrusted-raw payloads) and **`JsonPane.jsx` + `JsonPane.css` (Rule 24: THE standard for every JSON pane — a Form | JSON toggle, one choice per page; important keys highlighted (defaults + a lab's own `hot` list); JWTs in three colored segments; one color standard from theme tokens; FULL VIEW, never a scroll box; vendored with sha256 pins; see `shared/json/README.md`). Promoted from appfire-agent-governance-LAB; `JsonView.jsx` is retired. Rule J1 of the static check enforces it. Rule: when two labs need the same feature,
 build it here third time at the latest — "shared means change it once and every app gets it."
 
 CSS too: the `.pill`, `.chip`, `.story`, `.presenter-say` and `.mode-toggle` blocks are now canonical in
@@ -217,6 +217,7 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | A1 | Buttons, links and form controls have an accessible name |
 | A2 | No `outline: none` without a replacement focus style |
 | A3 | Every `img` has `alt` |
+| J1 | JSON is shown through the shared JsonPane (Rule 24): no hand-rolled `<pre>{JSON.stringify()}`, no `max-height` / `overflow: auto\|scroll` on a JSON pane (full view; a `pre` cap is a WARN). Reported as DRIFT but ADVISORY for enforced pages until the Rule 24 sweep has merged (`J1_ENFORCE=1`, or drop J1 from `ADVISORY_RULES`, enforces it) |
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
 | C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |

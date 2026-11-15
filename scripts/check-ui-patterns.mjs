@@ -39,6 +39,7 @@
  *   A1  buttons, links and form controls have an accessible name
  *   A2  no outline:none without a replacement focus style
  *   A3  every img has alt
+ *   J1  JSON is shown through the shared JsonPane, never hand-rolled, and a JSON pane is never capped (no max-height / overflow scroll)
  *   V1  the page loads a standalone-ui.css identical to shared/standalone-ui.css
  *   M1  Mock / Real toggle on the page, wired to /api/mode
  *   C1  token contrast: primary gradient, chips, muted text, borders, focus ring on content and on the dark shell bar
@@ -98,11 +99,15 @@ export const RULES = {
   A1: 'buttons, links and form controls have an accessible name',
   A2: 'no outline:none without a replacement focus style',
   A3: 'every img has alt (role=img needs a label)',
+  J1: 'JSON is shown through the shared JsonPane (Rule 24): no hand-rolled <pre>{JSON.stringify()}, and no max-height / overflow scroll on a JSON pane (full view)',
   V1: 'the page loads a standalone-ui.css identical to the canonical shared/standalone-ui.css',
   M1: 'a visible Mock / Real toggle on the page, wired to /api/mode',
   C1: 'token contrast of the primary gradient, chips, muted text, borders, and the focus ring on content and on the dark shell bar (4.5:1 text, 3:1 non-text)',
 };
 export const RULE_IDS = Object.keys(RULES);
+// Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
+// their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
+const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
 
@@ -852,6 +857,9 @@ const over = (fg, bg) => (fg.length > 3 && fg[3] < 1 ? fg.slice(0, 3).map((c, i)
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.vite', '.next', '__tests__', 'tests', 'test', 'fixtures', 'docs', 'mocks', 'mock', 'e2e', 'playwright-report', 'data', '.data', 'storybook-static']);
 const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link']);
+// Single vendored files (shared/json): pinned byte for byte by their sha256 files, so the rules do not judge them.
+const VENDORED_FILES = new Set(['JsonPane.jsx', 'JsonPane.css', 'Json.jsx']);
+const isVendoredPath = (appDir, p) => VENDORED_FILES.has(path.basename(p)) || path.relative(appDir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
 const CODE_EXT = /\.(?:[cm]?[jt]sx?)$/i;
 const RESOLVE_EXT = ['', '.jsx', '.js', '.tsx', '.ts', '.mjs', '/index.jsx', '/index.js', '/index.tsx', '/index.ts'];
 
@@ -1157,7 +1165,7 @@ function buildUnit(app, page, cache) {
       if (r && /\.css$/i.test(r)) addCss(r, p);
     }
   };
-  const isVendored = (p) => path.relative(app.dir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
+  const isVendored = (p) => isVendoredPath(app.dir, p);
   for (const f of page.files) {
     if (/\.css$/i.test(f)) addCss(f, null);
     else if (/\.html?$/i.test(f) || /\.[jt]sx$/i.test(f)) {
@@ -1332,7 +1340,7 @@ function bindingsOf(doc) {
 function makeResolver(u) {
   const { app, page, cache } = u;
   const underApp = (p) => !path.relative(app.dir, p).startsWith('..');
-  const vendored = (p) => path.relative(app.dir, p).split(path.sep).some((x) => VENDORED_DIRS.has(x));
+  const vendored = (p) => isVendoredPath(app.dir, p);
   const otherViews = new Set((page.viewFiles || []).filter((f) => f !== page.viewFile));
   const memo = new Map();
   return (el) => {
@@ -2212,6 +2220,56 @@ function ruleA3(u) {
   return bad.length ? mk(R, 'DRIFT', first(bad), bad) : PASS(R);
 }
 
+// ---- J1 (Rule 24, owner 2026-11-14): JSON through the shared JsonPane, in full view
+// What is shown as JSON text by hand: a <pre> whose own text (child elements cut out) holds JSON.stringify(...), or any element that prints a
+// pretty-printed one (JSON.stringify(x, null, 2)). A compact JSON.stringify(v) inline in a <code> is a value, not a pane, so it passes.
+const JSON_ANY = /JSON\.stringify\s*\(/;
+const JSON_PRETTY = /JSON\.stringify\s*\((?:[^()]|\([^()]*\))*,\s*(?:null|undefined)\s*,\s*[\d"'`]/;
+const REAL_TAG = /^(?:pre|code|samp|div|span|p|td|th|li|dd|dt|output|section|article|figure|details|summary|blockquote|textarea|[A-Z]\w*)$/;
+const JSON_COMPONENT = /^(?:Json|JsonPane|JsonView)$/;
+const NOT_A_CAP = /^(?:none|unset|initial|inherit|revert|visible)\b/i;
+function ownInnerText(e) {
+  if (e.raw !== null || e.innerEnd <= e.innerStart) return '';
+  let out = '';
+  let at = e.innerStart;
+  for (const c of [...e.children].sort((a, b) => a.index - b.index)) {
+    if (c.index > at) out += e.src.slice(at, c.index);
+    at = Math.max(at, c.fullEnd);
+  }
+  if (at < e.innerEnd) out += e.src.slice(at, e.innerEnd);
+  return out;
+}
+function ruleJ1(u) {
+  const R = 'J1';
+  const bad = [];
+  const warn = [];
+  for (const e of u.els) {
+    if (e.vendored || e.name === '#frag' || JSON_COMPONENT.test(e.name) || !REAL_TAG.test(e.name)) continue;
+    const own = ownInnerText(e);
+    if (e.name === 'pre' ? JSON_ANY.test(own) : JSON_PRETTY.test(own)) bad.push(loc(e, `<${e.name}> shows hand-rolled JSON text (use the shared JsonPane)`));
+  }
+  for (const s of ownSheets(u)) {
+    for (const r of s.parsed.rules) {
+      const parts = selParts(r.selector);
+      const isJson = parts.some((p) => /json/i.test(p));
+      const isPre = parts.some((p) => /(?:^|[^a-z])pre(?:[^a-z]|$)/i.test(p));
+      if (!isJson && !isPre) continue;
+      for (const d of r.decls) {
+        const cap = (d.prop === 'max-height' && !NOT_A_CAP.test(d.value.trim())) || (/^overflow(?:-[xy])?$/.test(d.prop) && /\b(?:auto|scroll)\b/i.test(d.value));
+        if (!cap) continue;
+        const where = { file: r.file, line: d.line, msg: `${r.selector} { ${d.prop}: ${d.value.trim()} } caps a ${isJson ? 'JSON' : 'pre'} pane (full view: it must grow to its content)` };
+        (isJson ? bad : warn).push(where);
+      }
+    }
+  }
+  for (const x of u.texts.filter((t) => !t.vendored && !/\.[jt]sx$/.test(t.file))) {
+    if (/\.(?:textContent|innerText|innerHTML)\s*=\s*[^;\n]*JSON\.stringify\s*\(/.test(x.text)) warn.push({ file: x.file, line: 1, msg: 'script writes JSON.stringify output into the page by hand (use a coloured, Form | JSON pane)' });
+  }
+  if (bad.length) return mk(R, 'DRIFT', first(bad), bad);
+  if (warn.length) return mk(R, 'WARN', first(warn), warn);
+  return PASS(R);
+}
+
 // ---- V1
 function ruleV1(u, canonicalCss) {
   const R = 'V1';
@@ -2439,7 +2497,7 @@ function ruleC1(u) {
   return PASS(R);
 }
 
-const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleV1, ruleM1, ruleC1];
+const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1];
 
 /** Apply the `ui-pattern: allow` escapes: a finding on the escape's line or the line below is let through. */
 function applyEscapes(results, u) {
@@ -2527,7 +2585,7 @@ export function runCheck({ root = DEFAULT_ROOT, appDirs = [], only = [], allowli
       const results = checkPageUnit(unit, { tier: rec.tier, canonicalCss });
       const drift = results.filter((r) => r.status === 'DRIFT');
       const enforced = strict || allowlist.includes(key);
-      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.length === 0 };
+      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.every((r) => ADVISORY_RULES.has(r.rule)) };
       rec.pages.push(page);
       out.pages.push(page);
     }

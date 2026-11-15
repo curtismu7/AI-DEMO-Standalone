@@ -99,6 +99,9 @@ const CASES = [
   ['A1', 'clean-static', { [HTML]: sub('<p>Body text.</p>', '<button type="button"></button>') }, {}, 'DRIFT', 'empty button'],
   ['A2', 'clean-static', { [CSS]: append('button { outline: none; }') }, {}, 'DRIFT', 'outline none, no replacement'],
   ['A3', 'clean-static', { [HTML]: sub('<p>Body text.</p>', '<img src="x.png">') }, {}, 'DRIFT', 'img without alt'],
+  ['J1', 'clean-react', { 'web/src/pages/Home.jsx': sub('<button type="button" className="primary">Run</button>', '<pre>{JSON.stringify({ a: 1 }, null, 2)}</pre><button type="button" className="primary">Run</button>') }, {}, 'DRIFT', 'react: hand-rolled <pre>{JSON.stringify}'],
+  ['J1', 'clean-react', { 'web/src/app.css': append('.json-out { max-height: 20rem; overflow: auto; }') }, {}, 'DRIFT', 'react: a JSON pane capped with max-height and overflow'],
+  ['J1', 'clean-static', { [CSS]: append('pre { max-height: 300px; }') }, {}, 'WARN', 'a pre capped with max-height (may be a log, not JSON)'],
   ['M1', 'clean-static', { [HTML]: sub('<div class="mode-toggle" role="group" aria-label="Mode"><button type="button" aria-pressed="true">Mock</button><button type="button" aria-pressed="false">Real</button></div>', '') }, {}, 'DRIFT', 'no Mock / Real toggle'],
   ['C1', 'clean-static', { [CSS]: append(':root { --on-accent: #cccccc; }') }, {}, 'DRIFT', 'text on the gradient loses contrast', ['P10']],
   ['V1', 'clean-static', { 'public/standalone-ui.css': append('.drifted { color: var(--text); }') }, {}, 'DRIFT', 'vendored css differs from shared'],
@@ -122,6 +125,20 @@ for (const [rule, fixture, edits, extra, status, label, also = []] of CASES) {
     if (status === 'DRIFT') assert.deepEqual([...drift].filter((r) => r !== rule && !also.includes(r)).sort(), [], `only ${rule}${also.length ? ` (and ${also})` : ''} may drift`);
   });
 }
+
+test('J1 is advisory for enforcement: an enforced page whose only drift is J1 does not fail', () => {
+  const { app } = make('clean-react', { 'web/src/app.css': append('.json-out { max-height: 20rem; overflow: auto; }') });
+  try {
+    const first = runCheck({ appDirs: [app], allowlist: [], canonicalCss: CANON });
+    const keys = first.pages.map((pg) => pg.key);
+    assert.ok(first.pages.some((pg) => pg.results.some((r) => r.rule === 'J1' && r.status === 'DRIFT')), 'the mutation must produce J1 DRIFT');
+    const enforced = runCheck({ appDirs: [app], allowlist: keys, canonicalCss: CANON });
+    assert.equal(enforced.summary.failing, 0, 'J1 alone must not fail an enforced page');
+    assert.ok(enforced.pages.every((pg) => pg.enforced && pg.clean));
+  } finally {
+    fs.rmSync(path.dirname(app), { recursive: true, force: true });
+  }
+});
 
 test('every rule id has at least one mutation test', () => {
   const covered = new Set(CASES.map((c) => c[0]));
