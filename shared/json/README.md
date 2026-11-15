@@ -39,6 +39,8 @@ One toggle on every pane, one choice for the whole page (kept in localStorage):
   audiences as chips, timestamps with their date, true/false as chips.
 - **JSON** — the exact JSON text, colored by the table above.
 
+A lab whose point is the raw wire JSON can open on the JSON view: `setDefaultJsonView("raw")` once in main.jsx (a visitor's saved choice still wins). Form stays the family default.
+
 ### 3. Important JSON is highlighted
 Default important keys: `sub act may_act aud scope client_id azp iss cnf grant_type subject_token actor_token
 access_token authorization`. Error / decision keys (`error error_description detail_code outcome decision verdict
