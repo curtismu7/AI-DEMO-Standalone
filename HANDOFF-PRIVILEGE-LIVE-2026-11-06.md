@@ -37,7 +37,7 @@ The shared pattern (canonical file per lab: `server/src/aiguardProbe.js`): the f
 
 ## 4. How to verify everything still works (5 minutes)
 ```
-# AI-DEMO2 pages (sign in demouser / Baseball123!):
+# AI-DEMO2 pages (sign in with the demo login; the password is held by the owner):
 open https://local.ping-devops.com:4000/privilege-intent-triage   # click the live check under the verdict
 # Labs (direct loopback URLs; the proxy 403s coding-agents by design):
 open http://127.0.0.1:7150   # coding-agents — opens in Real mode; Evaluate tab runs the real gateway
