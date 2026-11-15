@@ -22,8 +22,8 @@ import VerifyMark from "./components/VerifyMark.jsx";
 <VerifyMark id="a2a-lab" />   {/* the app's id in docs/shelf-entry.json */}
 ```
 
-`VerifyMark` makes the same `GET /api/shelf` call as `ShelfLink` (relative path, `credentials: "omit"`; pass `path` or `headers` to change them), finds the entry with its `id`, and shows the badge. It renders nothing when the app has no mark, the mark is "none", the shelf cannot be reached, or while it loads: never an error, never a placeholder. The note is the badge's tooltip (`note` shows it under the label, as the shelf's cards do).
+`VerifyMark` makes the same `GET /api/shelf` call as `ShelfLink` (relative path, `credentials: "omit"`) and takes the same request options: `path`, `headers` (an object, or a function returning one that is evaluated when the request fires) and `traceparent` (a function). A lab that sends `X-Workspace-Id` or a `traceparent` on every request, and tests that it does, passes the same values it gives `ShelfLink`, finds the entry with its `id`, and shows the badge. It renders nothing when the app has no mark, the mark is "none", the shelf cannot be reached, or while it loads: never an error, never a placeholder. The note is the badge's tooltip (`note` shows it under the label, as the shelf's cards do).
 
 To draw a mark you already hold (the shelf does), use the named export: `import { VerifyBadge } from "./components/VerifyMark.jsx"; <VerifyBadge mark={demo.verification} />`.
 
-A lab shows a real mark only when the shelf it talks to has verification marks (demo-shelf-LAB with the Verification page) and the lab's `/api/shelf` reaches it, as `ShelfLink` already requires.
+Opened on its own port, a lab answers `/api/shelf` itself with only `{ shelfUrl }` (no demos), so it shows no mark; through the lab-proxy the call carries no lab cookie (`credentials: "omit"`) and so reaches the shelf, which lists every demo with its mark. A lab shows a real mark only when the shelf it talks to has verification marks (demo-shelf-LAB with the Verification page) and the lab's `/api/shelf` reaches it, as `ShelfLink` already requires.

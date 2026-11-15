@@ -42,6 +42,21 @@ describe("VerifyMark (an app's own mark)", () => {
     expect(f.mock.calls[0][1].credentials).toBe("omit");
   });
 
+  it("sends the same extra request headers as ShelfLink: an object, a function evaluated when the request fires, and a traceparent", async () => {
+    const f = shelf([{ id: "me", verification: mark("verified") }]);
+    vi.stubGlobal("fetch", f);
+    let n = 0;
+    const { unmount } = render(<VerifyMark id="me" headers={() => ({ "X-Workspace-Id": `ws-${++n}` })} traceparent={() => "00-abc-def-01"} />);
+    expect(await screen.findByText("Verified")).toBeInTheDocument();
+    expect(f.mock.calls[0][1].headers).toEqual({ Accept: "application/json", "X-Workspace-Id": "ws-1", traceparent: "00-abc-def-01" });
+    unmount();
+    const g = shelf([{ id: "me", verification: mark("verified") }]);
+    vi.stubGlobal("fetch", g);
+    render(<VerifyMark id="me" headers={{ "X-Workspace-Id": "ws-fixed" }} />);
+    await screen.findByText("Verified");
+    expect(g.mock.calls[0][1].headers).toEqual({ Accept: "application/json", "X-Workspace-Id": "ws-fixed" });
+  });
+
   it("renders nothing for an app with no mark, an unknown id, an unreachable shelf and a bad reply", async () => {
     for (const f of [shelf([{ id: "me", verification: null }]), shelf([{ id: "x", verification: mark("verified") }]), vi.fn(async () => { throw new Error("down"); }), vi.fn(async () => ({ ok: false, json: async () => ({}) })), vi.fn(async () => ({ ok: true, json: async () => ({}) }))]) {
       vi.stubGlobal("fetch", f);
