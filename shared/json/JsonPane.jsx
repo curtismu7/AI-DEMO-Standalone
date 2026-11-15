@@ -62,6 +62,8 @@ export function splitWire(s) {
   return parseJsonText(body) !== undefined ? { head, body } : undefined;
 }
 
+const MAX_PANE_CHARS = 150000; // above this a pane is plain text
+const MAX_FORM_DEPTH = 60; // deeper than this the Form view shows the rest as text
 const prim = (v) => v === null || typeof v !== "object";
 // An object, or a list of objects, goes UNDER its label at full width (a deep payload must not spend a label column per level); scalars and chip lists stay beside it.
 const nestedValue = (v) => !prim(v) && !(Array.isArray(v) && v.every(prim));
@@ -161,6 +163,7 @@ function ChipList({ items, k, hot }) {
 }
 
 function Form({ value, hot, k = "", depth = 0 }) {
+  if (depth > MAX_FORM_DEPTH) return <span className="jform__v">{visible(JSON.stringify(value))}</span>;
   if (Array.isArray(value)) {
     if (value.every(prim)) return <ChipList items={value} k={k} hot={hot} />;
     return (
@@ -207,6 +210,14 @@ export function Json({ value: given, label, testId, toggle = true, hot }) {
   // A string is shown EXACTLY as given in the JSON view (a hashed or signed payload must not be re-serialized: key order, number text, spacing).
   // The Form view reads the parsed value. Only a value that is an object or array is laid out with JSON.stringify.
   const text = typeof value === "string" ? value : isJson ? JSON.stringify(data, null, 2) : JSON.stringify(value);
+  // Safety: a very large payload is shown as plain text (no colouring, no form) so a page can never freeze on it.
+  if (text.length > MAX_PANE_CHARS) {
+    return (
+      <div className="jsonbox" data-testid={testId ? `${testId}-box` : undefined} data-view="text">
+        <pre className="json json--raw" tabIndex={0} aria-label={label} data-testid={testId}>{visible(text)}</pre>
+      </div>
+    );
+  }
   const asForm = isJson && mode === "form";
   return (
     <div className="jsonbox" data-testid={testId ? `${testId}-box` : undefined} data-view={isJson ? mode : "text"}>
