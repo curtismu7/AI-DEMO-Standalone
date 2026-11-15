@@ -1146,6 +1146,9 @@ export function discoverPages(appDir, cache = new FileCache()) {
     if (mount && entry && /\.[jt]sx?$/.test(entry) && !doc.els.some((e) => e.name === 'main' || e.name === 'h1')) {
       // single-page app
       const { views } = detectViews(cache, [], entry, htmlRoot, rel);
+      // A vendored component (shared/gateway-trace, ...) that a page renders behind a mode check looks like a routed view to viewEvidence():
+      // it is pinned byte for byte, so it is never a page of its own.
+      for (const vf of [...views.keys()]) if (isVendoredPath(appDir, vf)) views.delete(vf);
       const stop = new Set(views.keys());
       const chrome = closure(cache, entry, stop, htmlRoot, rel);
       const cssLinks = doc.els.filter((e) => e.name === 'link' && /stylesheet/i.test(attrText(e, 'rel') || '')).map((e) => resolveLocal(html, attrText(e, 'href'), htmlRoot)).filter(Boolean);
