@@ -51,4 +51,6 @@ long lines and tokens wrap (`pre-wrap`, `overflow-wrap: anywhere`). JsonPane.css
 rule J1 of `scripts/check-ui-patterns.mjs` fails a lab whose own CSS caps a JSON pane, and a hand-rolled
 `<pre>{JSON.stringify(...)}`.
 
+A string that holds a JSON object or array (a log line, an HTTP body, tool output) gets the same panes and toggle; any other string is shown as text (a token in its three colors).
+
 Everything is React text (never markup) and passes `visible()`.

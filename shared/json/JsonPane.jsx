@@ -40,6 +40,15 @@ const HOT = new Set(["sub", "act", "may_act", "aud", "scope", "client_id", "azp"
 const ALERT = new Set(["error", "error_description", "detail_code", "outcome", "decision", "verdict", "reason", "note"]);
 const SPLIT = new Set(["scope", "aud", "scp"]);
 
+// JSON that arrives as TEXT (a log line, an HTTP body, tool output): an object or array in a string gets the same Form | JSON panes.
+// Anything else (a token, plain text, a bare number or string) stays text.
+export function parseJsonText(s) {
+  if (typeof s !== "string") return undefined;
+  const t = s.trim();
+  if (!((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]")))) return undefined;
+  try { const v = JSON.parse(t); return v !== null && typeof v === "object" ? v : undefined; } catch { return undefined; }
+}
+
 const prim = (v) => v === null || typeof v !== "object";
 const date = (n) => (Number.isFinite(n) && n > 1e9 && n < 1e11 ? `${new Date(n * 1000).toISOString().replace("T", " ").slice(0, 19)} UTC` : null);
 
@@ -161,12 +170,15 @@ function Form({ value, hot, k = "", depth = 0 }) {
 }
 
 // ---- The pane ---------------------------------------------------------------------------------------------------------------------------------
-// value: an object or array gets the Form | JSON choice; `hot` (optional array of key names) stands those keys out in both views; a string (a token, or text) is shown as it is, a token in its three colours.
+// value: an object or array (or a string holding one) gets the Form | JSON choice; `hot` (optional array of key names) stands those keys out in both views; a string (a token, or text) is shown as it is, a token in its three colours.
 export function Json({ value, label, testId, toggle = true, hot }) {
   const mode = useView();
   const hotSet = hot && hot.length ? new Set([...HOT, ...hot]) : HOT;
-  const isJson = typeof value === "object" && value !== null;
-  const text = isJson ? JSON.stringify(value, null, 2) : typeof value === "string" ? value : JSON.stringify(value);
+  const fromText = typeof value === "string" ? parseJsonText(value) : undefined;
+  const data = fromText !== undefined ? fromText : value;
+  const isJson = typeof data === "object" && data !== null;
+  // a one-line JSON string is laid out for reading; a string that already has line breaks is shown as it came
+  const text = fromText !== undefined ? (value.includes("\n") ? value : JSON.stringify(fromText, null, 2)) : isJson ? JSON.stringify(data, null, 2) : typeof value === "string" ? value : JSON.stringify(value);
   const asForm = isJson && mode === "form";
   return (
     <div className="jsonbox" data-testid={testId ? `${testId}-box` : undefined} data-view={isJson ? mode : "text"}>
@@ -177,7 +189,7 @@ export function Json({ value, label, testId, toggle = true, hot }) {
         </span>
       )}
       {asForm
-        ? <div className="json json--form" tabIndex={0} role="group" aria-label={label} data-testid={testId}><Form value={value} hot={hotSet} /></div>
+        ? <div className="json json--form" tabIndex={0} role="group" aria-label={label} data-testid={testId}><Form value={data} hot={hotSet} /></div>
         : <pre className="json json--raw" tabIndex={0} aria-label={label} data-testid={testId}>{isJson ? <RawJson text={text} hot={hotSet} /> : kindOf(text) === "token" ? <Jwt text={text} /> : visible(text)}</pre>}
     </div>
   );
