@@ -266,3 +266,6 @@
 [submodule "standalone/workload-identity-LAB"]
 	path = standalone/workload-identity-LAB
 	url = https://github.com/curtismu7/workload-identity-LAB
+[submodule "standalone/privilege-bulk-users-LAB"]
+	path = standalone/privilege-bulk-users-LAB
+	url = https://github.com/curtismu7/privilege-bulk-users-LAB

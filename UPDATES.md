@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.13** — new lab: mfa-admin-mcp-lab, administer PingOne's MFA administration MCP tool set (MFA settings, FIDO passkey policies, notification policies, OATH tokens, delivery settings) through MCP tools with safety classes and a confirm gate. Mock by default; Live is owner-run. Run the update command below to get it.
+**Version 2.14** — new lab: privilege-bulk-users-lab, register many people for PingOne Privilege by API instead of one at a time. A guide to the two routes plus a Plan, Apply and Verify lab with a typed-count gate and a shared 429 back-off. Mock by default; Real is owner-run. Run the update command below to get it.

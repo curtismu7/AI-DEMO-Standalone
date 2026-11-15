@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.14 (2026-11-14)
+
+**New lab**
+- privilege-bulk-users-lab (Tester, port 7817): register many people for PingOne Privilege by API instead of one at a time — a guide to the two routes (the PingOne Management API: create in the Privilege environment and add to the Privilege group; the Privilege console API, still unverified against a real console) and a runnable Plan, Apply and Verify lab with a typed-count gate, a shared 429 back-off, safe re-runs and six Mock scenarios. Mock by default; Real is owner-run.
+
 ## 2.13 (2026-11-12)
 
 **New lab**

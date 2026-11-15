@@ -160,6 +160,11 @@ These need the owner's tenants and are not set up by a colleague.
     stops with a WARN (the resource is not found) and Mock keeps working.
 - `meridian-a2a-hop-LAB`: Real is a PingOne sign-in plus two Privilege gateway doors on the SE gateway; the owner's
   `docs/live-identity.md` names the identities. Mock needs nothing.
+- `privilege-bulk-users-LAB`: Real writes users into a PingOne environment (route A) or the Privilege console (route B),
+  so it is owner-run. It needs a PingOne worker app with the Identity Data Admin role on the Privilege environment, and
+  `PRIVILEGE_BULK_MODE=real` plus the `BULK_P1_*` settings (route B also `BULK_CONSOLE_*`) in the lab's own `.env`. The
+  lab never deletes. Start with a small throwaway source population. `docs/live-checks.md` is the checklist. Mock needs
+  nothing.
 - **NOT YET STANDALONE: needs a repoint.** `muse-LAB`: Real needs a PingOne environment and Authorize rules, and
   its README sends you to AI-DEMO2 notes and to a gateway build named by an AI-DEMO2 PR. Owner-run
   ("Real mode in local Docker (owner-run)").
