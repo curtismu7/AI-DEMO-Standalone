@@ -10,6 +10,8 @@
 /* FULL VIEW (owner 2026-11-14, Rule 24): a JSON pane is never a scroll box. It grows to its content, long lines and tokens wrap, and a lab's own
    max-height / overflow does not cap it (specificity, no !important: the family CSS check forbids it; the J1 check fails such a rule in the lab's CSS). */
 .jsonbox, .jsonbox .json.json { max-height: none; height: auto; overflow: visible; }
+.jwire { display: grid; gap: 4px; min-width: 0; }
+.jwire > .json.json--wirehead { max-height: none; height: auto; overflow: visible; margin: 0; }
 .json--raw { color: var(--text-body); white-space: pre-wrap; overflow-wrap: anywhere; }
 .jtok--key { color: var(--j-key); font-weight: 600; }
 .jtok--string { color: var(--j-string); }

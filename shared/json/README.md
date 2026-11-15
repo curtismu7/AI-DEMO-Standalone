@@ -55,4 +55,6 @@ A string that holds a JSON object or array (a log line, an HTTP body, tool outpu
 
 The shared evidence step detail (`shared/evidence`, `.ev-pre`) follows the same rule: its request / response text is uncapped and wraps.
 
+An HTTP transcript with a JSON body (a hop's request or response: request / status line, headers, blank line, body) passed as ONE string keeps its headers as text and gives the body its own Form | JSON pane (`splitWire`); do not write a splitter in the lab. A missing (`undefined`) value is an empty pane.
+
 Everything is React text (never markup) and passes `visible()`.

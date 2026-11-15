@@ -49,6 +49,19 @@ export function parseJsonText(s) {
   try { const v = JSON.parse(t); return v !== null && typeof v === "object" ? v : undefined; } catch { return undefined; }
 }
 
+// An HTTP transcript with a JSON body (a hop's request or response: request / status line, headers, blank line, body): the head stays text,
+// the body gets its own Form | JSON pane. Anything that is not clearly that shape is left alone (a string stays text).
+const WIRE_START = /^(?:[A-Z]{3,7} \S+ HTTP\/\d(?:\.\d)?|HTTP\/\d(?:\.\d)?\s+\d{3}|HTTP\s+\d{3})/;
+export function splitWire(s) {
+  if (typeof s !== "string") return undefined;
+  const m = /\r?\n\r?\n/.exec(s);
+  if (!m) return undefined;
+  const head = s.slice(0, m.index);
+  const body = s.slice(m.index + m[0].length);
+  if (!WIRE_START.test(head)) return undefined;
+  return parseJsonText(body) !== undefined ? { head, body } : undefined;
+}
+
 const prim = (v) => v === null || typeof v !== "object";
 // An object, or a list of objects, goes UNDER its label at full width (a deep payload must not spend a label column per level); scalars and chip lists stay beside it.
 const nestedValue = (v) => !prim(v) && !(Array.isArray(v) && v.every(prim));
@@ -178,6 +191,15 @@ export function Json({ value: given, label, testId, toggle = true, hot }) {
   const value = given === undefined ? "" : given; // a missing value is an empty pane, never the word "undefined"
   const hotSet = hot && hot.length ? new Set([...HOT, ...hot]) : HOT;
   const fromText = typeof value === "string" ? parseJsonText(value) : undefined;
+  const wire = fromText === undefined ? splitWire(value) : undefined;
+  if (wire) {
+    return (
+      <div className="jwire" data-testid={testId ? `${testId}-box` : undefined}>
+        <pre className="json json--raw json--wirehead" tabIndex={0} aria-label={label ? `${label} headers` : "Headers"} data-testid={testId ? `${testId}-head` : undefined}>{visible(wire.head)}</pre>
+        <Json value={wire.body} label={label ? `${label} body` : "Body"} testId={testId ? `${testId}-body` : undefined} toggle={toggle} hot={hot} />
+      </div>
+    );
+  }
   const data = fromText !== undefined ? fromText : value;
   const isJson = typeof data === "object" && data !== null;
   // A string is shown EXACTLY as given in the JSON view (a hashed or signed payload must not be re-serialized: key order, number text, spacing).
