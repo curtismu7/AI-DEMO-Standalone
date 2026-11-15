@@ -150,7 +150,9 @@ function Value({ v, k, hot }) {
   if (kind === "token") return <span className="jform__v jform__v--token"><Jwt text={v} /></span>;
   if (typeof v === "string" && SPLIT.has(k) && /\s/.test(v.trim())) return <ChipList items={v.trim().split(/\s+/)} k={k} hot={hot} />;
   if (kind === "time") { const d = typeof v === "number" ? date(v) : null; return <span className="jform__v jform__v--time">{visible(String(v))}{d && <span className="jform__sub"> {d}</span>}</span>; }
-  return <span className={`jform__v jform__v--${kind}`}>{visible(String(v))}</span>;
+  // A string that would read as another type (the text "{}", "[]", "5", "true", "null") keeps its quotes, so the Form view never hides string-versus-object.
+  const typed = typeof v === "string" && /^(?:\{[\s\S]*\}|\[[\s\S]*\]|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)$/.test(v.trim());
+  return <span className={`jform__v jform__v--${kind}`}>{visible(typed ? JSON.stringify(v) : String(v))}</span>;
 }
 
 function ChipList({ items, k, hot }) {
