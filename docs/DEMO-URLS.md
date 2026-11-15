@@ -3,7 +3,7 @@
 Everything runs on this machine. Two doorways:
 
 - **Domain doorway** — `https://local.ping-devops.com:8443/<route>/` — served by the shared lab-proxy; works in any browser on this Mac, no `/etc/hosts` entries.
-- **AI-DEMO2** — `https://local.ping-devops.com:4000/...` — the main Super Banking demo (sign in as `demouser` / `Baseball123!` unless noted).
+- **AI-DEMO2** — `https://local.ping-devops.com:4000/...` — the main Super Banking demo (sign in as `demouser`; the password is held by the owner; unless noted).
 
 Status column: ✅ verified answering during the last sweep (2026-11-06), ❌ proxied but nothing is listening (502), ⚠️ route exists but the lab refused a plain probe (Host check / stopped container / needs its own sign-in) — open it in the browser before assuming it is down.
 
@@ -20,7 +20,7 @@ Status column: ✅ verified answering during the last sweep (2026-11-06), ❌ pr
 
 | URL | What it is |
 |---|---|
-| ✅ `https://local.ping-devops.com:8443/idjag-runner/` | **Tarun ID-JAG Runner** — run the ID-JAG (cross-app access) demo without Postman: password grant, RFC 8693 exchange (three subject variants), jwt-bearer redeem, introspection, four refusal cases, JWKS inspector, flow diagram. Sign in: `demouser`, password only (`Baseball123!`); demo clients pre-filled. One-liner for any other machine: `curl -fsSL https://raw.githubusercontent.com/curtismu7/idjag-runner-LAB/main/scripts/remote-install.sh \| bash` |
+| ✅ `https://local.ping-devops.com:8443/idjag-runner/` | **Tarun ID-JAG Runner** — run the ID-JAG (cross-app access) demo without Postman: password grant, RFC 8693 exchange (three subject variants), jwt-bearer redeem, introspection, four refusal cases, JWKS inspector, flow diagram. Sign in: `demouser`, password only (held by the owner); demo clients pre-filled. One-liner for any other machine: `curl -fsSL https://raw.githubusercontent.com/curtismu7/idjag-runner-LAB/main/scripts/remote-install.sh \| bash` |
 | `https://local.ping-devops.com:8443/id-jag-kit` | The id-jag-kit playground (standalone ID-JAG kit UI; upstream of the runner). |
 | `https://local.ping-devops.com:4000/pingfederate-id-jag/runner` | **AI-DEMO2 page** introducing the Runner Lab (CTA + the four acts, each naming the authorization server). |
 | `https://local.ping-devops.com:4000/pingfederate-id-jag` | AI-DEMO2's ID-JAG explainer. |
@@ -82,7 +82,7 @@ Status column: ✅ verified answering during the last sweep (2026-11-06), ❌ pr
 
 | URL | What it is |
 |---|---|
-| `https://local.ping-devops.com:4000` | **Super Banking demo** — the full reference implementation (PingOne + PingFederate + MCP + agents). Sign in `demouser` / `Baseball123!`. |
+| `https://local.ping-devops.com:4000` | **Super Banking demo** — the full reference implementation (PingOne + PingFederate + MCP + agents). Sign in as `demouser` (password held by the owner). |
 | `https://local.ping-devops.com:4000/pingfederate-id-jag/runner` | (see ID-JAG path above) |
 | `http://127.0.0.1:16686` | Jaeger — distributed traces for the AI-DEMO2 stack. |
 
