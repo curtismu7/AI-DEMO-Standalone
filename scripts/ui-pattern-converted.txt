@@ -52,3 +52,12 @@ agent-registry-demo-LAB/start-boxes
 agent-registry-demo-LAB/raw
 ai-gateway-client-LAB/flow
 ai-gateway-client-LAB/templates
+
+# 2026-11-15: legacy header -> shell-bar, batch 1: agent-kill-switch-LAB index, demo-field-guide-LAB template,
+# jit-lab-LAB broker and workload-identity-LAB index converted (0 drift); their pins are bumped in the same PR.
+# idjag-runner-LAB idjag-se-guide also converted and pinned, but stays advisory: M1 (no Mock/Real toggle on a
+# static guide of a real-PF-only lab, rule-19 waiver) has no line for an allow escape.
+agent-kill-switch-LAB/index
+demo-field-guide-LAB/template
+jit-lab-LAB/broker
+workload-identity-LAB/index
