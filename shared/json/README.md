@@ -53,4 +53,6 @@ rule J1 of `scripts/check-ui-patterns.mjs` fails a lab whose own CSS caps a JSON
 
 A string that holds a JSON object or array (a log line, an HTTP body, tool output) gets the same panes and toggle: the JSON view shows the string EXACTLY as given (never re-serialized, so hashed or signed text stays honest), the Form view reads the parsed value. Any other string is shown as text (a token in its three colors).
 
+The shared evidence step detail (`shared/evidence`, `.ev-pre`) follows the same rule: its request / response text is uncapped and wraps.
+
 Everything is React text (never markup) and passes `visible()`.
