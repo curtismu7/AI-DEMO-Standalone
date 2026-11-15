@@ -51,14 +51,14 @@ export function parseJsonText(s) {
 
 // An HTTP transcript with a JSON body (a hop's request or response: request / status line, headers, blank line, body): the head stays text,
 // the body gets its own Form | JSON pane. Anything that is not clearly that shape is left alone (a string stays text).
-const WIRE_START = /^(?:[A-Z]{3,7} \S+ HTTP\/\d(?:\.\d)?|HTTP\/\d(?:\.\d)?\s+\d{3}|HTTP\s+\d{3})/;
+const WIRE_START = /^(?:(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) \S+(?: HTTP\/\d(?:\.\d)?)?\s*$|HTTP\/\d(?:\.\d)?\s+\d{3}|HTTP\s+\d{3})/m;
 export function splitWire(s) {
   if (typeof s !== "string") return undefined;
   const m = /\r?\n\r?\n/.exec(s);
   if (!m) return undefined;
   const head = s.slice(0, m.index);
   const body = s.slice(m.index + m[0].length);
-  if (!WIRE_START.test(head)) return undefined;
+  if (!WIRE_START.test(head.split(/\r?\n/)[0])) return undefined;
   return parseJsonText(body) !== undefined ? { head, body } : undefined;
 }
 
@@ -107,6 +107,12 @@ function scan(text) {
       while (j < text.length) { if (esc) esc = false; else if (text[j] === "\\") esc = true; else if (text[j] === '"') break; j += 1; }
       out.push({ kind: nextMeaning(j + 1) === ":" ? "key" : "string", text: text.slice(i, j + 1) });
       i = j + 1;
+      continue;
+    }
+    if (/\s/.test(ch)) { // whitespace is its own token, so the value after `"key": ` is seen as a value (a number, true, false, null), not swallowed as plain text
+      let j = i; while (j < text.length && /\s/.test(text[j])) j += 1;
+      out.push({ kind: "plain", text: text.slice(i, j) });
+      i = j;
       continue;
     }
     if (/[-0-9]/.test(ch)) {
