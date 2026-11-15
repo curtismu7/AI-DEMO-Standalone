@@ -178,6 +178,36 @@ function closeBracket(src, i) {
   return src.length;
 }
 
+/**
+ * [start, end) spans of JS regex literals that hold a `<`, e.g. `/<IMPORTANT>[\s\S]*?<\/IMPORTANT>/`, so the JSX scan does not read
+ * their `<tag>` as an element (the escaped `<\/tag>` never closes it, and it swallowed the rest of the file). A `/` opens a regex only
+ * after `( , = : [ ! & | ? { ;`, `return` / `typeof` or at the start; the literal ends on its own line at an unescaped `/` outside a
+ * class that is not `</` or `/>`, and flags are followed by a JS character, so `/` in JSX text (`a: /x</p>`, `<br/>`) is never one.
+ */
+function regexSpans(src) {
+  const spans = [];
+  for (let p = src.indexOf('/'); p !== -1; p = src.indexOf('/', p + 1)) {
+    if (src[p - 1] === '<' || '/*>'.includes(src[p + 1] || '/')) continue;
+    let b = p - 1;
+    while (b >= 0 && /\s/.test(src[b])) b -= 1;
+    if (b >= 0 && !/[(,=:[!&|?{;]$|(?:^|[^\w$])(?:return|typeof)$/.test(src.slice(Math.max(0, b - 6), b + 1))) continue;
+    let q = p + 1;
+    let cls = false;
+    for (; q < src.length && src[q] !== '\n'; q += 1) {
+      if (src[q] === '\\') q += 1;
+      else if (src[q] === '[') cls = true;
+      else if (src[q] === ']') cls = false;
+      else if (src[q] === '/' && !cls) break;
+    }
+    if (src[q] !== '/' || src[q - 1] === '<' || src[q + 1] === '>') continue;
+    const end = q + 1 + /^[dgimsuyv]*/.exec(src.slice(q + 1, q + 10))[0].length;
+    if (end < src.length && !/[\s.,;)\]}:?|&]/.test(src[end])) continue;
+    if (src.slice(p, end).includes('<')) spans.push([p, end]);
+    p = end - 1;
+  }
+  return spans;
+}
+
 // ============================== markup (HTML + JSX) ==============================
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
@@ -264,12 +294,19 @@ export function parseMarkup(src, { kind, file }) {
   const li = lineIndexer(src);
   const els = [];
   const root = { name: '#root', attrs: new Map(), children: [], parent: null, innerStart: 0, innerEnd: src.length };
+  const regexes = kind === 'jsx' ? regexSpans(src) : [];
+  const inRegex = (at) => regexes.find(([s, e]) => at > s && at < e);
   const scan = (from, to, top) => {
     const stack = [top];
     let i = from;
     while (i < to) {
       const lt = src.indexOf('<', i);
       if (lt === -1 || lt >= to) break;
+      const rx = inRegex(lt);
+      if (rx) {
+        i = rx[1];
+        continue;
+      }
       if (src[lt + 1] === '/') {
         if (kind === 'jsx' && src[lt + 2] === '>') {
           for (let k = stack.length - 1; k >= 1; k -= 1) {
