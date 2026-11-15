@@ -105,6 +105,9 @@ export const RULES = {
   C1: 'token contrast of the primary gradient, chips, muted text, borders, and the focus ring on content and on the dark shell bar (4.5:1 text, 3:1 non-text)',
 };
 export const RULE_IDS = Object.keys(RULES);
+// Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
+// their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
+const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
 
@@ -2582,7 +2585,7 @@ export function runCheck({ root = DEFAULT_ROOT, appDirs = [], only = [], allowli
       const results = checkPageUnit(unit, { tier: rec.tier, canonicalCss });
       const drift = results.filter((r) => r.status === 'DRIFT');
       const enforced = strict || allowlist.includes(key);
-      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.length === 0 };
+      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.every((r) => ADVISORY_RULES.has(r.rule)) };
       rec.pages.push(page);
       out.pages.push(page);
     }

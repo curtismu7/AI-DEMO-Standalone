@@ -126,6 +126,20 @@ for (const [rule, fixture, edits, extra, status, label, also = []] of CASES) {
   });
 }
 
+test('J1 is advisory for enforcement: an enforced page whose only drift is J1 does not fail', () => {
+  const { app } = make('clean-react', { 'web/src/app.css': append('.json-out { max-height: 20rem; overflow: auto; }') });
+  try {
+    const first = runCheck({ appDirs: [app], allowlist: [], canonicalCss: CANON });
+    const keys = first.pages.map((pg) => pg.key);
+    assert.ok(first.pages.some((pg) => pg.results.some((r) => r.rule === 'J1' && r.status === 'DRIFT')), 'the mutation must produce J1 DRIFT');
+    const enforced = runCheck({ appDirs: [app], allowlist: keys, canonicalCss: CANON });
+    assert.equal(enforced.summary.failing, 0, 'J1 alone must not fail an enforced page');
+    assert.ok(enforced.pages.every((pg) => pg.enforced && pg.clean));
+  } finally {
+    fs.rmSync(path.dirname(app), { recursive: true, force: true });
+  }
+});
+
 test('every rule id has at least one mutation test', () => {
   const covered = new Set(CASES.map((c) => c[0]));
   const missing = RULE_IDS.filter((r) => !covered.has(r));

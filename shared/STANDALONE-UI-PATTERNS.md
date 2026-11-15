@@ -217,7 +217,7 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | A1 | Buttons, links and form controls have an accessible name |
 | A2 | No `outline: none` without a replacement focus style |
 | A3 | Every `img` has `alt` |
-| J1 | JSON is shown through the shared JsonPane (Rule 24): no hand-rolled `<pre>{JSON.stringify()}`, no `max-height` / `overflow: auto\|scroll` on a JSON pane (full view; a `pre` cap is a WARN) |
+| J1 | JSON is shown through the shared JsonPane (Rule 24): no hand-rolled `<pre>{JSON.stringify()}`, no `max-height` / `overflow: auto\|scroll` on a JSON pane (full view; a `pre` cap is a WARN). Reported as DRIFT but ADVISORY for enforced pages until the Rule 24 sweep has merged (`J1_ENFORCE=1`, or drop J1 from `ADVISORY_RULES`, enforces it) |
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
 | C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |
