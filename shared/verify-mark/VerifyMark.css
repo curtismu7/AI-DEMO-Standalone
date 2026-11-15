@@ -63,3 +63,12 @@
   color: var(--muted);
   font-size: 0.7rem;
 }
+
+/* In the shared TopMenu the bar can be dark in both themes, and no single text colour passes 4.5:1 on both a white and a navy bar. So the badge there
+   carries its own surface: a small pill whose contrast does not depend on the bar behind it. */
+.top-menu .verify__badge {
+  padding: 2px 10px 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
