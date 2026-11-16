@@ -206,3 +206,43 @@ agent-audit-trail-LAB/integrity
 agent-audit-trail-LAB/retention
 agent-audit-trail-LAB/tools
 agent-audit-trail-LAB/story
+
+# 2026-11-16: legacy header -> shell-bar, batch 9: poppy-agent-tester-LAB (3 pages), saas-access-LAB (9),
+# secrets-vault-LAB (9), observability-LAB (7), pingone-mcp-inspector-LAB (8) converted (0 drift);
+# their pins are bumped in the same PR.
+poppy-agent-tester-LAB/run
+poppy-agent-tester-LAB/chat
+poppy-agent-tester-LAB/diagram
+saas-access-LAB/request
+saas-access-LAB/approvals
+saas-access-LAB/timeline
+saas-access-LAB/drift
+saas-access-LAB/platforms
+saas-access-LAB/diagram
+saas-access-LAB/talk
+saas-access-LAB/live
+saas-access-LAB/request-privilege-check
+secrets-vault-LAB/vault
+secrets-vault-LAB/injection
+secrets-vault-LAB/stores
+secrets-vault-LAB/governance
+secrets-vault-LAB/diagram
+secrets-vault-LAB/talk
+secrets-vault-LAB/live
+secrets-vault-LAB/live-clock-bar
+secrets-vault-LAB/mock
+observability-LAB/logs
+observability-LAB/products
+observability-LAB/label
+observability-LAB/alerts
+observability-LAB/pipeline
+observability-LAB/talk
+observability-LAB/searches
+pingone-mcp-inspector-LAB/audit
+pingone-mcp-inspector-LAB/connections
+pingone-mcp-inspector-LAB/diagram
+pingone-mcp-inspector-LAB/mcp-first
+pingone-mcp-inspector-LAB/raw
+pingone-mcp-inspector-LAB/stories
+pingone-mcp-inspector-LAB/tool
+pingone-mcp-inspector-LAB/tools
