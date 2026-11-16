@@ -338,3 +338,7 @@ federated-identity-LAB/live-privilege-check
 # Only the React page is enforced. cimd, clients and how-agent-connect-works are hand-written static pages with no
 # Mock/Real toggle, so they stay advisory for M1 only (same position as the idjag-runner SE guide).
 muse-LAB/index
+
+# 2026-11-16: privilege-k8-kits-LAB cleanup (#4): the unserved orphan kits/privilege-k8-kits.html is deleted and the served
+# page public/index.html is standard (h1, labelled selects, data-font-step, mode-aware banner); its pin is bumped in the same PR.
+privilege-k8-kits-LAB/index
