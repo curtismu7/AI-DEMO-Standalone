@@ -70,3 +70,11 @@ worker-demo-LAB/index
 session-LAB/index
 mcp-discovery-LAB/inventory
 personal-agent-demo-LAB/pattern
+
+# 2026-11-15: legacy header -> shell-bar, batch 3: meridian-a2a-hop-LAB sign-in, no-tool-no-promise-LAB index,
+# obo-lab-LAB run and progressive-trust-ladder-LAB index converted (0 drift); their pins are bumped in the same PR.
+# ai-guard-sidecar-LAB h2 also converted and pinned, but stays advisory: P9 (8 primaries) needs a view redesign.
+meridian-a2a-hop-LAB/sign-in
+no-tool-no-promise-LAB/index
+obo-lab-LAB/run
+progressive-trust-ladder-LAB/index
