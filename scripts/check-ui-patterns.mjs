@@ -2309,14 +2309,46 @@ function ownInnerText(e) {
   if (at < e.innerEnd) out += e.src.slice(at, e.innerEnd);
   return out;
 }
+// A helper that pretty-prints JSON (`const pretty = (v) => JSON.stringify(v, null, 2)`, `function show(p) { return JSON.stringify(p, null, 2); }`)
+// counts as JSON.stringify(x, null, 2) wherever the page calls it, in any file of the page (it usually lives in a lib/format.js).
+const HELPER_DEFS = [
+  new RegExp(String.raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\([^()]*\)|[A-Za-z_$][\w$]*)\s*=>\s*\(?\s*` + JSON_PRETTY.source, 'g'),
+  new RegExp(String.raw`function\s+([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*\{\s*return\s+` + JSON_PRETTY.source, 'g'),
+];
+function prettyHelpers(u) {
+  const names = new Set();
+  for (const t of u.texts) for (const re of HELPER_DEFS) for (const m of t.text.matchAll(re)) names.add(m[1]);
+  return names;
+}
+const escName = (s) => s.replace(/[$]/g, '\\$&');
+// Props that never show their value as a pane: handlers, links, keys and styling, tooltips, and copy / download targets.
+const NOT_SHOWN_PROP = /^(?:on[A-Z]\w*|href|download|key|ref|id|className|class|style|title|aria-[\w-]+|data-[\w-]+)$|copy|clipboard|download/i;
+const INPUT_TAG = /^(?:textarea|input|select|option)$/;
 function ruleJ1(u) {
   const R = 'J1';
   const bad = [];
   const warn = [];
+  const helpers = [...prettyHelpers(u)];
+  const helperCall = helpers.length ? new RegExp(String.raw`(?<![\w$.])(?:${helpers.map(escName).join('|')})\s*\(`) : null;
+  const pretty = (t) => JSON_PRETTY.test(t) || (helperCall !== null && helperCall.test(t));
   for (const e of u.els) {
     if (e.vendored || e.name === '#frag' || JSON_COMPONENT.test(e.name) || !REAL_TAG.test(e.name)) continue;
     const own = ownInnerText(e);
-    if (e.name === 'pre' ? JSON_ANY.test(own) : JSON_PRETTY.test(own)) bad.push(loc(e, `<${e.name}> shows hand-rolled JSON text (use the shared JsonPane)`));
+    if (e.name === 'pre' ? JSON_ANY.test(own) || pretty(own) : pretty(own)) {
+      bad.push(loc(e, `<${e.name}> shows hand-rolled JSON text (use the shared JsonPane)`));
+      continue;
+    }
+    // JSON handed to a component or element as a prop: <Untrusted block text={pretty(x)} />, <Code value={JSON.stringify(x, null, 2)} />.
+    // Inputs (a textarea's value is an editor, not a view) and copy buttons are not panes.
+    if (/copy|clipboard/i.test(e.name)) continue;
+    for (const [name, a] of e.attrs) {
+      if (a.type !== 'expr' || NOT_SHOWN_PROP.test(name)) continue;
+      if (INPUT_TAG.test(e.name) && /^(?:value|defaultValue)$/.test(name)) continue;
+      if (pretty(a.text)) {
+        bad.push(loc(e, `<${e.name} ${name}={...}> shows hand-rolled JSON text (use the shared JsonPane)`));
+        break;
+      }
+    }
   }
   for (const s of ownSheets(u)) {
     for (const r of s.parsed.rules) {
