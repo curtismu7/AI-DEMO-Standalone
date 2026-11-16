@@ -179,3 +179,30 @@ intent-par-inspector-LAB/server
 intent-par-inspector-LAB/token
 intent-par-inspector-LAB/start-boxes
 intent-par-inspector-LAB/raw
+
+# 2026-11-16: legacy header -> shell-bar, batch 8: pingfederate-LAB (5 pages), pingone-LAB (5), mock-authorize-LAB (5),
+# p1az-inspector-LAB (3), agent-audit-trail-LAB (6) converted (0 drift); their pins are bumped in the same PR.
+pingfederate-LAB/shelf
+pingfederate-LAB/run
+pingfederate-LAB/settings
+pingfederate-LAB/playground
+pingfederate-LAB/live
+pingone-LAB/shelf
+pingone-LAB/run
+pingone-LAB/settings
+pingone-LAB/playground
+pingone-LAB/talk
+mock-authorize-LAB/connect
+mock-authorize-LAB/decisions
+mock-authorize-LAB/diagram
+mock-authorize-LAB/rules
+mock-authorize-LAB/try
+p1az-inspector-LAB/console
+p1az-inspector-LAB/diagram
+p1az-inspector-LAB/settings
+agent-audit-trail-LAB/events
+agent-audit-trail-LAB/diagram
+agent-audit-trail-LAB/integrity
+agent-audit-trail-LAB/retention
+agent-audit-trail-LAB/tools
+agent-audit-trail-LAB/story
