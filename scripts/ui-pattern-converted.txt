@@ -78,3 +78,17 @@ meridian-a2a-hop-LAB/sign-in
 no-tool-no-promise-LAB/index
 obo-lab-LAB/run
 progressive-trust-ladder-LAB/index
+
+# 2026-11-16: legacy header -> shell-bar, batch 4: diagram-prove-lab index, ciba-hitl-lab flow + run,
+# jev-lab-LAB judge + bakeoff, privilege-map-LAB stories + stories-stories-page, a2a-lab-LAB gate + diagram + talk
+# converted (0 drift); their pins are bumped in the same PR.
+diagram-prove-lab/index
+ciba-hitl-lab/flow
+ciba-hitl-lab/run
+jev-lab-LAB/judge
+jev-lab-LAB/bakeoff
+privilege-map-LAB/stories
+privilege-map-LAB/stories-stories-page
+a2a-lab-LAB/gate
+a2a-lab-LAB/diagram
+a2a-lab-LAB/talk
