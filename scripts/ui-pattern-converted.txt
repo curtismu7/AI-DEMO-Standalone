@@ -317,3 +317,19 @@ agentcore-pingone-demo-LAB/obo
 agentcore-pingone-demo-LAB/diagram
 agentcore-pingone-demo-LAB/talk
 agentcore-pingone-demo-LAB/real
+
+# 2026-11-16: legacy header -> shell-bar, batch 12: ai-policies-LAB (9 pages) and federated-identity-LAB converted;
+# their pins are bumped in the same PR. federated-identity identities/issuers/models/sensors/audit/talk/live keep P9 and
+# stay advisory (owner decision: picking one primary there is a design call).
+ai-policies-LAB/evaluate
+ai-policies-LAB/policies
+ai-policies-LAB/approvals
+ai-policies-LAB/where
+ai-policies-LAB/closed
+ai-policies-LAB/diagram
+ai-policies-LAB/talk
+ai-policies-LAB/live
+ai-policies-LAB/live-gateway-hop
+federated-identity-LAB/verify
+federated-identity-LAB/diagram
+federated-identity-LAB/live-privilege-check
