@@ -280,3 +280,11 @@ mcp-tools-LAB/diagram
 mcp-tools-LAB/limits
 mcp-tools-LAB/gateway
 mcp-tools-LAB/proxy
+
+# 2026-11-16: shared ErrorBoundary "Try again" now carries a P9 escape (AI-DEMO-Standalone #328, re-vendored in
+# gateway-claims-LAB #18), which clears the last drift on these four gateway-claims pages. scope and console keep P9
+# and stay advisory (owner decision).
+gateway-claims-LAB/agentcore
+gateway-claims-LAB/latest
+gateway-claims-LAB/posture
+gateway-claims-LAB/talk
