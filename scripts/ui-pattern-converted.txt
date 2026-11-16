@@ -61,3 +61,12 @@ agent-kill-switch-LAB/index
 demo-field-guide-LAB/template
 jit-lab-LAB/broker
 workload-identity-LAB/index
+
+# 2026-11-15: legacy header -> shell-bar, batch 2: mcp-elicitation-LAB index, worker-demo-LAB index,
+# session-LAB index, mcp-discovery-LAB inventory and personal-agent-demo-LAB pattern converted (0 drift);
+# their pins are bumped in the same PR.
+mcp-elicitation-LAB/index
+worker-demo-LAB/index
+session-LAB/index
+mcp-discovery-LAB/inventory
+personal-agent-demo-LAB/pattern
