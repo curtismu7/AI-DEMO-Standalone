@@ -51,7 +51,7 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   or pasted metadata; offline, no tenant), `mfa-admin-mcp-lab` (administers PingOne MFA/FIDO policies, notification
   policies, delivery settings and OATH tokens through MCP tools; mock by default, live is owner-run),
   `trusted-issuers-LAB` (who trusts which token issuer in PingOne, PingOne Authorize, Privilege and PingFederate;
-  Mock only, no tenant).
+  Mock only, no tenant), `pdf-to-md-LAB` (PDF to Markdown conversion in-process; no network calls, no tenant).
 
 ## B. Your own PingOne environment and apps
 
