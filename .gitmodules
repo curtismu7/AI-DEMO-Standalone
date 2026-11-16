@@ -275,6 +275,9 @@
 [submodule "standalone/cedar-act-sub-LAB"]
 	path = standalone/cedar-act-sub-LAB
 	url = https://github.com/curtismu7/cedar-act-sub-LAB.git
+[submodule "standalone/cedar-in-privilege-LAB"]
+	path = standalone/cedar-in-privilege-LAB
+	url = https://github.com/curtismu7/cedar-in-privilege-LAB.git
 [submodule "standalone/trusted-issuers-LAB"]
 	path = standalone/trusted-issuers-LAB
 	url = https://github.com/curtismu7/trusted-issuers-LAB.git

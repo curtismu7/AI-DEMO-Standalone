@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.16 (2026-11-16)
+
+**New lab**
+- cedar-in-privilege-LAB (D135, Demo, port 7820): a guided tour of Cedar AI policies in PingOne Privilege with a set-up guide and a Cedar IS / IS NOT panel. Three cases: hold a call for a human, narrow a token's scope, and match the agent's `act.sub` claim. All simulated in the lab; only the `act.sub` case was measured on a real tenant (one real agent, one run). The matching live pages are in the main demo app.
+
 ## 2.15 (2026-11-16)
 
 **New lab**

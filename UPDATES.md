@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.15** — new lab: cedar-act-sub-LAB, a mock gateway that walks a measured Cedar act.sub run (one door, two Active act.sub policies: the matching tool allowed, the tool whose policy names a different value refused). Tester tier; Mock by default; the real probe is an owner-run terminal script. Run the update command below to get it.
+**Version 2.16** — new lab: cedar-in-privilege-LAB, a guided tour of Cedar AI policies in PingOne Privilege (hold for a human, token scope, agent act.sub) with a set-up guide and a Cedar IS / IS NOT panel. Simulated; only the act.sub case was measured on a real tenant. Run the update command below to get it.
