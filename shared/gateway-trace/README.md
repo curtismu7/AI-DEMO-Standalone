@@ -45,7 +45,7 @@ when the lab's "Real" mode is not the Privilege gateway (a local engine, say), w
 Optional builder options (all additive; leave them out and the output is unchanged):
 
 - `requestHeaders` on `mockTrace`, `realTrace`, `failureTrace`: headers the lab really sends beyond the defaults (`traceparent`, a session header, a
-  different `accept`). Names match case-insensitively, so `{ Accept: 'application/json' }` replaces the default `accept`. Only headers that are safe to
+  different `accept`). Names match case-insensitively, so `{ Accept: 'application/json' }` replaces the default `accept`; a `null` value removes a default header (`{ accept: null }` for a lab that sends no `accept`); `undefined` is ignored. Only headers that are safe to
   show: never a key, token or cookie (`assertTrace` still catches a full bearer token). `traceFromDoor` takes its headers from the capture, so it needs none.
 - `grant: { label, pass, fail }` on `realDecisions`, `realTrace`, `traceFromDoor`: for a call that is not an MCP tool call (an AI Guard inspection, an LLM
   call) the default words about tools and a grant would mislead. `label` renames the second decision; `pass` and `fail` are a string or `(rpc, body) => string`.
