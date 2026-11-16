@@ -117,3 +117,28 @@ privilege-api-explorer-LAB/connections
 privilege-api-explorer-LAB/diagram
 privilege-api-explorer-LAB/help
 privilege-api-explorer-LAB/explorer
+
+# 2026-11-16: legacy header -> shell-bar, batch 6: agent-mcp-door-demo-LAB index, chatgpt-mcp-flow-LAB sequence +
+# interlocks + about, mcp-scanner-lab-LAB scan + diagram + about + talk, coding-agents-LAB agents + evaluate + gateway
+# + config + diagram + talk, ping-gateway-route-LAB routes + simulator + lint + introspection + diagram + raw
+# converted (0 drift); their pins are bumped in the same PR.
+agent-mcp-door-demo-LAB/index
+chatgpt-mcp-flow-LAB/sequence
+chatgpt-mcp-flow-LAB/interlocks
+chatgpt-mcp-flow-LAB/about
+mcp-scanner-lab-LAB/scan
+mcp-scanner-lab-LAB/diagram
+mcp-scanner-lab-LAB/about
+mcp-scanner-lab-LAB/talk
+coding-agents-LAB/agents
+coding-agents-LAB/evaluate
+coding-agents-LAB/gateway
+coding-agents-LAB/config
+coding-agents-LAB/diagram
+coding-agents-LAB/talk
+ping-gateway-route-LAB/routes
+ping-gateway-route-LAB/simulator
+ping-gateway-route-LAB/lint
+ping-gateway-route-LAB/introspection
+ping-gateway-route-LAB/diagram
+ping-gateway-route-LAB/raw
