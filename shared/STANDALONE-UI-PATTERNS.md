@@ -104,6 +104,18 @@ banner patterns. Known convergence work for next PRs:
   CSS lives in each app's stylesheet for now; promote to the shared file when the
   second renderer converges (it already has, three times — next touch migrates).
 
+
+## 8c. Diagram arrow labels and box details (owner, 2026-11-16)
+
+- Every diagram draws its arrow labels in a layer **above** the boxes, placed so no two labels overlap and none sits on a
+  box; the label of the arrow being walked turns bold and coloured and is raised above the others. Never an SVG label
+  under the boxes, never a fixed nudge that two labels can still collide through.
+- Clicking a box expands it in place with its details below its title: group, code pointers (links to the pinned commit,
+  called **Source**, never "Verified"), reach (boxes upstream and downstream), and the arrows in and out. Click again,
+  Close, or the empty canvas collapses it; Copy link opens the page with that box expanded.
+- One implementation for all labs: `shared/diagram-kit` (vendored into `web/src/diagram-kit/`, README there). A lab's
+  diagram needs only a graph of boxes and arrows, so a diagram that is not `diagram-studio/1` data still gets it.
+
 ## 8c. Token-chain evidence: sequence view, movie reel, step detail (owner, 2026-11-08)
 
 Any lab that shows a chain of hops uses the shared evidence screens in `shared/evidence/` (vendored into `web/src/evidence/`) fed by `demo-hop/1` hops from `shared/hop-detail/`. Do not draw a new sequence diagram or filmstrip by hand.
