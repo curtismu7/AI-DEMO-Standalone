@@ -208,6 +208,35 @@ function regexSpans(src) {
   return spans;
 }
 
+/**
+ * [start, end) spans of JS string literals that hold an unclosed `<tag>`, e.g. `const MARKER = "<code>";` or `` `<span>${x}` ``, so the
+ * JSX scan does not read their `<tag>` as an element that swallows the rest of the file (and a later pretty JSON.stringify with it).
+ * A quote opens a string only where a JS value can start: after `( , = : [ ! & | ? { ; +`, `=>`, `return` / `typeof` / `case` or at the
+ * start; `'` and `"` end on their own line. Only a string with a `<` and no `</` or `/>` counts, so balanced markup in JSX text
+ * (`<p>Raw: "<pre>...</pre>"</p>`) is never hidden: an unclosed tag inside quotes is not valid JSX text anyway.
+ */
+function stringSpans(src, skip = []) {
+  const spans = [];
+  for (let p = 0; p < src.length; p += 1) {
+    const q = src[p];
+    if (q !== '"' && q !== "'" && q !== '`') continue;
+    const rx = skip.find(([s, e]) => p > s && p < e);
+    if (rx) {
+      p = rx[1] - 1;
+      continue;
+    }
+    let b = p - 1;
+    while (b >= 0 && /\s/.test(src[b])) b -= 1;
+    if (b >= 0 && !/[(,=:[!&|?{;+]$|=>$|(?:^|[^\w$])(?:return|typeof|case)$/.test(src.slice(Math.max(0, b - 6), b + 1))) continue;
+    const end = skipQuoted(src, p);
+    if (q !== '`' && src.slice(p, end).includes('\n')) continue;
+    const body = src.slice(p + 1, end - 1);
+    if (body.includes('<') && !body.includes('</') && !body.includes('/>')) spans.push([p, end]);
+    p = end - 1;
+  }
+  return spans;
+}
+
 // ============================== markup (HTML + JSX) ==============================
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
@@ -294,7 +323,8 @@ export function parseMarkup(src, { kind, file }) {
   const li = lineIndexer(src);
   const els = [];
   const root = { name: '#root', attrs: new Map(), children: [], parent: null, innerStart: 0, innerEnd: src.length };
-  const regexes = kind === 'jsx' ? regexSpans(src) : [];
+  const rxSpans = kind === 'jsx' ? regexSpans(src) : [];
+  const regexes = kind === 'jsx' ? [...rxSpans, ...stringSpans(src, rxSpans)] : [];
   const inRegex = (at) => regexes.find(([s, e]) => at > s && at < e);
   const scan = (from, to, top) => {
     const stack = [top];
