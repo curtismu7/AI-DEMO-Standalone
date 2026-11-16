@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.14** — new lab: privilege-bulk-users-lab, register many people for PingOne Privilege by API instead of one at a time. A guide to the two routes plus a Plan, Apply and Verify lab with a typed-count gate and a shared 429 back-off. Mock by default; Real is owner-run. Run the update command below to get it.
+**Version 2.15** — new lab: cedar-act-sub-LAB, a mock gateway that walks a measured Cedar act.sub run (one door, two Active act.sub policies: the matching tool allowed, the tool whose policy names a different value refused). Tester tier; Mock by default; the real probe is an owner-run terminal script. Run the update command below to get it.

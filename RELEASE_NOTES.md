@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.15 (2026-11-16)
+
+**New lab**
+- cedar-act-sub-LAB (D134, Tester, port 7819): a mock gateway that walks a measured Cedar `act.sub` run — one door guarded by two Active `act.sub` policies, the tool whose policy matches the token's `act.sub` is allowed and the tool whose policy names a different value is refused. The run was measured on one real tenant with one real PingFederate token; everything else on the page is simulated and labelled as such. Mock by default; Real is disabled in the UI, and the real probe (`npm run real`) is a terminal script that is owner-run.
+
 ## 2.14 (2026-11-14)
 
 **New lab**
