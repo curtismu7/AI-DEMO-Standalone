@@ -288,3 +288,32 @@ gateway-claims-LAB/agentcore
 gateway-claims-LAB/latest
 gateway-claims-LAB/posture
 gateway-claims-LAB/talk
+
+# 2026-11-16: legacy header -> shell-bar, batch 11: intent-purpose-behaviour-LAB (5 pages), aggregate-entitlement-LAB (3),
+# attack-gallery-LAB (8), mcp-gateway-lab-LAB (3), agentcore-pingone-demo-LAB (6) converted (0 drift); their pins are
+# bumped in the same PR.
+intent-purpose-behaviour-LAB/signals
+intent-purpose-behaviour-LAB/baseline
+intent-purpose-behaviour-LAB/obo
+intent-purpose-behaviour-LAB/diagram
+intent-purpose-behaviour-LAB/talk
+aggregate-entitlement-LAB/stories
+aggregate-entitlement-LAB/limits
+aggregate-entitlement-LAB/gateway
+attack-gallery-LAB/gallery
+attack-gallery-LAB/attack
+attack-gallery-LAB/controls
+attack-gallery-LAB/compare
+attack-gallery-LAB/limits
+attack-gallery-LAB/stories
+attack-gallery-LAB/diagram
+attack-gallery-LAB/asi
+mcp-gateway-lab-LAB/gate
+mcp-gateway-lab-LAB/diagram
+mcp-gateway-lab-LAB/talk
+agentcore-pingone-demo-LAB/gate
+agentcore-pingone-demo-LAB/three-lo
+agentcore-pingone-demo-LAB/obo
+agentcore-pingone-demo-LAB/diagram
+agentcore-pingone-demo-LAB/talk
+agentcore-pingone-demo-LAB/real
