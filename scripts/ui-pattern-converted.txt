@@ -92,3 +92,28 @@ privilege-map-LAB/stories-stories-page
 a2a-lab-LAB/gate
 a2a-lab-LAB/diagram
 a2a-lab-LAB/talk
+
+# 2026-11-16: legacy header -> shell-bar, batch 5: agent-preferences-lab gate + diagram + talk + talk-verify-mark,
+# delegation-lab-LAB gate + diagram + talk, hitl-mfa-lab-LAB gate + diagram + talk, stolen-token-LAB attack +
+# gateway + token + diagram + raw, privilege-api-explorer-LAB audit + connections + diagram + help + explorer
+# converted (0 drift); their pins are bumped in the same PR.
+agent-preferences-lab/gate
+agent-preferences-lab/diagram
+agent-preferences-lab/talk
+agent-preferences-lab/talk-verify-mark
+delegation-lab-LAB/gate
+delegation-lab-LAB/diagram
+delegation-lab-LAB/talk
+hitl-mfa-lab-LAB/gate
+hitl-mfa-lab-LAB/diagram
+hitl-mfa-lab-LAB/talk
+stolen-token-LAB/attack
+stolen-token-LAB/gateway
+stolen-token-LAB/token
+stolen-token-LAB/diagram
+stolen-token-LAB/raw
+privilege-api-explorer-LAB/audit
+privilege-api-explorer-LAB/connections
+privilege-api-explorer-LAB/diagram
+privilege-api-explorer-LAB/help
+privilege-api-explorer-LAB/explorer
