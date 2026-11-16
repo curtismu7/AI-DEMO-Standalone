@@ -39,8 +39,14 @@ must be a non-real one (`.invalid`), and every decision is `checked` because the
 A lab that makes its own HTTP call to the real gateway uses `realTrace(...)` or `failureTrace(...)`.
 
 Page: `<GatewayTrace exchanges={[{ step, title, status, trace }]} source="mock" | "real" />`, placed under the lab's Run.
-Optional props: `title`, and `basisNote` (a string that replaces the sentence under the heading saying what kind of gateway this is). Use `basisNote`
+Optional props: `title`, `basisNote`, and `hot` (a string that replaces the sentence under the heading saying what kind of gateway this is). Use `basisNote`
 when the lab's "Real" mode is not the Privilege gateway (a local engine, say), where the default "Real mode shows the actual gateway" would be wrong.
+
+`hot` (an array of key names) is the list of keys both JsonPanes (request and response) stand out. It REPLACES the panel's default list, which is
+`["error", "isError", "tools", "result"]` (JsonPane adds its own claim keys to whatever is passed); leave it out and the output is unchanged, so a lab that
+vendored an earlier copy and passes nothing behaves exactly as before. The default draws a successful reply's `result` in the same strong style as a
+refusal's `error`, which can read as an alert on a 200. A lab that wants a success reply not drawn as an alert passes `hot={['error']}`: the refusal's
+`error` stays marked, `result` and `tools` do not. `hot={[]}` marks none of the panel's own keys. Anything that is not an array is ignored (the default applies).
 
 Optional builder options (all additive; leave them out and the output is unchanged):
 
