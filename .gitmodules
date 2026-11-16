@@ -272,3 +272,6 @@
 [submodule "standalone/pdf-to-md-LAB"]
 	path = standalone/pdf-to-md-LAB
 	url = https://github.com/curtismu7/pdf-to-md-LAB.git
+[submodule "standalone/trusted-issuers-LAB"]
+	path = standalone/trusted-issuers-LAB
+	url = https://github.com/curtismu7/trusted-issuers-LAB.git

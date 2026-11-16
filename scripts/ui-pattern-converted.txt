@@ -52,3 +52,93 @@ agent-registry-demo-LAB/start-boxes
 agent-registry-demo-LAB/raw
 ai-gateway-client-LAB/flow
 ai-gateway-client-LAB/templates
+
+# 2026-11-15: legacy header -> shell-bar, batch 1: agent-kill-switch-LAB index, demo-field-guide-LAB template,
+# jit-lab-LAB broker and workload-identity-LAB index converted (0 drift); their pins are bumped in the same PR.
+# idjag-runner-LAB idjag-se-guide also converted and pinned, but stays advisory: M1 (no Mock/Real toggle on a
+# static guide of a real-PF-only lab, rule-19 waiver) has no line for an allow escape.
+agent-kill-switch-LAB/index
+demo-field-guide-LAB/template
+jit-lab-LAB/broker
+workload-identity-LAB/index
+
+# 2026-11-15: legacy header -> shell-bar, batch 2: mcp-elicitation-LAB index, worker-demo-LAB index,
+# session-LAB index, mcp-discovery-LAB inventory and personal-agent-demo-LAB pattern converted (0 drift);
+# their pins are bumped in the same PR.
+mcp-elicitation-LAB/index
+worker-demo-LAB/index
+session-LAB/index
+mcp-discovery-LAB/inventory
+personal-agent-demo-LAB/pattern
+
+# 2026-11-15: legacy header -> shell-bar, batch 3: meridian-a2a-hop-LAB sign-in, no-tool-no-promise-LAB index,
+# obo-lab-LAB run and progressive-trust-ladder-LAB index converted (0 drift); their pins are bumped in the same PR.
+# ai-guard-sidecar-LAB h2 also converted and pinned, but stays advisory: P9 (8 primaries) needs a view redesign.
+meridian-a2a-hop-LAB/sign-in
+no-tool-no-promise-LAB/index
+obo-lab-LAB/run
+progressive-trust-ladder-LAB/index
+
+# 2026-11-16: legacy header -> shell-bar, batch 4: diagram-prove-lab index, ciba-hitl-lab flow + run,
+# jev-lab-LAB judge + bakeoff, privilege-map-LAB stories + stories-stories-page, a2a-lab-LAB gate + diagram + talk
+# converted (0 drift); their pins are bumped in the same PR.
+diagram-prove-lab/index
+ciba-hitl-lab/flow
+ciba-hitl-lab/run
+jev-lab-LAB/judge
+jev-lab-LAB/bakeoff
+privilege-map-LAB/stories
+privilege-map-LAB/stories-stories-page
+a2a-lab-LAB/gate
+a2a-lab-LAB/diagram
+a2a-lab-LAB/talk
+
+# 2026-11-16: legacy header -> shell-bar, batch 5: agent-preferences-lab gate + diagram + talk + talk-verify-mark,
+# delegation-lab-LAB gate + diagram + talk, hitl-mfa-lab-LAB gate + diagram + talk, stolen-token-LAB attack +
+# gateway + token + diagram + raw, privilege-api-explorer-LAB audit + connections + diagram + help + explorer
+# converted (0 drift); their pins are bumped in the same PR.
+agent-preferences-lab/gate
+agent-preferences-lab/diagram
+agent-preferences-lab/talk
+agent-preferences-lab/talk-verify-mark
+delegation-lab-LAB/gate
+delegation-lab-LAB/diagram
+delegation-lab-LAB/talk
+hitl-mfa-lab-LAB/gate
+hitl-mfa-lab-LAB/diagram
+hitl-mfa-lab-LAB/talk
+stolen-token-LAB/attack
+stolen-token-LAB/gateway
+stolen-token-LAB/token
+stolen-token-LAB/diagram
+stolen-token-LAB/raw
+privilege-api-explorer-LAB/audit
+privilege-api-explorer-LAB/connections
+privilege-api-explorer-LAB/diagram
+privilege-api-explorer-LAB/help
+privilege-api-explorer-LAB/explorer
+
+# 2026-11-16: legacy header -> shell-bar, batch 6: agent-mcp-door-demo-LAB index, chatgpt-mcp-flow-LAB sequence +
+# interlocks + about, mcp-scanner-lab-LAB scan + diagram + about + talk, coding-agents-LAB agents + evaluate + gateway
+# + config + diagram + talk, ping-gateway-route-LAB routes + simulator + lint + introspection + diagram + raw
+# converted (0 drift); their pins are bumped in the same PR.
+agent-mcp-door-demo-LAB/index
+chatgpt-mcp-flow-LAB/sequence
+chatgpt-mcp-flow-LAB/interlocks
+chatgpt-mcp-flow-LAB/about
+mcp-scanner-lab-LAB/scan
+mcp-scanner-lab-LAB/diagram
+mcp-scanner-lab-LAB/about
+mcp-scanner-lab-LAB/talk
+coding-agents-LAB/agents
+coding-agents-LAB/evaluate
+coding-agents-LAB/gateway
+coding-agents-LAB/config
+coding-agents-LAB/diagram
+coding-agents-LAB/talk
+ping-gateway-route-LAB/routes
+ping-gateway-route-LAB/simulator
+ping-gateway-route-LAB/lint
+ping-gateway-route-LAB/introspection
+ping-gateway-route-LAB/diagram
+ping-gateway-route-LAB/raw
