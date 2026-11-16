@@ -39,6 +39,17 @@ must be a non-real one (`.invalid`), and every decision is `checked` because the
 A lab that makes its own HTTP call to the real gateway uses `realTrace(...)` or `failureTrace(...)`.
 
 Page: `<GatewayTrace exchanges={[{ step, title, status, trace }]} source="mock" | "real" />`, placed under the lab's Run.
+Optional props: `title`, and `basisNote` (a string that replaces the sentence under the heading saying what kind of gateway this is). Use `basisNote`
+when the lab's "Real" mode is not the Privilege gateway (a local engine, say), where the default "Real mode shows the actual gateway" would be wrong.
+
+Optional builder options (all additive; leave them out and the output is unchanged):
+
+- `requestHeaders` on `mockTrace`, `realTrace`, `failureTrace`: headers the lab really sends beyond the defaults (`traceparent`, a session header, a
+  different `accept`). Names match case-insensitively, so `{ Accept: 'application/json' }` replaces the default `accept`. Only headers that are safe to
+  show: never a key, token or cookie (`assertTrace` still catches a full bearer token). `traceFromDoor` takes its headers from the capture, so it needs none.
+- `grant: { label, pass, fail }` on `realDecisions`, `realTrace`, `traceFromDoor`: for a call that is not an MCP tool call (an AI Guard inspection, an LLM
+  call) the default words about tools and a grant would mislead. `label` renames the second decision; `pass` and `fail` are a string or `(rpc, body) => string`.
+  Outcomes and `basis` are unchanged: only the words are the lab's, so the honesty rule still holds. A reply's own refusal detail still wins over `fail`.
 
 ## The honesty rule
 

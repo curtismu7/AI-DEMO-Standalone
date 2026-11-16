@@ -253,6 +253,46 @@ test('assertTrace reports a malformed decision instead of throwing', () => {
   assert.ok(assertTrace({ ...real, decisions: [null] }).some((p) => /not an object/.test(p)));
 });
 
+test('request headers: the defaults are unchanged, extra headers are added, accept is replaced case-insensitively', () => {
+  const base = mockTrace({ url: 'https://gw.invalid/x', authorization: 'Bearer x', rpc: {}, status: 200, body: {}, decisions: [] });
+  assert.deepEqual(base.request.headers, { authorization: 'Bearer x', 'content-type': 'application/json', accept: 'application/json, text/event-stream' });
+  const tp = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+  const t = realTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, status: 200, headers: {}, body: { result: {} }, requestHeaders: { Accept: 'application/json', traceparent: tp, 'mcp-session-id': 'abcd…' } });
+  assert.equal(t.request.headers.accept, undefined, 'the default accept is replaced, not kept beside the override');
+  assert.equal(t.request.headers.Accept, 'application/json');
+  assert.equal(t.request.headers.traceparent, tp);
+  assert.equal(Object.keys(t.request.headers).filter((k) => k.toLowerCase() === 'accept').length, 1);
+  assert.equal(failureTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, error: 'e', requestHeaders: { traceparent: tp } }).request.headers.traceparent, tp);
+  assert.equal(mockTrace({ url: 'https://gw.invalid/x', authorization: 'Bearer x', rpc: {}, status: 200, body: {}, decisions: [], requestHeaders: { traceparent: tp } }).request.headers.traceparent, tp);
+  assert.deepEqual(assertTrace(t), []);
+});
+
+test('request headers: a full bearer token passed as an extra header is still caught by assertTrace', () => {
+  const jwt = ['eyJhbGciOiJSUzI1NiJ9', 'eyJzdWIiOiJ1c2VyMSJ9', 'c2lnbmF0dXJlc2lnbmF0dXJl'].join('.');
+  const t = realTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, status: 200, headers: {}, body: { result: {} }, requestHeaders: { authorization: `Bearer ${jwt}` } });
+  assert.ok(assertTrace(t).some((p) => /full bearer token/.test(p)));
+});
+
+test('grant wording: a lab that is not an MCP tool call can name the decision in its own words, outcomes unchanged', () => {
+  const grant = { label: 'Guard verdict', pass: 'the guard let the text through', fail: (rpc) => `the guard blocked ${rpc?.kind}` };
+  const ok = realDecisions({ rpc: { kind: 'inspect' }, status: 200, body: { result: {} }, grant });
+  assert.deepEqual(ok.map((d) => [d.id, d.label, d.outcome, d.basis]), [['authenticated', 'Agent key', 'pass', 'inferred'], ['grant', 'Guard verdict', 'pass', 'inferred']]);
+  assert.equal(ok[1].evidence, 'the guard let the text through');
+  const no = realDecisions({ rpc: { kind: 'inspect' }, status: 403, body: null, grant });
+  assert.equal(no[1].label, 'Guard verdict');
+  assert.equal(no[1].outcome, 'fail');
+  assert.equal(no[1].evidence, 'the guard blocked inspect');
+  assert.equal(realDecisions({ status: 401, body: null, grant })[1].label, 'Guard verdict');
+  // a reply's own detail still wins over the wording; and no grant option keeps the old words exactly
+  assert.equal(realDecisions({ status: 403, body: null, detail: 'refused: x', grant })[1].evidence, 'refused: x');
+  const dflt = realDecisions({ rpc: { method: 'tools/list' }, status: 200, body: { result: { tools: [{ name: 'a' }] } } });
+  assert.equal(dflt[1].label, 'Grant');
+  assert.equal(dflt[1].evidence, "the caller's grant allows 1 tool on this app: a");
+  const viaTrace = realTrace({ url: 'u', authorization: 'Bearer x', rpc: { kind: 'inspect' }, status: 200, headers: {}, body: { result: {} }, grant });
+  assert.equal(viaTrace.decisions[1].label, 'Guard verdict');
+  assert.deepEqual(assertTrace(viaTrace), []);
+});
+
 test('gateway-trace.sha256 pins every vendored file', () => {
   const dir = path.join(shared, 'gateway-trace');
   const lines = fs.readFileSync(path.join(dir, 'gateway-trace.sha256'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
