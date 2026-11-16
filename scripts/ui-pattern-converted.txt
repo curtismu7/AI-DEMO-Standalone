@@ -246,3 +246,37 @@ pingone-mcp-inspector-LAB/raw
 pingone-mcp-inspector-LAB/stories
 pingone-mcp-inspector-LAB/tool
 pingone-mcp-inspector-LAB/tools
+
+# 2026-11-16: legacy header -> shell-bar, batch 10: pingone-signin-LAB, gateway-suite-LAB, gateway-claims-LAB,
+# mcp-surface-LAB, mcp-tools-LAB converted; their pins are bumped in the same PR. Only the 28 clean pages are listed:
+# pages with P9 (more than one primary) stay advisory by owner decision 2026-11-16 (pingone-signin use-login/
+# use-step-up/use-ciba/use-passkey; gateway-claims scope/agentcore/console/latest/posture/talk; mcp-tools
+# connect/server/offline).
+pingone-signin-LAB/use-scenarios
+pingone-signin-LAB/diagram
+pingone-signin-LAB/raw
+pingone-signin-LAB/talk-track
+gateway-suite-LAB/end-to-end
+gateway-suite-LAB/mcp
+gateway-suite-LAB/talk
+gateway-claims-LAB/gate
+gateway-claims-LAB/claimsusers
+gateway-claims-LAB/obo
+gateway-claims-LAB/diagram
+mcp-surface-LAB/aggregate
+mcp-surface-LAB/discovery
+mcp-surface-LAB/openapi
+mcp-surface-LAB/credentials
+mcp-surface-LAB/catalog
+mcp-surface-LAB/authorization
+mcp-surface-LAB/creation
+mcp-surface-LAB/diagram
+mcp-surface-LAB/talk
+mcp-surface-LAB/live
+mcp-surface-LAB/live-gateway-trace-panel
+mcp-surface-LAB/talk-claim-tag
+mcp-tools-LAB/stories
+mcp-tools-LAB/diagram
+mcp-tools-LAB/limits
+mcp-tools-LAB/gateway
+mcp-tools-LAB/proxy
