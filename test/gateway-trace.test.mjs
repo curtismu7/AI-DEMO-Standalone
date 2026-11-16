@@ -302,6 +302,46 @@ test('grant wording: a lab that is not an MCP tool call can name the decision in
   assert.deepEqual(assertTrace(viaTrace), []);
 });
 
+test('result label: the default stays "Tool call"; a lab label replaces it on a 200 JSON-RPC error and on a tool error, outcomes unchanged', () => {
+  const blocked = { error: { code: -32001, message: 'blocked by AI Guard' } };
+  const dflt = realDecisions({ rpc: { kind: 'inspect' }, status: 200, body: blocked });
+  assert.deepEqual(dflt.map((d) => [d.id, d.label, d.outcome, d.basis]), [['authenticated', 'Agent key', 'pass', 'inferred'], ['result', 'Tool call', 'fail', 'observed']]);
+  assert.deepEqual(realDecisions({ rpc: {}, status: 200, body: blocked, result: undefined }), dflt, 'result: undefined is the default');
+  assert.deepEqual(realDecisions({ rpc: {}, status: 200, body: blocked, result: {} }), dflt, 'a result with no label is the default');
+  const own = realDecisions({ rpc: { kind: 'inspect' }, status: 200, body: blocked, result: { label: 'Guard verdict' } });
+  assert.deepEqual(own.map((d) => [d.id, d.label, d.outcome, d.basis]), [['authenticated', 'Agent key', 'pass', 'inferred'], ['result', 'Guard verdict', 'fail', 'observed']]);
+  assert.equal(own[1].evidence, dflt[1].evidence, 'only the label changes');
+  const toolErr = { result: { isError: true, content: [{ type: 'text', text: 'refused by policy' }] } };
+  assert.equal(realDecisions({ rpc: {}, status: 200, body: toolErr })[1].label, 'Tool call');
+  assert.equal(realDecisions({ rpc: {}, status: 200, body: toolErr, result: { label: 'Guard verdict' } })[1].label, 'Guard verdict');
+  // the other decisions are not the result decision: grant stays as it is, and the unusable-reply line keeps its own label
+  assert.equal(realDecisions({ rpc: {}, status: 200, body: { result: {} }, result: { label: 'Guard verdict' } })[1].label, 'Grant');
+  assert.equal(realDecisions({ rpc: {}, status: 403, body: null, result: { label: 'Guard verdict' } })[1].label, 'Grant');
+  assert.equal(realDecisions({ rpc: {}, status: 200, body: null, result: { label: 'Guard verdict' } })[1].label, 'Reply');
+  // it composes with the grant option
+  const both = realDecisions({ rpc: {}, status: 200, body: { result: {} }, grant: { label: 'Guard' }, result: { label: 'Verdict' } });
+  assert.equal(both[1].label, 'Guard');
+});
+
+test('result label: threaded through realTrace and traceFromDoor, and a bearer smuggled into it is still caught by assertTrace', async () => {
+  const blocked = { jsonrpc: '2.0', id: 1, error: { code: -32001, message: 'blocked by AI Guard' } };
+  const t = realTrace({ url: 'u', authorization: 'Bearer x', rpc: { method: 'inspect' }, status: 200, headers: {}, body: blocked, result: { label: 'Guard verdict' } });
+  assert.equal(t.decisions[1].label, 'Guard verdict');
+  assert.deepEqual(assertTrace(t), []);
+  assert.equal(realTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, status: 200, headers: {}, body: blocked }).decisions[1].label, 'Tool call');
+  const jwt = ['eyJhbGciOiJSUzI1NiJ9', 'eyJzdWIiOiJ1c2VyMSJ9', 'c2lnbmF0dXJlc2lnbmF0dXJl'].join('.');
+  const bad = realTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, status: 200, headers: {}, body: blocked, result: { label: `Bearer ${jwt}` } });
+  assert.ok(assertTrace(bad).some((p) => /full bearer token/.test(p)));
+  const { server, port } = await serve((m) => [200, 'application/json', JSON.stringify({ jsonrpc: '2.0', id: m.id, error: { code: -32001, message: 'blocked by AI Guard' } })]);
+  try {
+    const r = await door(port, [['K', 'KEYKEYKEY1']]).call('demo', 'k', 'inspect', {});
+    const withLabel = traceFromDoor(r, { rpcMethod: 'tools/call', result: { label: 'Guard verdict' } });
+    assert.deepEqual(withLabel.decisions.map((d) => [d.id, d.label, d.outcome]), [['authenticated', 'Agent key', 'pass'], ['result', 'Guard verdict', 'fail']]);
+    assert.deepEqual(assertTrace(withLabel), []);
+    assert.equal(traceFromDoor(r, { rpcMethod: 'tools/call' }).decisions[1].label, 'Tool call');
+  } finally { server.close(); }
+});
+
 test('gateway-trace.sha256 pins every vendored file', () => {
   const dir = path.join(shared, 'gateway-trace');
   const lines = fs.readFileSync(path.join(dir, 'gateway-trace.sha256'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));

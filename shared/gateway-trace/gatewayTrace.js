@@ -69,8 +69,12 @@ const firstText = (body) => (Array.isArray(body?.result?.content) ? body.result.
 // grant: for a call that is not an MCP tool call (an AI Guard inspection, an LLM call), the default wording about tools and a
 // grant would mislead. { label, pass, fail } replace the label and the evidence of the second decision; each of pass and fail
 // is a string, or a function (rpc, body) => string. Outcomes are unchanged: only the words are the lab's.
-export function realDecisions({ credential = 'agent-key', rpc, status, body, detail, forward, callOk, grant }) {
+// result: the same idea for the `result` decision of a 200 that carries a JSON-RPC error or an isError tool result, which is labelled
+// "Tool call" by default: wrong for a blocked AI Guard decision. { label } replaces that label only (evidence and outcome are unchanged);
+// the neutral "Reply" line of an unusable answer is left as it is.
+export function realDecisions({ credential = 'agent-key', rpc, status, body, detail, forward, callOk, grant, result }) {
   const gw = grant || {};
+  const resultLabel = (result && result.label) || 'Tool call';
   const say = (v, fallback) => (v === undefined ? fallback : typeof v === 'function' ? v(rpc, body) : String(v));
   const grantLabel = gw.label || 'Grant';
   const w = WHAT[credential] || WHAT['agent-key'];
@@ -83,7 +87,7 @@ export function realDecisions({ credential = 'agent-key', rpc, status, body, det
     d.push(decision('result', 'Reply', 'info', 'observed', 'the reply was not a usable JSON-RPC answer (empty, not JSON, or too large), so no grant can be read from it'));
   } else if (toolError) {
     d.push(decision('authenticated', w.name, 'pass', 'inferred', `${w.ok}. HTTP 200: the gateway answered.`));
-    d.push(decision('result', 'Tool call', 'fail', 'observed', `the call came back as an error: ${firstText(body).slice(0, 200) || 'no message'}`));
+    d.push(decision('result', resultLabel, 'fail', 'observed', `the call came back as an error: ${firstText(body).slice(0, 200) || 'no message'}`));
   } else if (status === 200 && !rpcError) {
     d.push(decision('authenticated', w.name, 'pass', 'inferred', `${w.ok}. HTTP 200: the gateway answered, which it does only after authenticating the caller.`));
     const names = toolNamesOf(body);
@@ -98,7 +102,7 @@ export function realDecisions({ credential = 'agent-key', rpc, status, body, det
     }
   } else if (status === 200 && rpcError) {
     d.push(decision('authenticated', w.name, 'pass', 'inferred', `${w.ok}. HTTP 200: the gateway answered.`));
-    d.push(decision('result', 'Tool call', 'fail', 'observed', `the gateway returned a JSON-RPC error: ${String(rpcError.message || rpcError.code || 'no message').slice(0, 200)}`));
+    d.push(decision('result', resultLabel, 'fail', 'observed', `the gateway returned a JSON-RPC error: ${String(rpcError.message || rpcError.code || 'no message').slice(0, 200)}`));
   } else if (status === 401) {
     d.push(decision('authenticated', w.name, 'fail', 'inferred', `${w.no}. HTTP 401: the reply does not say which check failed; the gateway log line does.`));
     d.push(decision('grant', grantLabel, 'skipped', 'inferred', 'not reached: the caller was not accepted'));
@@ -118,12 +122,12 @@ const RECORD = {
 };
 
 // One real exchange, as an object, from a lab that makes its own HTTP call to the gateway.
-export function realTrace({ url, authorization, rpc, status, headers, body, detail, forward, credential, grant, requestHeaders, at, requestId, setup }) {
+export function realTrace({ url, authorization, rpc, status, headers, body, detail, forward, credential, grant, result, requestHeaders, at, requestId, setup }) {
   return {
     source: 'real',
     request: { method: 'POST', url, headers: sentHeaders(authorization, requestHeaders), body: rpc },
     response: { status, headers, body },
-    decisions: realDecisions({ credential, rpc, status, body, detail, forward, grant }),
+    decisions: realDecisions({ credential, rpc, status, body, detail, forward, grant, result }),
     record: RECORD[status] || null,
     at, requestId, setup,
   };
@@ -143,7 +147,7 @@ export function failureTrace({ url, authorization, rpc, error, requestHeaders })
 // ---- From the shared hop's capture -----------------------------------------------------------------------
 // `result` is what createRealDoor({ capture: true }).list() / .call() returned: its `wire` array holds every HTTP exchange.
 // The call itself (tools/list or tools/call) is the exchange shown; the session calls around it become one line.
-export function traceFromDoor(result, { rpcMethod = 'tools/list', credential = 'agent-key', grant } = {}) {
+export function traceFromDoor(result, { rpcMethod = 'tools/list', credential = 'agent-key', grant, result: resultOpt } = {}) {
   const wire = Array.isArray(result?.wire) ? result.wire : [];
   // A refusal can come at the handshake (a bad key is a 401 on `initialize`), so with no `rpcMethod` exchange the last POST is the call.
   const primary = [...wire].reverse().find((w) => w.rpcMethod === rpcMethod) || [...wire].reverse().find((w) => w.http === 'POST') || null;
@@ -157,7 +161,7 @@ export function traceFromDoor(result, { rpcMethod = 'tools/list', credential = '
   const detail = result?.refusal?.message;
   return {
     source: 'real', request, response: { status, headers, body },
-    decisions: realDecisions({ credential, rpc: primary.request.body, status, body, detail, callOk: result?.ok, grant }),
+    decisions: realDecisions({ credential, rpc: primary.request.body, status, body, detail, callOk: result?.ok, grant, result: resultOpt }),
     record: RECORD[status] || null,
     at: primary.at,
     requestId: headers?.['x-request-id'] || headers?.['request-id'] || headers?.['x-correlation-id'],

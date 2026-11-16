@@ -50,6 +50,10 @@ Optional builder options (all additive; leave them out and the output is unchang
 - `grant: { label, pass, fail }` on `realDecisions`, `realTrace`, `traceFromDoor`: for a call that is not an MCP tool call (an AI Guard inspection, an LLM
   call) the default words about tools and a grant would mislead. `label` renames the second decision; `pass` and `fail` are a string or `(rpc, body) => string`.
   Outcomes and `basis` are unchanged: only the words are the lab's, so the honesty rule still holds. A reply's own refusal detail still wins over `fail`.
+- `result: { label }` on `realDecisions`, `realTrace`, `traceFromDoor` (in `traceFromDoor` it goes in the options, beside `grant`): the `result` decision of a 200 that
+  carries a JSON-RPC error (or an `isError` tool result) is labelled `Tool call` by default, which is wrong for a call that is not an MCP tool call (a blocked AI Guard
+  decision, say). `label` replaces that label; the evidence, outcome and `basis` are unchanged, and the neutral `Reply` line of an unusable answer keeps its own label.
+  `mockTrace` and `failureTrace` build no such decision (a mock lab names its own decisions; `failureTrace` has only `Reach the gateway`), so they take no `result`.
 
 ## The honesty rule
 
@@ -70,7 +74,7 @@ Do not word an inferred decision as something the gateway reported.
 | Reply | Agent key / token | Grant |
 |---|---|---|
 | 200 | pass, inferred | pass, inferred (lists the tools it saw) |
-| 200 with a JSON-RPC error | pass, inferred | `result` fail, observed |
+| 200 with a JSON-RPC error | pass, inferred | `result` fail, observed (label `Tool call`, or the lab's `result.label`) |
 | 401 | fail, inferred | not reached |
 | 403 | pass, inferred | fail, inferred |
 | other | one `info` line, observed | |
