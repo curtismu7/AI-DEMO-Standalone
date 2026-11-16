@@ -142,3 +142,40 @@ ping-gateway-route-LAB/lint
 ping-gateway-route-LAB/introspection
 ping-gateway-route-LAB/diagram
 ping-gateway-route-LAB/raw
+
+# 2026-11-16: legacy header -> shell-bar, batch 7: data-protection-LAB (7 pages), agent-governance-LAB (9),
+# hostile-mcp-LAB (6), mcp-auth-conformance-LAB (6), intent-par-inspector-LAB (5) converted (0 drift);
+# their pins are bumped in the same PR.
+data-protection-LAB/detect
+data-protection-LAB/rules
+data-protection-LAB/promptlog
+data-protection-LAB/insights
+data-protection-LAB/owasp
+data-protection-LAB/diagram
+data-protection-LAB/talk
+agent-governance-LAB/inventory
+agent-governance-LAB/review
+agent-governance-LAB/ownership
+agent-governance-LAB/sync
+agent-governance-LAB/gateway
+agent-governance-LAB/private
+agent-governance-LAB/diagram
+agent-governance-LAB/talk
+agent-governance-LAB/live
+hostile-mcp-LAB/gallery
+hostile-mcp-LAB/run
+hostile-mcp-LAB/rugpull
+hostile-mcp-LAB/limits
+hostile-mcp-LAB/diagram
+hostile-mcp-LAB/gateway
+mcp-auth-conformance-LAB/scorecard
+mcp-auth-conformance-LAB/stories
+mcp-auth-conformance-LAB/probe
+mcp-auth-conformance-LAB/clients
+mcp-auth-conformance-LAB/diagram
+mcp-auth-conformance-LAB/raw
+intent-par-inspector-LAB/request
+intent-par-inspector-LAB/server
+intent-par-inspector-LAB/token
+intent-par-inspector-LAB/start-boxes
+intent-par-inspector-LAB/raw
