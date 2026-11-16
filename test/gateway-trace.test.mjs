@@ -273,6 +273,15 @@ test('request headers: a full bearer token passed as an extra header is still ca
   assert.ok(assertTrace(t).some((p) => /full bearer token/.test(p)));
 });
 
+test('request headers: null removes a default header (any case), undefined leaves it, other defaults stay', () => {
+  const t = realTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, status: 200, headers: {}, body: { result: {} }, requestHeaders: { Accept: null, traceparent: undefined } });
+  assert.deepEqual(t.request.headers, { authorization: 'Bearer x', 'content-type': 'application/json' });
+  const keep = mockTrace({ url: 'https://gw.invalid/x', authorization: 'Bearer x', rpc: {}, status: 200, body: {}, decisions: [], requestHeaders: { accept: undefined } });
+  assert.equal(keep.request.headers.accept, 'application/json, text/event-stream');
+  assert.deepEqual(failureTrace({ url: 'u', authorization: 'Bearer x', rpc: {}, error: 'e', requestHeaders: { accept: null, traceparent: '00-a-b-01' } }).request.headers, { authorization: 'Bearer x', 'content-type': 'application/json', traceparent: '00-a-b-01' });
+  assert.deepEqual(assertTrace(t), []);
+});
+
 test('grant wording: a lab that is not an MCP tool call can name the decision in its own words, outcomes unchanged', () => {
   const grant = { label: 'Guard verdict', pass: 'the guard let the text through', fail: (rpc) => `the guard blocked ${rpc?.kind}` };
   const ok = realDecisions({ rpc: { kind: 'inspect' }, status: 200, body: { result: {} }, grant });
