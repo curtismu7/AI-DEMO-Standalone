@@ -7,7 +7,9 @@ import "./gateway-trace.css";
   response, and the decisions the gateway made in between. The family's one panel for it (Rule 25).
 
   <GatewayTrace exchanges={[{ step: 2, title: "Gateway check: tools/list", status: 200, trace }]} source="real" />
-  Optional: title (heading), basisNote (replaces the sentence saying what kind of gateway this is; for a lab whose "Real" is not Privilege).
+  Optional: title (heading), basisNote (replaces the sentence saying what kind of gateway this is; for a lab whose "Real" is not Privilege),
+  hot (array of key names; replaces the default list below for BOTH panes. Default ["error", "isError", "tools", "result"]: a lab that does not
+  want a successful reply's `result` drawn like a refusal's `error` passes hot={["error"]}; [] marks nothing beyond JsonPane's own defaults).
 
   trace = {                                         (built server-side by gatewayTrace.js, vendored beside this)
     source: "mock" | "real",
@@ -40,9 +42,9 @@ const transcript = (first, headers, body) => {
 export const requestText = (r) => transcript(`${r.method} ${r.url}`, r.headers, r.body);
 export const responseText = (r) => transcript(`HTTP ${r.status}`, r.headers, r.body);
 
-const HOT = ["error", "isError", "tools", "result"];
+const HOT = ["error", "isError", "tools", "result"]; // the default for the `hot` prop
 
-function Exchange({ ex }) {
+function Exchange({ ex, hot }) {
   const t = ex.trace;
   const passed = t.decisions.filter((d) => d.outcome === "pass").length;
   const notes = t.decisions.filter((d) => d.outcome === "info").length;
@@ -75,12 +77,12 @@ function Exchange({ ex }) {
       <div className="gw-io">
         <div>
           <h4>Request sent to the gateway</h4>
-          <Json value={requestText(t.request)} label="Request to the gateway" testId={`${id}-request`} hot={HOT} />
+          <Json value={requestText(t.request)} label="Request to the gateway" testId={`${id}-request`} hot={hot} />
         </div>
         <div>
           <h4>Response from the gateway</h4>
           {t.response
-            ? <Json value={responseText(t.response)} label="Response from the gateway" testId={`${id}-response`} hot={HOT} />
+            ? <Json value={responseText(t.response)} label="Response from the gateway" testId={`${id}-response`} hot={hot} />
             : <p className="gw-muted" data-testid={`${id}-response`}>No response: the gateway could not be reached.</p>}
         </div>
       </div>
@@ -104,8 +106,9 @@ function Exchange({ ex }) {
 
 // basisNote: replaces the sentence under the heading that says what kind of gateway this is. For a lab whose "Real" mode is not the
 // Privilege gateway (a local engine, say), where the default wording would be wrong.
-export default function GatewayTrace({ exchanges, source, title = "What Privilege did", basisNote }) {
+export default function GatewayTrace({ exchanges, source, title = "What Privilege did", basisNote, hot }) {
   const list = Array.isArray(exchanges) ? exchanges : [];
+  const keys = Array.isArray(hot) ? hot : HOT;
   return (
     <section className="gw-trace" data-testid="gateway-trace" aria-label={title}>
       <h2>{title}</h2>
@@ -120,7 +123,7 @@ export default function GatewayTrace({ exchanges, source, title = "What Privileg
       </p>
       {list.length === 0
         ? <p className="gw-muted" data-testid="gateway-trace-empty">Press Run: each request, each response and each decision appears here.</p>
-        : list.map((ex) => <Exchange key={ex.step} ex={ex} />)}
+        : list.map((ex) => <Exchange key={ex.step} ex={ex} hot={keys} />)}
     </section>
   );
 }

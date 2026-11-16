@@ -124,4 +124,72 @@ describe("GatewayTrace", () => {
     render(<GatewayTrace exchanges={[]} source="mock" title="What the gateway did" />);
     expect(screen.getByRole("heading", { name: "What the gateway did" })).toBeInTheDocument();
   });
+
+  describe("the hot prop (which keys the two JsonPanes stand out)", () => {
+    // A 200 reply carrying a `result`, and a refusal carrying an `error`, each with the key in the request and the response body.
+    const okTrace = () => trace({ request: { method: "POST", url: "https://gw.example/demo/mcp", headers: {}, body: { method: "tools/call", result: "r-req", tools: "t-req" } }, response: { status: 200, headers: {}, body: { jsonrpc: "2.0", id: 2, result: { content: "ok" }, tools: [] } } });
+    const hotKeys = (testId) => Array.from(screen.getByTestId(testId).querySelectorAll(".jtok--hot")).map((n) => n.textContent.replace(/"/g, ""));
+    const hotRows = (testId) => Array.from(screen.getByTestId(testId).querySelectorAll('[data-hot="true"] > .jform__k')).map((n) => n.textContent);
+
+    test("default (no prop): error, isError, tools and result are marked, in both panes and in both views", () => {
+      setJsonView("raw");
+      const { unmount } = render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" />);
+      expect(hotKeys("trace-1-response-body")).toEqual(expect.arrayContaining(["result", "tools"]));
+      expect(hotKeys("trace-1-request-body")).toEqual(expect.arrayContaining(["result", "tools"]));
+      unmount();
+      setJsonView("form");
+      render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" />);
+      expect(hotRows("trace-1-response-body")).toEqual(expect.arrayContaining(["result", "tools"]));
+      const refusal = trace({ response: { status: 403, headers: {}, body: { error: { code: -32001, message: "no grant" }, isError: true } } });
+      render(<GatewayTrace exchanges={[ex(refusal, 2)]} source="real" />);
+      expect(hotRows("trace-2-response-body")).toEqual(expect.arrayContaining(["error", "isError"]));
+    });
+
+    test("an explicit hot equal to the default draws exactly what no prop draws", () => {
+      setJsonView("raw");
+      const a = render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" />);
+      const withoutProp = a.container.innerHTML;
+      a.unmount();
+      const b = render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" hot={["error", "isError", "tools", "result"]} />);
+      expect(b.container.innerHTML).toBe(withoutProp);
+    });
+
+    test("hot={['error']} replaces the default for BOTH panes: a 200 reply's result and tools are no longer marked", () => {
+      setJsonView("raw");
+      render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" hot={["error"]} />);
+      for (const id of ["trace-1-request-body", "trace-1-response-body"]) {
+        expect(hotKeys(id)).not.toContain("result");
+        expect(hotKeys(id)).not.toContain("tools");
+      }
+    });
+
+    test("hot={['error']} still marks a refusal's error (form view)", () => {
+      setJsonView("form");
+      const refusal = trace({ request: { method: "POST", url: "https://gw.example/demo/mcp", headers: {}, body: { error: "req-side" } }, response: { status: 403, headers: {}, body: { error: { code: -32001 }, result: "x" } } });
+      render(<GatewayTrace exchanges={[ex(refusal)]} source="real" hot={["error"]} />);
+      expect(hotRows("trace-1-response-body")).toContain("error");
+      expect(hotRows("trace-1-response-body")).not.toContain("result");
+      expect(hotRows("trace-1-request-body")).toContain("error");
+    });
+
+    test("an override is the lab's own list: a key outside the default can be marked", () => {
+      setJsonView("raw");
+      render(<GatewayTrace exchanges={[ex(trace({ response: { status: 200, headers: {}, body: { verdict2: "yes", result: 1 } } }))]} source="real" hot={["verdict2"]} />);
+      expect(hotKeys("trace-1-response-body")).toContain("verdict2");
+      expect(hotKeys("trace-1-response-body")).not.toContain("result");
+    });
+
+    test("an empty list marks nothing of the panel's own", () => {
+      setJsonView("raw");
+      render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" hot={[]} />);
+      expect(hotKeys("trace-1-response-body")).toEqual([]);
+      expect(hotKeys("trace-1-request-body")).toEqual([]);
+    });
+
+    test("the prop does not reach the DOM", () => {
+      const { container } = render(<GatewayTrace exchanges={[ex(okTrace())]} source="real" hot={["zzhotzz"]} />);
+      expect(container.innerHTML).not.toContain("zzhotzz");
+      expect(container.querySelector("[hot]")).toBeNull();
+    });
+  });
 });
