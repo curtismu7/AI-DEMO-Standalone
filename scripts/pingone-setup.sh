@@ -224,29 +224,53 @@ case "$(printf '%s' "$PINGONE_REGION" | tr 'A-Z' 'a-z')" in
   com.au) env_region=AU ;;
   *) env_region="$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z')" ;;
 esac
-# Name-collision safety: PingOne allows duplicate environment names, so a rerun
-# would silently burn another license seat on an identically-named orphan. Look
-# first; if one exists, ask whether to reuse it or create a fresh one anyway.
-existing_env="$(curl -s --max-time 30 "$api/environments?filter=name%20eq%20%22$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$ENV_NAME")%22" \
-  -H "authorization: Bearer $access" \
-  | python3 -c '
-import sys, json
+# Name-collision safety: PingOne rejects a second environment with the same name
+# (UNIQUENESS_VIOLATION), so look first. The list endpoint cannot filter by name,
+# so match client-side. If one exists, only reuse it when it is OURS.
+existing_env="$(ENV_API="$api" ENV_TOK="$access" ENV_WANT="$ENV_NAME" python3 -c '
+import os, sys, json, urllib.request
+# The environments endpoint rejects filter=name eq (HTTP 400), so list every
+# environment (following _links.next) and match the display name here.
+url = os.environ["ENV_API"] + "/environments?limit=100"
+tok, want = os.environ["ENV_TOK"], os.environ["ENV_WANT"]
+hits = []
 try:
-    envs = json.load(sys.stdin).get("_embedded", {}).get("environments", [])
+    while url:
+        req = urllib.request.Request(url, headers={"authorization": "Bearer " + tok})
+        d = json.load(urllib.request.urlopen(req, timeout=30))
+        hits += [e for e in d.get("_embedded", {}).get("environments", []) if e.get("name") == want]
+        url = d.get("_links", {}).get("next", {}).get("href")
 except Exception:
-    envs = []
-print(envs[0]["id"] if envs else "")' 2>/dev/null || true)"
+    pass
+hits.sort(key=lambda e: e.get("createdAt", ""))  # oldest first
+print(hits[0]["id"] if hits else "")' 2>/dev/null || true)"
 new_env=""
 if [[ -n "$existing_env" ]]; then
   ok "an environment named \"$ENV_NAME\" already exists: $existing_env"
-  if [[ -t 0 || -r /dev/tty ]]; then
-    read -r -p "Reuse it (r), or create a new one anyway (n)? [r/n, default r] " reuse_answer </dev/tty 2>/dev/null || reuse_answer="r"
+  # Our own earlier run wrote its id into the settings file; anything else may be a
+  # colleague's (shared organizations). Reuse re-mints that environment's worker
+  # secret, which would break the owner's labs.
+  is_mine=0
+  [[ -f "$ENV_FILE" ]] && grep -qx "PINGONE_ENVIRONMENT_ID=$existing_env" "$ENV_FILE" && is_mine=1
+  if [[ "$is_mine" == 1 ]]; then
+    ok "it matches PINGONE_ENVIRONMENT_ID in $ENV_FILE — it is yours"
+    default_answer="r"
   else
-    reuse_answer="${ASSUME_REUSE:-r}"
+    warn "it does NOT match PINGONE_ENVIRONMENT_ID in $ENV_FILE — it may belong to a colleague."
+    warn "reusing it re-creates its lab worker's secret and breaks the owner's labs. Only answer r if you created it."
+    default_answer="n"
   fi
-  if [[ "${reuse_answer:-r}" != "n" && "${reuse_answer:-r}" != "N" ]]; then
+  if [[ -t 0 || -r /dev/tty ]]; then
+    read -r -p "Reuse it (r), or stop (n)? [r/n, default $default_answer] " reuse_answer </dev/tty 2>/dev/null || reuse_answer=""
+  else
+    reuse_answer="${ASSUME_REUSE:-}"
+  fi
+  reuse_answer="${reuse_answer:-$default_answer}"
+  if [[ "$reuse_answer" == "r" || "$reuse_answer" == "R" ]]; then
     new_env="$existing_env"
     ok "reusing the existing environment"
+  else
+    fatal "stopped: PingOne does not allow a second environment named \"$ENV_NAME\" in this organization. If it is a colleague's, ask them, or delete it in the console if it is an orphan of yours."
   fi
 fi
 if [[ -z "$new_env" ]]; then

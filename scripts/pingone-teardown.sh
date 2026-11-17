@@ -62,7 +62,7 @@ Target environment (first match wins):
   --env-id <id>      exactly this environment id
 
 Options:
-  --region <com|eu|ca|asia>     default: PINGONE_REGION from the settings file
+  --region <na|com|eu|ca|asia>     default: PINGONE_REGION from the settings file
   --admin-env-id <id>           Administrators environment (org worker lives here)
   --client-id <id>              org worker client id (Organization Admin role)
   --client-secret <secret>
@@ -135,22 +135,27 @@ echo "────────────────────────�
 if [[ -n "${PINGONE_ADMIN_ENV_ID:-}" && -n "${PINGONE_ADMIN_CLIENT_SECRET:-}" ]]; then
   ok "using saved admin credentials (${CRED_FILE})"
 else
-  ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
+  ask "PingOne region (na, eu, ca, asia): " PINGONE_REGION
   PINGONE_REGION="${PINGONE_REGION:-com}"
   ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
   ask "Org worker client ID: " PINGONE_ADMIN_CLIENT_ID
   ask_secret "Org worker client secret: " PINGONE_ADMIN_CLIENT_SECRET
 fi
 
+# North America is the .com domain: accept "na" (the name people use) and map it to the TLD.
+[[ "$(printf %s "$PINGONE_REGION" | tr A-Z a-z)" == "na" ]] && PINGONE_REGION=com
 api="https://api.pingone.${PINGONE_REGION}/v1"
 auth="https://auth.pingone.${PINGONE_REGION}"
 
 # ── 1. org token ──────────────────────────────────────────────────────────────
 info "Minting an organization token..."
-tok="$(curl -s --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
+tok_rc=0
+tok="$(curl -sS --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
   -u "$PINGONE_ADMIN_CLIENT_ID:$PINGONE_ADMIN_CLIENT_SECRET" \
   -H 'content-type: application/x-www-form-urlencoded' \
-  --data-urlencode 'grant_type=client_credentials')"
+  --data-urlencode 'grant_type=client_credentials' 2>&1)" || tok_rc=$?
+# Under set -e a curl failure (DNS, timeout, TLS, proxy) otherwise exits with no message.
+[[ "$tok_rc" -ne 0 ]] && fatal "could not reach $auth (curl exit $tok_rc): $tok — check network/VPN/proxy and the region."
 access="$(printf '%s' "$tok" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
 if [[ -z "$access" ]]; then
   err "Token mint failed:"
@@ -162,17 +167,23 @@ ok "organization token minted"
 # ── 2. resolve the target environment ─────────────────────────────────────────
 if [[ -n "${TARGET_NAME:-}" ]]; then
   info "Looking up environments named \"$TARGET_NAME\"..."
-  TARGET_ENV_ID="$(curl -s --max-time 30 "$api/environments?filter=name%20eq%20%22$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$TARGET_NAME")%22" \
-    -H "authorization: Bearer $access" \
-    | python3 -c '
-import sys, json
+  TARGET_ENV_ID="$(ENV_API="$api" ENV_TOK="$access" ENV_WANT="$TARGET_NAME" python3 -c '
+import os, sys, json, urllib.request
+# The environments endpoint rejects filter=name eq (HTTP 400), so list every
+# environment (following _links.next) and match the display name here.
+url = os.environ["ENV_API"] + "/environments?limit=100"
+tok, want = os.environ["ENV_TOK"], os.environ["ENV_WANT"]
+hits = []
 try:
-    envs = json.load(sys.stdin).get("_embedded", {}).get("environments", [])
+    while url:
+        req = urllib.request.Request(url, headers={"authorization": "Bearer " + tok})
+        d = json.load(urllib.request.urlopen(req, timeout=30))
+        hits += [e for e in d.get("_embedded", {}).get("environments", []) if e.get("name") == want]
+        url = d.get("_links", {}).get("next", {}).get("href")
 except Exception:
-    envs = []
-# Oldest first: the first env this setup script created is the teardown default.
-envs.sort(key=lambda e: e.get("createdAt", ""))
-print(envs[0]["id"] if envs else "")' 2>/dev/null || true)"
+    pass
+hits.sort(key=lambda e: e.get("createdAt", ""))  # oldest first
+print(hits[0]["id"] if hits else "")' 2>/dev/null || true)"
   [[ -z "$TARGET_ENV_ID" ]] && fatal "no environment named \"$TARGET_NAME\" found in this organization."
   ok "resolved by name: $TARGET_ENV_ID (oldest match)"
 fi
