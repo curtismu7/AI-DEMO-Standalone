@@ -47,7 +47,7 @@ banner patterns. Known convergence work for next PRs:
 
 ## 3. Page frame
 
-- One `max-width: 1100px` centered container, top padding small, bottom ≥ 2rem.
+- One wide centered container, `max-width: 2200px` (owner, 2026-11-16; was 1100px): the page fills a normal screen and stops growing on very large ones. Top padding small, bottom ≥ 2rem. Running text (lead paragraphs, prose) keeps its own `max-width` in `ch` (72–80ch); cards, tables and JSON panes use the full width. Two-column card grids collapse to one column below 900px (was 1100px). The shell bar stays full-bleed.
 - Page title is `h1` below the banner. Body text 14px base (per shared stylesheet).
 - Sections are labelled with a small uppercase kicker (`section-label` style) or an
   `h2` — not bare whitespace.
