@@ -20,6 +20,11 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 2.17 (2026-11-16)
+
+**New lab**
+- poppy-verification-LAB (D136 provisional, Tester, port 7821): checks a Company and its issuer against the Personal Agent Protocol 1.0 (published 2026-11-14) with 107 spec-linked checks across discovery, issuer metadata, Poppy-Session, sign-in and resources. Mock runs a reference Company and issuer you can break with 28 defects and watch the named checks fail; Real probes the Company and issuer you type with this agent's own key (sign-in checks need a person and are skipped there). It is a fork of poppy-agent-tester-LAB. A pass is not a certification.
+
 ## 2.16 (2026-11-16)
 
 **New lab**

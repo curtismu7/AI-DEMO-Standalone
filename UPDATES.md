@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.16** — new lab: cedar-in-privilege-LAB, a guided tour of Cedar AI policies in PingOne Privilege (hold for a human, token scope, agent act.sub) with a set-up guide and a Cedar IS / IS NOT panel. Simulated; only the act.sub case was measured on a real tenant. Run the update command below to get it.
+**Version 2.17** — new lab: poppy-verification-LAB, check a Company and its issuer against the Personal Agent Protocol 1.0 with 107 spec-linked checks. Tester tier; Mock runs a reference Company you can break with 28 defects, Real probes the Company you type. Run the update command below to get it.

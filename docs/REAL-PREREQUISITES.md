@@ -51,7 +51,7 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   or pasted metadata; offline, no tenant), `mfa-admin-mcp-lab` (administers PingOne MFA/FIDO policies, notification
   policies, delivery settings and OATH tokens through MCP tools; mock by default, live is owner-run),
   `trusted-issuers-LAB` (who trusts which token issuer in PingOne, PingOne Authorize, Privilege and PingFederate;
-  Mock only, no tenant), `pdf-to-md-LAB` (PDF to Markdown conversion in-process; no network calls, no tenant), `cedar-act-sub-LAB` (a mock gateway that walks a measured Cedar act.sub run; its optional real probe is a terminal script the owner runs, not part of the server), `cedar-in-privilege-LAB` (a simulated guided tour of three Cedar AI policy cases in Privilege; no tenant, no outbound calls).
+  Mock only, no tenant), `pdf-to-md-LAB` (PDF to Markdown conversion in-process; no network calls, no tenant), `cedar-act-sub-LAB` (a mock gateway that walks a measured Cedar act.sub run; its optional real probe is a terminal script the owner runs, not part of the server), `cedar-in-privilege-LAB` (a simulated guided tour of three Cedar AI policy cases in Privilege; no tenant, no outbound calls), `poppy-verification-LAB` (Personal Agent Protocol 1.0 verifier; Mock is an in-process reference Company and issuer, no tenant; Real is optional and needs your own Company and issuer plus an https agent URL the issuer can reach, set with `PVL_AGENT_BASE_URL`).
 
 ## B. Your own PingOne environment and apps
 
