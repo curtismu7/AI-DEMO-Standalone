@@ -74,7 +74,10 @@ const MAX_PANE_CHARS = 150000; // above this a pane is plain text
 const MAX_FORM_DEPTH = 60; // deeper than this the Form view shows the rest as text
 const prim = (v) => v === null || typeof v !== "object";
 // An object, or a list of objects, goes UNDER its label at full width (a deep payload must not spend a label column per level); scalars and chip lists stay beside it.
-const nestedValue = (v) => !prim(v) && !(Array.isArray(v) && v.every(prim));
+// A HAL-style link — an object whose only entry is a string `href` — collapses in the Form view to its
+// parent key with the URL as the value (one row, no nested "href" label).
+const hrefOnly = (v) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 1 && typeof v.href === "string";
+const nestedValue = (v) => !prim(v) && !hrefOnly(v) && !(Array.isArray(v) && v.every(prim));
 const date = (n) => (Number.isFinite(n) && n > 1e9 && n < 1e11 ? `${new Date(n * 1000).toISOString().replace("T", " ").slice(0, 19)} UTC` : null);
 
 export function kindOf(v, key = "") {
@@ -200,7 +203,8 @@ function Form({ value, hot, k = "", depth = 0 }) {
       </dl>
     );
   }
-  return <Value v={value} k={k} />;
+  if (hrefOnly(v)) return <Value v={v.href} k={k} hot={hot} />;
+  return <Value v={v} k={k} />;
 }
 
 // ---- The pane ---------------------------------------------------------------------------------------------------------------------------------
