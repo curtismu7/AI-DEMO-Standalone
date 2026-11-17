@@ -31,7 +31,15 @@ test('the stylesheet follows the CSS standard: tokens only, no forced priority, 
   assert.doesNotMatch(css, /font-style:\s*italic/);
   assert.doesNotMatch(css, /prefers-color-scheme/);
   assert.doesNotMatch(css, /@media/, 'the kit has no breakpoints of its own');
-  for (const cls of ['dk-label', 'dk-label--on', 'dk-label--dim', 'dk-label--sel', 'dk-label--click', 'dk-open', 'dk-passport', 'dk-passport-go', 'dk-passport-row', 'dk-passport-list']) assert.ok(css.includes(`.${cls}`), `.${cls} is styled`);
+  for (const cls of ['dk-label', 'dk-label--on', 'dk-label--dim', 'dk-label--sel', 'dk-label--click', 'dk-open', 'dk-passport', 'dk-passport-go', 'dk-passport-row', 'dk-passport-list', 'dk-sec--source', 'dk-sec--out', 'dk-sec--in', 'dk-sec--reach', 'dk-up', 'dk-down']) assert.ok(css.includes(`.${cls}`), `.${cls} is styled`);
+});
+
+test('the details are a card on --surface, and Outgoing/Downstream are green and Incoming/Upstream amber, in words as well as colour', () => {
+  const css = read('diagram-kit.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(css, /\.dk-passport \{[^}]*background: var\(--surface/, 'the details card is drawn on --surface');
+  assert.match(css, /\.dk-sec--out h4[^{]*\{[^}]*var\(--status-ok\)/); assert.match(css, /\.dk-sec--in h4[^{]*\{[^}]*var\(--status-warn/);
+  const jsx = read('DiagramKit.jsx');
+  for (const word of ['Outgoing', 'Incoming', 'Upstream', 'Downstream', 'Source', 'Reach']) assert.ok(jsx.includes(word), `${word} is written out`);
 });
 
 test('the code never touches innerHTML, eval or a dynamic function, and imports only react, React Flow and itself', () => {

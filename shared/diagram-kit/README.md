@@ -24,6 +24,13 @@ One copy for every lab's React Flow diagram. Vendored, never imported across rep
 2. Needs `@xyflow/react` 12, React 18, the shared `standalone-ui.css` tokens (the older `--th-*` tokens work as fallbacks), and for
    the tests vitest, Testing Library and jsdom (a `ResizeObserver` stub, as React Flow already needs).
 
+## What the colours mean
+
+The details sit on a small card of their own inside the box, so the status colours are always read against `--surface` (their
+documented contrast, light and dark) whatever colour the box is. **Blue** is where a box is: its group, its source links. **Green** is
+what it sends to: Outgoing and Downstream. **Amber** is what reaches it: Incoming and Upstream. Every section also says so in words, so
+colour is never the only cue. The active arrow's label uses the accent (override with `--dk-active` / `--dk-active-text`).
+
 ## Wire it in (about ten lines)
 
 Your diagram needs a **graph**: `{ nodes: [{ id, label, sub?, group?, groupLabel?, sources? }], edges: [{ source, target, label? }], groups?, repo? }`.
