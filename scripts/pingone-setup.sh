@@ -100,8 +100,10 @@ echo "    Roles: Organization Admin (so it can create environments)."
 echo "  Then enter its credentials below. Everything else is automated."
 echo ""
 
-ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
-PINGONE_REGION="${PINGONE_REGION:-com}"
+ask "PingOne region (na, eu, ca, asia): " PINGONE_REGION
+PINGONE_REGION="${PINGONE_REGION:-na}"
+# North America is the .com domain: accept "na" (the name people use) and map it to the TLD.
+[[ "$(printf %s "$PINGONE_REGION" | tr A-Z a-z)" == "na" ]] && PINGONE_REGION=com
 ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
 ask "Worker client ID: " PINGONE_WORKER_CLIENT_ID
 ask_secret "Worker client secret: " PINGONE_WORKER_CLIENT_SECRET
@@ -114,10 +116,14 @@ info "Minting an organization token..."
 # Tokens live on the AS host; the management API host rejects token POSTs
 # (measured). Workers default to client_secret_basic — POST-body auth is
 # rejected on current tenants (measured).
-tok="$(curl -s --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
+tok_rc=0
+tok="$(curl -sS --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
   -u "$PINGONE_WORKER_CLIENT_ID:$PINGONE_WORKER_CLIENT_SECRET" \
   -H 'content-type: application/x-www-form-urlencoded' \
-  --data-urlencode 'grant_type=client_credentials')"
+  --data-urlencode 'grant_type=client_credentials' 2>&1)" || tok_rc=$?
+# Without this, set -e quit here with no message when curl itself failed (DNS,
+# timeout, TLS, proxy) — the run just stopped after "Minting an organization token...".
+[[ "$tok_rc" -ne 0 ]] && fatal "could not reach $auth (curl exit $tok_rc): $tok — check network/VPN/proxy and the region."
 access="$(printf '%s' "$tok" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
 if [[ -z "$access" ]]; then
   err "Token mint failed:"
