@@ -346,7 +346,7 @@ ok "worker minted in the new environment"
 # names) and its redirect URI is the family's standard BFF callback.
 user_app_json="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications" \
   -H "authorization: Bearer $access" -H 'content-type: application/json' \
-  -d '{"name":"Standalone Labs User","description":"Authorization-code user app for the standalone labs (pi.flow sign-in)","protocol":"OPENID_CONNECT","type":"NATIVE","enabled":true,"grantTypes":["AUTHORIZATION_CODE","REFRESH_TOKEN"],"tokenEndpointAuthMethod":"CLIENT_SECRET_POST","redirectUris":["https://local.ping-devops.com:4000/api/auth/oauth/user/callback"],"postLogoutRedirectUris":["https://local.ping-devops.com:4000"]}')"
+  -d '{"name":"Standalone Labs User","description":"Authorization-code user app for the standalone labs (pi.flow sign-in)","protocol":"OPENID_CONNECT","type":"NATIVE_APP","enabled":true,"grantTypes":["AUTHORIZATION_CODE","REFRESH_TOKEN"],"responseTypes":["CODE"],"tokenEndpointAuthMethod":"CLIENT_SECRET_POST","redirectUris":["https://local.ping-devops.com:4000/api/auth/oauth/user/callback"],"postLogoutRedirectUris":["https://local.ping-devops.com:4000"]}')"
 user_app_id="$(printf '%s' "$user_app_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
 # The create response does not carry the secret (the worker path had the same surprise —
 # measured); mint it separately, same POST /secret as the worker.
@@ -368,6 +368,7 @@ print(apps[0]["id"] if apps else "")' 2>/dev/null || true)"
     warn "user app exists from a previous run; PINGONE_USER_CLIENT_SECRET not refreshed — reset it in the PingOne console if the lab's sign-in fails."
   else
     warn "user app creation failed — pi.flow sign-in labs will fall back to their own configuration"
+    printf '%s\n' "$user_app_json" | sed -E 's/("secret")[^,}]*/\1:<redacted>/' >&2
   fi
 fi
 
