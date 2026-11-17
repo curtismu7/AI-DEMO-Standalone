@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-**Version 2.17** — new lab: poppy-verification-LAB, check a Company and its issuer against the Personal Agent Protocol 1.0 with 107 spec-linked checks. Tester tier; Mock runs a reference Company you can break with 28 defects, Real probes the Company you type. Run the update command below to get it.
+**Version 3.0 (major)** — setup is now four inputs and one command: your admin environment ID, worker client ID/secret and region, passed right in the install line — the demo environment and apps are created for you. Setup also prints the P1AZ policy import steps. If you have the labs already, re-run `scripts/setup.sh setup` with the same command's credentials to pick this up. Run the update command below first, then re-run setup.

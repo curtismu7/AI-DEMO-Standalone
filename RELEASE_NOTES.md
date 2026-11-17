@@ -20,6 +20,16 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.0 (2026-11-17)
+
+**MAJOR — if you already have the labs installed, re-run setup to pick up the new PingOne flow.**
+
+- Setup now builds everything from just four inputs: your Administrators environment ID, a Worker app's client ID and secret, and the region. It creates the demo environment, the per-environment worker and user apps for you — no other console work.
+- All four can be passed in the install command itself:
+  `curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/scripts/install.sh | PINGONE_REGION=com PINGONE_ADMIN_ENV_ID=<id> PINGONE_WORKER_CLIENT_ID=<id> PINGONE_WORKER_CLIENT_SECRET=<secret> bash`
+- Setup now prints the P1AZ policy snapshot path and the exact console import steps (live Authorize mode; mock mode needs nothing).
+- Fixed: teardown credentials were saved empty — teardown now runs without prompting as intended.
+
 ## 2.17 (2026-11-16)
 
 **New lab**
