@@ -100,8 +100,10 @@ echo "    Roles: Organization Admin (so it can create environments)."
 echo "  Then enter its credentials below. Everything else is automated."
 echo ""
 
-ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
-PINGONE_REGION="${PINGONE_REGION:-com}"
+ask "PingOne region (na, eu, ca, asia): " PINGONE_REGION
+PINGONE_REGION="${PINGONE_REGION:-na}"
+# North America is the .com domain: accept "na" (the name people use) and map it to the TLD.
+[[ "$(printf %s "$PINGONE_REGION" | tr A-Z a-z)" == "na" ]] && PINGONE_REGION=com
 ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
 ask "Worker client ID: " PINGONE_WORKER_CLIENT_ID
 ask_secret "Worker client secret: " PINGONE_WORKER_CLIENT_SECRET
