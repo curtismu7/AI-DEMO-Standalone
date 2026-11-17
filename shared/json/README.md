@@ -36,7 +36,9 @@ tokens), so light and dark follow the theme and no lab ever writes a color liter
 One toggle on every pane, one choice for the whole page (kept in localStorage):
 
 - **Form** — a form: a label and a read-only value per field, nested objects as indented groups, scopes and
-  audiences as chips, timestamps with their date, true/false as chips.
+  audiences as chips, timestamps with their date, true/false as chips. A HAL-style link — a single-key object
+  whose only entry is a string `href` (e.g. `_links.branding`) — collapses to one row: the parent key with the
+  URL as its value, in the url style. Multi-key objects and arrays of such objects stay nested.
 - **JSON** — the exact JSON text, colored by the table above.
 
 A lab whose point is the raw wire JSON can open on the JSON view: `setDefaultJsonView("raw")` once in main.jsx (a visitor's saved choice still wins). Form stays the family default.
