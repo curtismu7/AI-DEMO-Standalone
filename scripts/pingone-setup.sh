@@ -374,8 +374,8 @@ cat > "$CRED_FILE" <<EOF
 # Written by scripts/pingone-setup.sh $(date +%Y-%m-%d). Do not copy this file around.
 PINGONE_REGION=$PINGONE_REGION
 PINGONE_ADMIN_ENV_ID=$PINGONE_ADMIN_ENV_ID
-PINGONE_ADMIN_CLIENT_ID=$PINGONE_ADMIN_CLIENT_ID
-PINGONE_ADMIN_CLIENT_SECRET=$PINGONE_ADMIN_CLIENT_SECRET
+PINGONE_ADMIN_CLIENT_ID=$PINGONE_WORKER_CLIENT_ID
+PINGONE_ADMIN_CLIENT_SECRET=$PINGONE_WORKER_CLIENT_SECRET
 EOF
 chmod 600 "$CRED_FILE"
 ok "admin credentials saved: $CRED_FILE (mode 600) — teardown reads them automatically"
@@ -385,3 +385,9 @@ ok "Done. Now run:  scripts/bootstrap.sh"
 echo "  Teardown later is prompt-free: admin creds were saved to ~/.config/demo-kit/provisioning.json"
 echo "  Every lab reads PINGONE_ENVIRONMENT_ID/REGION from that file; the worker"
 echo "  creds above stay in it for labs that provision their own resources."
+echo ""
+echo "  One manual step for live Authorize (mock mode works without it) — import"
+echo "  the P1AZ policy snapshot once, in the PingOne console:"
+echo "    Console → your new environment → Authorize → Trust Framework → Import →"
+echo "    ${STANDALONE_SNAPSHOT:-$HOME/Development/AI-DEMO-Standalone/policy/ai-demo-p1az.standalone.snapshot.json}"
+echo "  (scripts/bootstrap.sh checks the tenant and prints this path again if the policy is missing.)"
