@@ -192,6 +192,8 @@ function Form({ value, hot, k = "", depth = 0 }) {
   if (value && typeof value === "object") {
     const entries = Object.entries(value);
     if (!entries.length) return <span className="jform__v jform__v--null">empty</span>;
+    // A HAL-style link ({ href: "..." }) collapses to one row here: the parent key with the URL as its value.
+    if (hrefOnly(value) && depth > 0) return <Value v={value.href} k={k} hot={hot} />;
     return (
       <dl className="jform" data-depth={Math.min(depth, 3)}>
         {entries.map(([key, v]) => (
@@ -203,7 +205,6 @@ function Form({ value, hot, k = "", depth = 0 }) {
       </dl>
     );
   }
-  if (hrefOnly(v)) return <Value v={v.href} k={k} hot={hot} />;
   return <Value v={v} k={k} />;
 }
 
