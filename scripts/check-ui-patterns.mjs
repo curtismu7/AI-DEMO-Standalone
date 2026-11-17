@@ -1851,7 +1851,7 @@ function ruleP3(u) {
         if (d.prop === 'max-width') {
           const v = resolveVars(d.value, tokenMaps(u.sheets.flatMap((x) => x.parsed.rules)).light);
           const inner = /^(?:min|clamp)\(/.test(v) ? (v.match(/-?\d*\.?\d+(?:px|rem|em|ch)/g) || []).map(px).filter((x) => x !== null) : [px(v)];
-          const best = inner.filter((x) => x !== null && x >= 600 && x <= 1200)[0];
+          const best = inner.filter((x) => x !== null && x >= 600 && x <= 2400)[0];
           if (best) frame = { r, d };
         }
         if ((d.prop === 'margin' && /\bauto\b/.test(d.value)) || (/^margin-(?:inline|left|right)/.test(d.prop) && /\bauto\b/.test(d.value))) centred = true;
@@ -1859,7 +1859,7 @@ function ruleP3(u) {
       }
     }
   }
-  if (!frame) return mk(R, 'DRIFT', `<main> (${fmt(loc(main))}) has no centred max-width frame (max-width 600px..1200px, standard 1100px) in the loaded CSS`, [loc(main, 'no page frame')]);
+  if (!frame) return mk(R, 'DRIFT', `<main> (${fmt(loc(main))}) has no centred max-width frame (max-width 600px..2400px, standard 2200px) in the loaded CSS`, [loc(main, 'no page frame')]);
   if (!centred) return mk(R, 'WARN', `the page frame at ${frame.r.file}:${frame.d.line} has a max-width but is not centred (margin: 0 auto)`);
   return PASS(R);
 }

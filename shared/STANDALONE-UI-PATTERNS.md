@@ -47,7 +47,7 @@ banner patterns. Known convergence work for next PRs:
 
 ## 3. Page frame
 
-- One `max-width: 1100px` centered container, top padding small, bottom ≥ 2rem.
+- One centered container that uses the screen: `max-width: 2200px` (owner, 2026-11-16: the pages were using about half of a wide monitor), top padding small, bottom ≥ 2rem. Prose keeps its own readable measure (`max-width: 70ch` to `80ch` on a lede, intro or talk-track paragraph); cards, tables and grids fill the frame. Two-column grids collapse to one column at the lab's own breakpoint, not before the window is narrower than about 900px.
 - Page title is `h1` below the banner. Body text 14px base (per shared stylesheet).
 - Sections are labelled with a small uppercase kicker (`section-label` style) or an
   `h2` — not bare whitespace.
