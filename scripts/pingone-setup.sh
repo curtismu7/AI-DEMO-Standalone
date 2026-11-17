@@ -214,6 +214,16 @@ ok "license found"
 
 # ── 3. create the environment ─────────────────────────────────────────────────
 ENV_NAME="Standalone Labs Demo"
+# The create endpoint takes the region CODE (NA, CA, EU, AP, AU), not the domain
+# suffix: uppercasing "com" sent "COM" and PingOne rejected it (allowedValues ["NA"]).
+case "$(printf '%s' "$PINGONE_REGION" | tr 'A-Z' 'a-z')" in
+  com) env_region=NA ;;
+  ca) env_region=CA ;;
+  eu) env_region=EU ;;
+  asia) env_region=AP ;;
+  com.au) env_region=AU ;;
+  *) env_region="$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z')" ;;
+esac
 # Name-collision safety: PingOne allows duplicate environment names, so a rerun
 # would silently burn another license seat on an identically-named orphan. Look
 # first; if one exists, ask whether to reuse it or create a fresh one anyway.
@@ -245,7 +255,7 @@ info "Creating the SANDBOX demo environment (SSO, MFA, DaVinci, Authorize)..."
 # SANDBOX licenses reject PING_ONE_FRAUD (Privilege is not a BOM product).
 env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
   -H "authorization: Bearer $access" -H 'content-type: application/json' \
-  -d '{"name":"'"$ENV_NAME"'","region":"'"$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z' | sed 's/COM\.AU/COM_AU/')"'",
+  -d '{"name":"'"$ENV_NAME"'","region":"'"$env_region"'",
        "type":"SANDBOX","description":"Created by AI-DEMO-Standalone pingone-setup.sh",
        "license":{"id":"'"$license_id"'"},
        "billOfMaterials":{"products":[{"type":"PING_ONE_BASE"},{"type":"PING_ONE_MFA"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}]}}')"
