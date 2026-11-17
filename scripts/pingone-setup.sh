@@ -126,13 +126,27 @@ if [[ -z "$access" ]]; then
 fi
 ok "organization token minted"
 
-# Early permission check: a worker with no admin role mints a token fine but
-# fails much later with a cryptic ACCESS_FAILED on the first management call.
-# Probe a call that needs Organization Admin; on 403 tell the user exactly what
-# to fix before re-running.
-perm_probe="$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$api/organizations" -H "authorization: Bearer $access")"
-if [[ "$perm_probe" != "200" ]]; then
-  err "the Worker app you entered has no organization-level admin role (HTTP $perm_probe)."
+# Early permission check: a worker with the wrong admin role mints a token fine
+# and even passes a GET /organizations probe (Environment Admin org-scoped does),
+# then fails much later with a cryptic ACCESS_FAILED on environment creation.
+# So read the worker's actual role assignments and verify the ORGANIZATION-scoped
+# role is Organization Admin — naming the role it did find when it isn't.
+# (Role assignments live on the worker's app resource; listing them needs no
+# special role beyond the worker itself — measured on tenants with the wrong role.)
+worker_role_json="$(curl -s --max-time 30 "$api/environments/$PINGONE_ADMIN_ENV_ID/applications/$PINGONE_WORKER_CLIENT_ID/roleAssignments" \
+  -H "authorization: Bearer $access")"
+worker_roles_out="$(printf '%s' "$worker_role_json" | python3 -c '
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    assigns = d.get("_embedded", {}).get("roleAssignments", [])
+except Exception:
+    assigns = []
+org_scoped = [a for a in assigns if a.get("scope", {}).get("type") == "ORGANIZATION"]
+for a in org_scoped:
+    print(a.get("role", {}).get("id", ""))' 2>/dev/null || true)"
+if [[ -z "$worker_roles_out" ]]; then
+  err "the Worker app you entered holds no organization-scoped admin role (HTTP check of its role assignments failed or returned none)."
   echo "" >&2
   echo "  Fix in the PingOne console (Administrators environment):" >&2
   echo "    Applications → your Worker → Roles → assign Organization Admin" >&2
@@ -140,7 +154,26 @@ if [[ "$perm_probe" != "200" ]]; then
   echo "  Then re-run this script with the same credentials." >&2
   exit 1
 fi
-ok "worker has an organization admin role"
+org_admin_role_id=""
+for rid in $worker_roles_out; do
+  rname="$(curl -s --max-time 30 "$api/roles/$rid" -H "authorization: Bearer $access" \
+    | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
+  if [[ "$rname" == "Organization Admin" ]]; then org_admin_role_id="$rid"; break; fi
+  found_scoped_role="$rname"
+done
+if [[ -z "$org_admin_role_id" ]]; then
+  err "the Worker app's organization-scoped role is \"${found_scoped_role:-unknown}\" — Organization Admin is required."
+  echo "" >&2
+  echo "  Environment Admin scoped to the Organization is NOT enough: it can read" >&2
+  echo "  licenses but cannot create environments or assign roles (ACCESS_FAILED)." >&2
+  echo "" >&2
+  echo "  Fix in the PingOne console (Administrators environment):" >&2
+  echo "    Applications → your Worker → Roles → replace it with Organization Admin" >&2
+  echo "    (scope: the Organization, not a single environment)" >&2
+  echo "  Then re-run this script with the same credentials." >&2
+  exit 1
+fi
+ok "worker has Organization Admin (organization scope)"
 
 # ── 2. license ────────────────────────────────────────────────────────────────
 info "Looking for an active license with the demo's entitlements..."
@@ -213,6 +246,18 @@ env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
 new_env="$(printf '%s' "$env_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
 if [[ -z "$new_env" ]]; then
   err "Environment creation failed:"
+  printf '%s\n' "$env_json" >&2
+  exit 1
+fi
+# Trust nothing: a create response can carry an id yet the environment can be
+# absent (a 403 body parsed as success — measured). GET it before proceeding;
+# if it is not there, the run cannot continue without lying to the user.
+env_check_code="$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$api/environments/$new_env" -H "authorization: Bearer $access")"
+if [[ "$env_check_code" != "200" ]]; then
+  err "environment $new_env was reported created but a GET returns HTTP $env_check_code — it does not exist."
+  echo "" >&2
+  echo "  Most likely cause: the worker cannot actually create environments" >&2
+  echo "  (needs Organization Admin scoped to the Organization)." >&2
   printf '%s\n' "$env_json" >&2
   exit 1
 fi
