@@ -205,3 +205,15 @@ and, for the `PINGONE_CLIENT_ID` and `PINGONE_CLIENT_SECRET` key names, `pingcli
 Six labs from the 2026-11-10 audit were repointed on 2026-11-17 (see the "Repointed" lines above):
 `ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`, `pingone-mcp-inspector-LAB`,
 `demo-map-LAB`, `observability-LAB`. This is the audit plus what the READMEs above say.
+
+Fleet-wide, 2026-11-18: a sweep found 14 more labs whose vendored TopMenu imports `./ReleaseNotes.jsx`
+but never received the file — the web build and every web test suite failed at their main since the
+rule-22 re-vendor. All 14 now ship the byte-identical shared file (one-commit PR each, all merged,
+all lab mains CI green; parent pins bumped in AI-DEMO-Standalone #392). Two pin-drift finds from the
+same sweep, both fixed: `privilege-api-explorer-LAB`'s `top-menu.sha256` listed meta-repo-relative
+paths so the pin never matched (now bare filenames, like every other lab), and its `VerifyMark.jsx`
+had drifted from `shared/verify-mark/` (re-vendored). The 2026-11-17 repoint was browser-proved the
+same day through the lab proxy, by content: mcp-tools known-servers neutral, ping-services-stub
+probing ping-shared's 4732/7809 with working env overrides, demo-map Real apps-only without a link
+base, pingone-mcp-inspector naming clean, p1az worker keys parsing, observability collector shipping
+to its Loki.
