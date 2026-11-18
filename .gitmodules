@@ -281,3 +281,6 @@
 [submodule "standalone/trusted-issuers-LAB"]
 	path = standalone/trusted-issuers-LAB
 	url = https://github.com/curtismu7/trusted-issuers-LAB.git
+[submodule "standalone/pf-agent-client-sync-lab"]
+	path = standalone/pf-agent-client-sync-lab
+	url = https://github.com/curtismu7/pf-agent-client-sync-LAB
