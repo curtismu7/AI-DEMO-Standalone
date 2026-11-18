@@ -1492,7 +1492,7 @@ function buildForest(u) {
         state.defs.add(r.def);
         state.n += 1;
         const inst2 = state.n;
-        c.rendered = topEls(r.doc, r.def).map((e) => clone(e, c, inst2, [...stack, r.def]));
+        c.rendered = topEls(r.doc, r.def).map((e) => { const x = clone(e, c, inst2, [...stack, r.def]); x.componentUse = c; x.defSrc = r.doc && r.doc.src ? r.doc.src.slice(r.def.start, r.def.end) : null; return x; });
         if (r.def === viewDef) for (const x of c.rendered) x.isViewRoot = true;
         // JSX passed as a prop renders where the component renders that prop; when that spot is not found it stays at the host
         const inside = c.rendered.flatMap((x) => [x, ...descendantsOf(x)]).filter((x) => !x.isContainer);
@@ -1921,6 +1921,35 @@ function ruleP7(u) {
 }
 
 // ---- P9
+/** A primary element that sits in the primary arm of `{prop ? (this) : (that)}` never renders primary when the
+ *  component use site does not pass the prop (a bool prop absent at the use site is false). Returns the element
+ *  itself when it is pruned, else null. Read on the ORIGINAL markup (the gap before the arm names the prop). */
+function primaryArmPruned(el) {
+  const o = origOf(el);
+  const p = o.parent;
+  if (!p) return null;
+  const gap = gapBefore(o);
+  const m = /([A-Za-z_$][\w$]*)\s*\?\s*\(?\s*$/.exec(gap);
+  if (!m) return null;
+    const prop = m[1];
+  // the component use site this instance was cloned for: the clone root carries componentUse
+  let host = null;
+  let defSrc = null;
+  for (let c = el; c; c = c.parent) {
+    if (c.componentUse) { host = c.componentUse; defSrc = c.defSrc || null; break; }
+  }
+  
+  if (!host || !host.attrs) return null;
+  // only prune when the guard names a PROP of the component: if the identifier is declared inside the
+  // component's own body (a useState/state variable, a local const), the guard is internal, not prop flow.
+  
+  if (defSrc && new RegExp(String.raw`\b(?:const|let|var)\s+[^;]*\b${prop}\b[^;]*=`).test(defSrc)) return null;
+  const a = host.attrs && (host.attrs.get(prop) || host.attrs.get(prop.toLowerCase()));
+  if (!a && host.attrs && !host.attrs.has(prop)) return el; // prop not passed -> falsy -> the primary arm never renders
+  if (a && (a.type === 'bool') && a.text === 'false') return el;
+  if (a && a.type === 'str' && a.text === 'false') return el;
+  return null;
+}
 // Judged on the render forest (component use sites expanded, attribute JSX at its host, view at the layout slot).
 // Two primaries are one state unless the code proves they exclude each other: arms of one ternary (fragment or element,
 // nested), different early returns (`if`/`else`/`case`/`default` + return), `X === 'a' && <A/>` against `X === 'b' && <B/>`
@@ -1931,7 +1960,7 @@ function ruleP9(u) {
   const forest = forestOf(u);
   const own = (forest ? forest.all : u.els).filter((e) => !e.vendored && !e.isContainer && e.name !== '#frag');
   const excl = forest ? (a, b) => exclusiveTree(a, b, true) : exclusiveFlat;
-  const prim = own.filter(isPrimaryEl);
+  const prim = own.filter(isPrimaryEl).filter((e) => !primaryArmPruned(e));
   const looped = prim.filter((e) => !isConditionalClass(e) && inLoop(e));
   if (looped.length) return mk(R, 'DRIFT', `a primary button is rendered inside a loop (${fmt(loc(looped[0]))}), so it repeats once per item`, uniqLocs(looped.map((e) => loc(e, 'primary in a loop'))));
   const groups = new Map();
