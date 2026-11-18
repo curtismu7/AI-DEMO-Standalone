@@ -18,9 +18,8 @@ What each lab needs for Real (Mock needs nothing):
   E  Owner only: customer-agent-LAB full Real (owner's PingOne environment and its "Demo PingGateway MCP" resource,
      the SE Agent Gateway, a P1AZ policy entry). Setup (bootstrap) offers its PingOne apps and asks first; the policy
      entry and the SE ingress stay manual. A colleague's own environment cannot use the SE gateway.
-  Not yet standalone (Real still needs AI-DEMO2; needs a repoint): ping-services-stub-LAB, ping-gateway-route-LAB, muse-LAB,
-  jit-lab-LAB (PF path), p1az-inspector-LAB, mcp-tools-LAB, pingone-mcp-inspector-LAB, privilege-a2a-anthropic-demo-LAB,
-  observability-LAB, demo-map-LAB, pingcli-LAB, pingone-events-LAB. Their Mock works.
+  Not yet standalone (owner-run Real or an AI-DEMO2 dependency): ping-gateway-route-LAB, muse-LAB,
+  jit-lab-LAB (PF path), privilege-a2a-anthropic-demo-LAB, pingcli-LAB, pingone-events-LAB. Their Mock works.
 <!-- summary:end -->
 
 ## A. Nothing: Mock only
@@ -77,12 +76,13 @@ Each lab below lists the extra names it wants.
 - `mcp-resource-server-LAB`: `PINGONE_ENVIRONMENT_ID` and `PINGONE_REGION` (or `PINGONE_ISSUER`) so it verifies
   real PingOne tokens; Mock-style use needs none. It is also the MCP server behind the gateway in section D.
 - `jit-lab-LAB`: your PingOne environment and worker, or the PingFederate path (marked in section C).
-- **NOT YET STANDALONE: needs a repoint.** `p1az-inspector-LAB`, `pingcli-LAB`, `pingone-events-LAB`,
-  `ping-services-stub-LAB` read `PINGONE_CLIENT_ID` and `PINGONE_CLIENT_SECRET`, but `scripts/pingone-setup.sh`
-  writes `PINGONE_WORKER_CLIENT_ID` and `PINGONE_WORKER_CLIENT_SECRET`, so a colleague's setup does not fill them.
-  Fill the lab's `.env` by hand from the worker app until the labs are repointed. `pingone-events-LAB` also wants
-  `ELASTICSEARCH_URL` and a key to forward events; it cannot receive PingOne deliveries from a laptop. Real in these
-  labs is owner-run and UNVERIFIED against live systems where their READMEs say so.
+- **NOT YET STANDALONE: owner-run Real.** `pingcli-LAB`, `pingone-events-LAB` read `PINGONE_CLIENT_ID` and
+  `PINGONE_CLIENT_SECRET`, but `scripts/pingone-setup.sh` writes `PINGONE_WORKER_CLIENT_ID` and
+  `PINGONE_WORKER_CLIENT_SECRET`, so a colleague's setup does not fill them. Fill the lab's `.env` by hand from the
+  worker app. `pingone-events-LAB` also wants `ELASTICSEARCH_URL` and a key to forward events; it cannot receive
+  PingOne deliveries from a laptop. Real in these labs is owner-run and UNVERIFIED against live systems where their
+  READMEs say so. `p1az-inspector-LAB` and `ping-services-stub-LAB` were repointed 2026-11-17: p1az reads the
+  `PINGONE_WORKER_*` names first, and ping-services-stub no longer reads PingOne worker keys for its probes.
 
 ## C. A PingFederate
 
@@ -183,26 +183,25 @@ These need the owner's tenants and are not set up by a colleague.
 - `env-map-LAB`: `ENV_MAP_SNAPSHOT`, written by `scripts/collect.sh` (read-only `docker ps` and `kubectl get`).
 - `mcp-discovery-LAB`: `MCP_DISCOVERY_LIVE=1` scans this machine (read-only, opt-in).
 - `worker-demo-LAB`: its README says to run `privilege-demo-LAB` on 4510 and that lab's stub issuer on 9031 first.
-- **NOT YET STANDALONE: needs a repoint.** `demo-map-LAB`: Real requires `AI_DEMO2_URL` (README "Real: settings").
-- **NOT YET STANDALONE: needs a repoint.** `observability-LAB`: Real reads a Loki you point `OBS_LOKI_URL` at. Its own
-  Loki and Alloy (compose profile `stack`) work without AI-DEMO2; the other log sources (Privilege SIEM and
-  Kibana, the AI-DEMO2 monitoring containers) are not standalone.
-- **NOT YET STANDALONE: needs a repoint.** `mcp-tools-LAB`: its known-servers list includes an AI-DEMO2 banking MCP
-  server at `http://127.0.0.1:8080/mcp` (`server/data/known-servers.json`); the rest of the lab does not need it.
-- **NOT YET STANDALONE: needs a repoint.** `pingone-mcp-inspector-LAB`: its connection presets and
-  `docs/live-checks.md` use the AI-DEMO2 endpoint style `mcp.pingone.<region>/admin/<envId>/mcp`.
-- **NOT YET STANDALONE: needs a repoint.** `ping-services-stub-LAB`: probes PingFederate on 9031, PingGateway on
-  3036 and the Privilege gateway on 8623 (AI-DEMO2's ports), not ping-shared's 4732 and 7809.
-- **NOT YET STANDALONE: needs a repoint.** `p1az-inspector-LAB`: listed by the 2026-11-10 audit for its on-prem
-  PingAuthorize default. What its README shows: Live targets a PingOne environment or an on-prem PingAuthorize you run
-  (settings placeholder `http://host.docker.internal:9001`); `mock-authorize-LAB` can stand in on 4850. The key names
-  are in section B.
+- Repointed 2026-11-17: `demo-map-LAB` Real needs only `SHELF_URL`; the row page links are built on an optional
+  `LINK_BASE_URL` (unset, the map shows apps only).
+- Repointed 2026-11-17: `observability-LAB` Real reads a Loki you point `OBS_LOKI_URL` at (loopback); its own Loki and
+  Alloy (compose profile `stack`) need nothing else. The Privilege SIEM/Kibana sources stay opt-in and owner-run.
+- Repointed 2026-11-17: `mcp-tools-LAB` known-servers now ships family-neutral servers only (everything, hostile-mcp,
+  mcp-resource-server-LAB, the OpenSearch port-forward).
+- Repointed 2026-11-17: `pingone-mcp-inspector-LAB` presets are composed from your region + envId at runtime; the
+  AI-DEMO2 naming is gone from the UI and docs.
+- Repointed 2026-11-17: `ping-services-stub-LAB` probes ping-shared's fixed ports (PingFederate 4732, PingGateway
+  7809) by default; every target is env-overridable and the Privilege gateway is opt-in.
+- Repointed 2026-11-17: `p1az-inspector-LAB` reads `PINGONE_WORKER_CLIENT_ID/SECRET` first (what
+  `scripts/pingone-setup.sh` writes); there is no on-prem default — the on-prem URL is operator-entered and
+  `mock-authorize-LAB` on 4850 is the documented stand-in.
 
 ## Not yet standalone, in one list
 
-`ping-services-stub-LAB`, `ping-gateway-route-LAB`, `muse-LAB`, `jit-lab-LAB` (PingFederate path),
-`p1az-inspector-LAB`, `mcp-tools-LAB` (known servers), `pingone-mcp-inspector-LAB` (presets),
-`privilege-a2a-anthropic-demo-LAB` (integrated UI), `observability-LAB` (log sources), `demo-map-LAB`,
+`ping-gateway-route-LAB`, `muse-LAB`, `jit-lab-LAB` (PingFederate path),
+`privilege-a2a-anthropic-demo-LAB` (integrated UI),
 and, for the `PINGONE_CLIENT_ID` and `PINGONE_CLIENT_SECRET` key names, `pingcli-LAB`, `pingone-events-LAB`.
-This is the 2026-11-10 audit plus what the READMEs above say. No fix is invented here: each needs a repoint
-inside its own repo.
+Six labs from the 2026-11-10 audit were repointed on 2026-11-17 (see the "Repointed" lines above):
+`ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`, `pingone-mcp-inspector-LAB`,
+`demo-map-LAB`, `observability-LAB`. This is the audit plus what the READMEs above say.
