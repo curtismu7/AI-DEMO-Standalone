@@ -1,6 +1,6 @@
 # P1AZ policy snapshot (live mode only)
 
-`ai-demo-p1az.standalone.snapshot.json` is the AI Demo PingOne Authorize policy (3 policies, 33 rules, 41 conditions) for tenants
+`ai-demo-p1az.standalone.snapshot.json` is the AI Demo PingOne Authorize policy (3 policies, 35 rules, 43 conditions) for tenants
 you own. **Mock mode, the default in every app, needs none of this.**
 
 Import it once: PingOne console -> Authorize -> Trust Framework -> Import. There is no import API. Then run
@@ -15,5 +15,5 @@ import, edit the `HasValidMcpAudience` condition in the console to your own gate
 
 ## Provenance
 
-A copy of the AI-DEMO2 snapshot with every host replaced by a placeholder; ids, rules and structure are unchanged. Re-create it
+A copy of the AI-DEMO2 snapshot (as of 2026-11-09, including the airline rules: agent spend limit 500, premium-only over 750) with every host replaced by a placeholder; ids, rules and structure are unchanged. Re-create it
 from a newer AI-DEMO2 snapshot with the same host substitutions, then run the forbidden-strings check before committing.
