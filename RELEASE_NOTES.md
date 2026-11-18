@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.1 (2026-11-18)
+
+**New labs**
+
+- pf-agent-client-sync-lab (D000 provisional, port 7824): PingFederate 13.1 AI-Agent-tagged OAuth clients (`_pf_system_tag_ai_agent`) synced one-way into simulated PingIDM managed agent records — the foundation for agent identity, ownership and lifecycle. Mock is fully offline; Real reads a real PF Admin API read-only from the app's own .env.
+
 ## 3.0 (2026-11-17)
 
 **MAJOR — if you already have the labs installed, re-run setup to pick up the new PingOne flow.**
