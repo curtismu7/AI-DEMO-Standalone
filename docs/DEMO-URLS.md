@@ -35,7 +35,7 @@ Status column: ✅ verified answering during the last sweep (2026-11-06), ❌ pr
 | ✅ `https://local.ping-devops.com:8443/pingfederate-lab/` | One card per PingFederate feature: pi.flow sign-in, DCR, RAR+PAR, CIBA, DPoP, token exchange (act), PKCE + a Protocol Playground. Drives a real PF. |
 | ⚠️ `https://local.ping-devops.com:8443/pingone-lab` | The PingOne twin: pi.flow, PKCE, PAR, JAR, CIBA poll, device authorization, token exchange. |
 | ⚠️ `https://local.ping-devops.com:8443/pingone-signin-lab/` | Sign-in behaviour lab: failures, lockout, replay, MFA step-up (RFC 9470), CIBA with a mock phone. |
-| ✅ `https://local.ping-devops.com:8443/pingone-mcp-inspector/` | Inspect PingOne MCP calls (needs its own sign-in, hence the probe status). |
+| — retired | `pingone-mcp-inspector` merged into mfa-admin-mcp (D132) 2026-11-18; URL removed. |
 | ✅ `https://local.ping-devops.com:8443/p1az-inspector/` | Send decisions to PingOne Authorize, see verdicts + statements + the exact call (offline and live tabs). |
 
 ## Agent security labs

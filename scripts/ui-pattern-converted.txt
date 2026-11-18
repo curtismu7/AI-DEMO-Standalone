@@ -208,7 +208,7 @@ agent-audit-trail-LAB/tools
 agent-audit-trail-LAB/story
 
 # 2026-11-16: legacy header -> shell-bar, batch 9: poppy-agent-tester-LAB (3 pages), saas-access-LAB (9),
-# secrets-vault-LAB (9), observability-LAB (7), pingone-mcp-inspector-LAB (8) converted (0 drift);
+# secrets-vault-LAB (9), observability-LAB (7) converted (0 drift); pingone-mcp-inspector-LAB (8) retired 2026-11-18 (merged into mfa-admin-mcp-LAB, entries removed);
 # their pins are bumped in the same PR.
 poppy-agent-tester-LAB/run
 poppy-agent-tester-LAB/chat
@@ -238,14 +238,6 @@ observability-LAB/alerts
 observability-LAB/pipeline
 observability-LAB/talk
 observability-LAB/searches
-pingone-mcp-inspector-LAB/audit
-pingone-mcp-inspector-LAB/connections
-pingone-mcp-inspector-LAB/diagram
-pingone-mcp-inspector-LAB/mcp-first
-pingone-mcp-inspector-LAB/raw
-pingone-mcp-inspector-LAB/stories
-pingone-mcp-inspector-LAB/tool
-pingone-mcp-inspector-LAB/tools
 
 # 2026-11-16: legacy header -> shell-bar, batch 10: pingone-signin-LAB, gateway-suite-LAB, gateway-claims-LAB,
 # mcp-surface-LAB, mcp-tools-LAB converted; their pins are bumped in the same PR. Only the 28 clean pages are listed:
