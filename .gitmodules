@@ -284,3 +284,9 @@
 [submodule "standalone/pf-agent-client-sync-lab"]
 	path = standalone/pf-agent-client-sync-lab
 	url = https://github.com/curtismu7/pf-agent-client-sync-LAB
+[submodule "standalone/wimse-lab-LAB"]
+	path = standalone/wimse-lab-LAB
+	url = https://github.com/curtismu7/wimse-lab-LAB
+[submodule "standalone/workload-cert-lab-LAB"]
+	path = standalone/workload-cert-lab-LAB
+	url = https://github.com/curtismu7/workload-cert-lab-LAB
