@@ -20,6 +20,15 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.2 (2026-11-18)
+
+**Updated Authorize policy — if you use live Authorize, re-import it.**
+
+- `policy/ai-demo-p1az.standalone.snapshot.json` now includes the airline booking rules: an agent spend limit (500) and premium-only bookings over 750 (new attributes AgentSpendLimit and MemberTier, 2 conditions, 2 rules). It is now 3 policies, 35 rules, 43 conditions.
+- To pick it up: run the update command, then PingOne console -> Authorize -> Trust Framework -> Import the new file. There is no import API. Mock mode needs nothing.
+- Re-importing replaces the policy objects, so if you changed `HasValidMcpAudience` to your own gateway URI, set it again after the import.
+- New: a setup guide PDF (`docs/standalone-labs-setup-guide.pdf`) with the policy download link.
+
 ## 3.1 (2026-11-18)
 
 **New labs**
