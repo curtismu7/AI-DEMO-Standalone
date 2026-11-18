@@ -62,3 +62,19 @@ The shared evidence step detail (`shared/evidence`, `.ev-pre`) follows the same 
 An HTTP transcript with a JSON body (a hop's request or response: request / status line, headers, blank line, body) passed as ONE string keeps its headers as text and gives the body its own Form | JSON pane (`splitWire`); do not write a splitter in the lab. A missing (`undefined`) value is an empty pane.
 
 Everything is React text (never markup) and passes `visible()`.
+
+### 5. Decoded tokens (Rule 24b, owner 2026-11-18)
+Every whole JWT a value carries is also shown decoded, under the pane, in the jwt.io order: a card named by the
+field path (`access_token`, `headers.authorization`, `body.subject_token`) with **Header**, **Payload** and
+**Signature**, each the standard Form | JSON pane. This pane decodes, it never verifies — the receiving server
+checks the signature; the signature pane shows the third segment as sent.
+
+- `decode={false}` marks a pane that IS a decoded part of a token (or a lab viewer that decodes itself), so a
+  token is never decoded twice. Never hand-roll decoding in the lab: import `Json`, `DecodedTokens`, `TokenParts`
+  or `decodedTokensIn` from this module.
+- The walk finds tokens in objects, arrays, `Bearer <jwt>` / `DPoP <jwt>` strings, and JSON that arrived as text.
+  Caps: 6 tokens per pane, depth 8, JSON-in-text searched 3 levels deep; cut-short (`...`) and non-JWT strings
+  are skipped; the same token is shown once.
+- An unsigned token (`alg: none`, empty signature) says "This token has no signature segment."; opaque tokens
+  (reference, refresh) and client secrets are never decoded.
+- Everything is React text through `visible()` — decoded claims are never markup.
