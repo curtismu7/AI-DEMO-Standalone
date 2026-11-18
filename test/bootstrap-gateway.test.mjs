@@ -208,7 +208,7 @@ test("the 'not yet standalone' labs are all marked inline and listed", () => {
 
 test("the six labs repointed on 2026-11-17 are no longer marked not-yet-standalone", () => {
   const list = docText.match(/^## Not yet standalone, in one list[\s\S]*$/m)[0];
-  for (const n of ["ping-services-stub-LAB", "p1az-inspector-LAB", "mcp-tools-LAB", "pingone-mcp-inspector-LAB", "demo-map-LAB", "observability-LAB"]) {
+  for (const n of ["ping-services-stub-LAB", "p1az-inspector-LAB", "mcp-tools-LAB", "demo-map-LAB", "observability-LAB"]) { // pingone-mcp-inspector-LAB retired 2026-11-18 (merged into mfa-admin-mcp-LAB)
     assert.ok(list.includes(n), `${n} should be named in the one-list as repointed`);
     const lines = docText.split("\n");
     const marked = lines.some((l, i) => l.includes("NOT YET STANDALONE") && [l, lines[i + 1] ?? "", lines[i + 2] ?? ""].join(" ").includes("`" + n + "`"));

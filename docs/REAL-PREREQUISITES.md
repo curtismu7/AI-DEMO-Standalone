@@ -67,7 +67,6 @@ Each lab below lists the extra names it wants.
   `.env.example`, README "Settings file". Reads `~/Development/.env`.
 - `mcp-tools-LAB`: `PINGONE_ENVIRONMENT_ID`, `PINGONE_REGION`, `PINGONE_MCP_CLIENT_ID` for the PingOne sign-in;
   any MCP server URL you type. README "Live proxy", `.env.example`.
-- `pingone-mcp-inspector-LAB`: `PINGONE_ENVIRONMENT_ID`, `PINGONE_REGION`, `PINGONE_MCP_INSPECTOR_MODE=live`.
   Not tested against a real tenant. `.env.example`, `docs/live-checks.md`.
 - `p1-third-party-exchange-LAB`: Live tab asks for environment id, region, worker id and secret (saved to
   `~/.config/demo-kit/pingone.json`); host-run only. README "Live mode (owner-run)".
@@ -189,7 +188,7 @@ These need the owner's tenants and are not set up by a colleague.
   Alloy (compose profile `stack`) need nothing else. The Privilege SIEM/Kibana sources stay opt-in and owner-run.
 - Repointed 2026-11-17: `mcp-tools-LAB` known-servers now ships family-neutral servers only (everything, hostile-mcp,
   mcp-resource-server-LAB, the OpenSearch port-forward).
-- Repointed 2026-11-17: `pingone-mcp-inspector-LAB` presets are composed from your region + envId at runtime; the
+- (Retired 2026-11-18: pingone-mcp-inspector-LAB merged into mfa-admin-mcp-LAB.) Repointed 2026-11-17: its presets were composed from your region + envId at runtime; the
   AI-DEMO2 naming is gone from the UI and docs.
 - Repointed 2026-11-17: `ping-services-stub-LAB` probes ping-shared's fixed ports (PingFederate 4732, PingGateway
   7809) by default; every target is env-overridable and the Privilege gateway is opt-in.
@@ -203,7 +202,7 @@ These need the owner's tenants and are not set up by a colleague.
 `privilege-a2a-anthropic-demo-LAB` (integrated UI),
 and, for the `PINGONE_CLIENT_ID` and `PINGONE_CLIENT_SECRET` key names, `pingcli-LAB`, `pingone-events-LAB`.
 Six labs from the 2026-11-10 audit were repointed on 2026-11-17 (see the "Repointed" lines above):
-`ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`, `pingone-mcp-inspector-LAB`,
+`ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`,
 `demo-map-LAB`, `observability-LAB`. This is the audit plus what the READMEs above say.
 
 Fleet-wide, 2026-11-18: a sweep found 14 more labs whose vendored TopMenu imports `./ReleaseNotes.jsx`
