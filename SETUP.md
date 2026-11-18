@@ -74,7 +74,7 @@ scripts/setup.sh --verbose              # show all tool output (brew, npm)
 5. **hosts entry** — adds `local.ping-devops.com` to `/etc/hosts` (one domain for everything, no more hosts edits ever)
 6. **TLS certs** — makes a wildcard certificate for `local.ping-devops.com` (trusted via mkcert, self-signed if mkcert is unavailable)
 7. **PingOne** — creates the demo environment and writes `~/Development/.env` (live mode); skipped if already configured
-8. **Authorize snapshot** — checks the PingOne Authorize policy needed by live mode (mock mode needs none)
+8. **Authorize snapshot** — checks the PingOne Authorize policy needed by live mode (mock mode needs none). To get the policy file without cloning anything (the repo is public), download [`ai-demo-p1az.standalone.snapshot.json`](https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/policy/ai-demo-p1az.standalone.snapshot.json) (or `curl -LO` that URL) and import it once: PingOne console → Authorize → Trust Framework → Import. It uses placeholder `.example` hosts, so after the import set the `HasValidMcpAudience` condition to your own gateway URI; details in [`policy/README.md`](policy/README.md)
 9. **Submodules** — downloads all 70 demo app repos
 10. **Shelf + installs** — builds the demo shelf and installs the four main labs' npm dependencies
 11. **Shelf URL** — saves `SHELF_URL` in `~/Development/.env` so every lab's header can link back to the shelf
