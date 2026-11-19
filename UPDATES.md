@@ -16,7 +16,7 @@ New lab: privilege-google-secrets-LAB — Privilege Hubs brokering a Google Secr
 Two new labs: wimse-lab-LAB (IETF WIMSE mock: trust domains, WIT/WPT, multi-hop chain) and workload-cert-lab-LAB (X.509/SPIFFE workload identity, mTLS walkthrough). Run the update command below, then start them from the shelf.
 
 
-Updated Authorize policy (version 3.2) — adds the airline booking rules. Run the update, then re-import `policy/ai-demo-p1az.standalone.snapshot.json` in PingOne Authorize -> Trust Framework -> Import (live Authorize only; mock needs nothing).
+New lab: agent-privilege-guide-LAB (D136) — the five Agent Privilege console sections as a guided tour. Run the update to pick it up.
 
 New lab: pf-agent-client-sync-lab — PingFederate 13.1 AI-agent clients synced into PingIDM agent records. Re-run the update to pick it up.
 
