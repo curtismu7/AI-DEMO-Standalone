@@ -296,3 +296,6 @@
 [submodule "standalone/privilege-google-secrets-LAB"]
 	path = standalone/privilege-google-secrets-LAB
 	url = https://github.com/curtismu7/privilege-google-secrets-LAB.git
+[submodule "standalone/agent-privilege-guide-lab-LAB"]
+	path = standalone/agent-privilege-guide-lab-LAB
+	url = https://github.com/curtismu7/agent-privilege-guide-lab.git
