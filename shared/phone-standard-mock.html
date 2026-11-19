@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone Standard — Reference Mock</title>
+<!--
+  Reference mock of the standalone-family iPhone mock standard (shared/phone, owner 2026-11-19).
+  Shows the DEVICE chrome every mock phone standardizes against. Behaviour (drag, 8-way resize,
+  pop-out, close, saved position) comes from the shared FloatingDialog when vendored into a React lab;
+  this static page shows the visual standard and the draggable window behaviour.
+
+  In a real app the phone is <Phone open onClose> from shared/phone/Phone.jsx — see shared/phone/README.md.
+-->
+<style>
+/* ===== tokens (subset of shared/standalone-ui.css :root needed here) ===== */
+:root {
+  color-scheme: light dark;
+  --accent: #d20e0f;
+  --on-accent: #ffffff;
+  --focus: #12538d;
+  --shadow-ink: rgba(5, 23, 39, 0.16);
+  --box-dark: #051727;
+  --on-box: #fcfcfc;
+  --phone-wall-1: #1b2a52;
+  --phone-wall-2: #3d2060;
+  --phone-wall-3: #7b2f5b;
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+}
+:root { --font-size-xs: 12px; --font-size-sm: 13px; --font-size-base: 15px; --font-size-lg: 19px; }
+body { margin: 0; min-height: 100vh; font-family: var(--font-primary); background: light-dark(#fcfcfc, #172033); color: light-dark(#051727, #fcfcfc); }
+.page { max-width: 980px; margin: 0 auto; padding: 24px 20px 120px; }
+h1 { font-size: 24px; margin: 0 0 6px; }
+.lede { color: inherit; opacity: 0.8; max-width: 60ch; }
+.note { margin-top: 18px; padding: 10px 14px; border-left: 4px solid var(--accent); background: light-dark(#ffffff, #0f2236); font-size: 14px; }
+
+/* ===== the phone window (mirrors shared/phone/phone.css + floating-dialog.css) ===== */
+.phone-win {
+  position: fixed;
+  right: 48px;
+  bottom: 48px;
+  width: 340px;
+  height: 660px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 48px;
+  background: var(--box-dark);
+  color: var(--on-box);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12), 0 24px 64px var(--shadow-ink);
+  overflow: hidden;
+  resize: both;
+  min-width: 300px;
+  min-height: 520px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+}
+.phone-win__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 10px 12px 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.phone-win__bar:active { cursor: grabbing; }
+.phone-win__ctl {
+  min-width: 26px; min-height: 26px; padding: 0;
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16); color: var(--on-box);
+  font-size: var(--font-size-xs); line-height: 1; cursor: pointer;
+}
+.phone-win__ctl:hover { background: rgba(255, 255, 255, 0.3); }
+.phone-win__title { visibility: hidden; flex: 1; }
+
+.phone-screen {
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0;
+  margin: 0 14px 10px;
+  padding: 0 8px;
+  border-radius: 36px;
+  background: linear-gradient(165deg, var(--phone-wall-1) 0%, var(--phone-wall-2) 55%, var(--phone-wall-3) 100%);
+  color: var(--on-box);
+}
+.phone-screen__status { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; }
+.phone-screen__time { font-size: var(--font-size-sm); font-weight: 700; }
+.phone-screen__island { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); width: 86px; height: 24px; border-radius: 999px; background: var(--box-dark); }
+.phone-screen__glyphs {
+  display: inline-block; width: 62px; height: 12px; opacity: 0.92;
+  background:
+    linear-gradient(to right, var(--on-box) 0 3px, transparent 3px 5px, var(--on-box) 5px 7px, transparent 7px 9px, var(--on-box) 9px 11px, transparent 11px 13px, var(--on-box) 13px 15px, transparent 15px 17px) left center / 17px 9px,
+    radial-gradient(circle at 100% 100%, transparent 6px, var(--on-box) 6px 7px, transparent 7px) left center / 15px 8px,
+    linear-gradient(to right, transparent 0 2px, var(--on-box) 2px calc(100% - 2px), transparent calc(100% - 2px)) right center / 22px 11px,
+    linear-gradient(to right, var(--on-box) 0 60%, transparent 60%) right center / 18px 7px;
+  background-position: left center, 21px center, right center, right center;
+  background-repeat: no-repeat;
+}
+.phone-screen__body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding: 4px 2px; }
+.phone__app { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--font-size-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.phone__badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--accent); color: var(--on-accent); font-size: var(--font-size-xs); font-weight: 800; }
+.phone__now { margin-left: auto; text-transform: none; font-weight: 500; opacity: 0.85; }
+.phone__headline { margin: 0; font-size: var(--font-size-lg); font-weight: 700; }
+.phone__detail { margin: 0; font-size: var(--font-size-sm); }
+.phone__message { padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); font-weight: 650; overflow-wrap: anywhere; }
+.phone__muted { margin: 0; font-size: var(--font-size-sm); opacity: 0.8; }
+.phone__actions { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 8px; }
+.phone__btn {
+  width: 100%; min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 23px;
+  background: rgba(255, 255, 255, 0.18); color: var(--on-box);
+  font: inherit; font-size: var(--font-size-base); font-weight: 700; cursor: pointer;
+}
+.phone__btn:hover { background: rgba(255, 255, 255, 0.28); }
+.phone__btn--primary { border-color: transparent; background: var(--accent); color: var(--on-accent); }
+.phone__btn--primary:hover { background: rgba(210, 14, 15, 0.85); }
+.phone-screen__home { height: 5px; margin: 10px auto 0; width: 110px; border-radius: 999px; background: var(--on-box); opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Phone standard</h1>
+  <p class="lede">The family's one mock-phone component: an iPhone rendered in the shared FloatingDialog —
+  draggable by the bezel, resizable from the bottom-right, pop-out-able to a real window in a React lab.
+  All screen text is light on the dark wallpaper and stays readable at every size.</p>
+  <p class="note">In an app this is <code>&lt;Phone open onClose&gt;</code> from <code>shared/phone/Phone.jsx</code>;
+  this static page mirrors its css. Drag the phone by its top bezel; resize from the bottom-right corner;
+  the ↗ and × controls become live pop-out/close in the vendored component.</p>
+</div>
+
+<div class="phone-win" id="phoneWin" role="dialog" aria-label="Mock phone">
+  <div class="phone-win__bar" id="phoneBar">
+    <span class="phone-win__title">Mock phone</span>
+    <button type="button" class="phone-win__ctl" title="Pop out (in the vendored component)" aria-label="Pop out to a new window">↗</button>
+    <button type="button" class="phone-win__ctl" title="Close" aria-label="Close">×</button>
+  </div>
+  <div class="phone-screen">
+    <div class="phone-screen__status" aria-hidden="true">
+      <span class="phone-screen__time">9:41</span>
+      <span class="phone-screen__island"></span>
+      <span class="phone-screen__glyphs"></span>
+    </div>
+    <div class="phone-screen__body">
+      <p class="phone__app"><span class="phone__badge">P</span>PingOne MFA (mock)<span class="phone__now">now</span></p>
+      <h3 class="phone__headline">Approve this transaction?</h3>
+      <p class="phone__detail">A sign-in or payment request the agent raised on your behalf. Approving answers the waiting poll.</p>
+      <p class="phone__message">Transfer — $150</p>
+      <p class="phone__muted">Waiting for your answer…</p>
+      <div class="phone__actions">
+        <button type="button" class="phone__btn phone__btn--primary">Approve</button>
+        <button type="button" class="phone__btn">Deny</button>
+      </div>
+    </div>
+    <div class="phone-screen__home" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script>
+  // Bezel drag (the vendored component gets this plus resize handles, pop-out and keyboard from FloatingDialog).
+  (function () {
+    const win = document.getElementById("phoneWin");
+    const bar = document.getElementById("phoneBar");
+    let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+    bar.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      dragging = true;
+      sx = e.clientX; sy = e.clientY;
+      const r = win.getBoundingClientRect();
+      ox = r.left; oy = r.top;
+      win.style.right = "auto"; win.style.bottom = "auto";
+      bar.setPointerCapture(e.pointerId);
+    });
+    bar.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      win.style.left = Math.max(0, Math.min(window.innerWidth - win.offsetWidth, ox + e.clientX - sx)) + "px";
+      win.style.top = Math.max(0, Math.min(window.innerHeight - win.offsetHeight, oy + e.clientY - sy)) + "px";
+    });
+    bar.addEventListener("pointerup", () => { dragging = false; });
+  })();
+</script>
+</body>
+</html>

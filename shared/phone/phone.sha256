@@ -1,0 +1,4 @@
+# sha256 of the files apps copy unchanged into web/src/phone/. Re-pin: shasum -a 256 Phone.jsx phone.css phone.test.jsx
+e93af56b3dacac3b33f68e802fe66aabc931193433ba59f486ec05b26c6481f9  Phone.jsx
+ed5ea54dc85f81787d0b13153f46f35389eb28c4db2267c97358c8e96c83b612  phone.css
+9617c2043c2c24c96e484b8493d5af1a6727ff623f7105ca33a1f33abde8e7d5  phone.test.jsx
