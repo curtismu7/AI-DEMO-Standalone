@@ -92,7 +92,7 @@ export function inspectApp(dir, { canonicalHash, checkCss }) {
   const css = classifyCss(vendoredHash, canonicalHash);
   const guardScript = files.includes(path.join('scripts', 'check-ui-standard.sh'));
   let pinned = null;
-  try { pinned = fs.readFileSync(path.join(dir, 'scripts', 'standalone-ui.sha256'), 'utf8').trim(); } catch { /* no pin */ }
+  try { pinned = fs.readFileSync(path.join(dir, 'scripts', 'standalone-ui.sha256'), 'utf8').trim().split(/\s+/)[0]; } catch { /* no pin */ }
   const guard = guardScript && pinned && vendoredHash && pinned === vendoredHash ? 'ok' : guardScript ? 'pin-mismatch' : 'none';
   const sources = files.filter((f) => SOURCE_EXT.test(f)).map((file) => ({ file, text: fs.readFileSync(path.join(dir, file), 'utf8') }));
   return { css, rules: checkCss(dir), guard, toggle: classifyToggle(sources) };
