@@ -71,9 +71,69 @@ The old layout used `grid-template-columns: repeat(auto-fit, minmax(...))` mosai
 | idjag-runner | `idjag-runner-LAB` | Flow tab Acts 1–4 numbered; form grid stacks <900px |
 | mock-authorize | `mock-authorize-LAB` | Rules/Decisions/Connect/Try numbered 1–4 via `data-n`/`::before` (tests assert heading text); Dockerfile fix: `COPY docs docs` AND remove `docs` from `.dockerignore` (web imports `../../docs/talk-track.md?raw`) |
 
+### Batch 4 (2026-11-19)
+
+| App | Repo | Notes |
+|---|---|---|
+| agent-mcp-door-demo | `agent-mcp-door-demo-LAB` | Talk-track sections numbered 1–4; Dockerfile fixed to `COPY docs docs` |
+| agent-registry-demo | `agent-registry-demo-LAB` | Talk-track tab numbered; digit via `data-n`/`::before` |
+| agentcore-pingone-demo | `agentcore-pingone-demo-LAB` | Sections numbered 1–5; Dockerfile fixed to `COPY docs docs` |
+| aggregate-entitlement | `aggregate-entitlement-LAB` | Decision sections numbered; `.hops-grid` for hop cards |
+| ai-demo-standalone | `ai-demo-standalone-LAB` | Landing page sections numbered; grid stacks <900px |
+| ai-guard-sidecar | `ai-guard-sidecar-LAB` | Talk-track component numbered 1–4; `.duo` pairing |
+| appfire-agent-governance | `appfire-agent-governance-LAB` | Governance sections numbered; mosaic → stacked full-width sections |
+| cimd | `cimd-LAB` | Flow sections numbered 1–5; `@media` stacking |
+| coding-agents | `coding-agents-LAB` | Agent sections numbered; `.cols` → paired 2-col grids |
+| customer-agent | `customer-agent-LAB` | Story sections numbered via `data-n`/`::before` |
+| data-protection | `data-protection-LAB` | Protection layers numbered 1–4; `.hops-grid` |
+| demo-map | `demo-map-LAB` | CSS only: `.cols` mosaic → stacked sections, `@media` stacking |
+| diagram-prove-lab | `diagram-prove-lab` | Talk-track sections numbered; Dockerfile fixed to `COPY docs docs` |
+| diagram-studio | `diagram-studio-LAB` | CSS only: grids stacked <900px; Dockerfile fixed to `COPY docs docs` |
+| env-map | `env-map-LAB` | Sections numbered 1–5; Dockerfile fixed to `COPY docs docs` |
+| field-notes | `field-notes-LAB` | CSS only: mosaic → full-width stacked sections |
+| intent-par-inspector | `intent-par-inspector-LAB` | PAR flow numbered 1–4; Dockerfile fixed to `COPY docs docs` |
+| intent-purpose-behaviour | `intent-purpose-behaviour-LAB` | Three-part sections numbered; `.duo` pairing |
+| mcp-auth-conformance | `mcp-auth-conformance-LAB` | Conformance checks numbered; `.hops-grid` for hops |
+| mcp-discovery | `mcp-discovery-LAB` | Discovery sections numbered; Dockerfile fixed to `COPY docs docs` |
+| mcp-gateway-lab | `mcp-gateway-lab-LAB` | Gateway sections numbered 1–5; grid stacks <900px |
+| mcp-scanner-lab | `mcp-scanner-lab-LAB` | CSS only: `.cols` converted; TalkTrack layout untouched |
+| mcp-skills | `mcp-skills-LAB` | Skill sections numbered via `data-n`/`::before` |
+| mcp-surface | `mcp-surface-LAB` | CSS only: mosaic → paired 2-col grids |
+| mcp-tools | `mcp-tools-LAB` | CSS only: grids stacked <900px |
+| mfa-admin-mcp-lab | `mfa-admin-mcp-lab` | Admin sections numbered 1–4; `.duo` pairing |
+| no-tool-no-promise | `no-tool-no-promise-LAB` | Sections numbered 1–5; Dockerfile fixed to `COPY docs docs` |
+| observability | `observability-LAB` | Panels numbered; `.hops-grid` for hop cards |
+| p1-third-party-exchange | `p1-third-party-exchange-LAB` | CSS only: `.cols` mosaic → stacked sections |
+| p1az-inspector | `p1az-inspector-LAB` | Inspector sections numbered; Dockerfile fixed to `COPY docs docs` |
+| pf-agent-client-sync-lab | `pf-agent-client-sync-lab` | Sync sections numbered 1–4; grid stacks <900px |
+| ping-gateway-route | `ping-gateway-route-LAB` | Route sections numbered; `.hops-grid` for hops |
+| pingcli | `pingcli-LAB` | CLI demo sections numbered; `.duo` pairing |
+| pingfederate | `pingfederate-LAB` | CSS only: grids stacked <900px |
+| pingone | `pingone-LAB` | CSS only: `.cols` converted; TalkTrack untouched |
+| pingone-events | `pingone-events-LAB` | Event sections numbered via `data-n`/`::before` |
+| pingone-mcp-inspector | `pingone-mcp-inspector-LAB` | Inspector sections numbered 1–5; mosaic → stacked |
+| pingone-signin | `pingone-signin-LAB` | Sign-in flow sections numbered; `.duo` pairing |
+| poppy-agent-tester | `poppy-agent-tester-LAB` | Tester sections numbered 1–4; grid stacks <900px |
+| poppy-verification | `poppy-verification-LAB` | Verification sections numbered; Dockerfile fixed to `COPY docs docs` |
+| privilege-bulk-users | `privilege-bulk-users-LAB` | Bulk-user sections numbered; `.hops-grid` for hops |
+| privilege-google-secrets | `privilege-google-secrets-LAB` | Secret sections numbered via `data-n`/`::before` |
+| privilege-logging | `privilege-logging-LAB` | Log sections numbered 1–5; grid stacks <900px |
+| privilege-owasp-lab | `privilege-owasp-lab-LAB` | OWASP sections numbered; `.duo` pairing |
+| saas-access | `saas-access-LAB` | Access sections numbered; mosaic → stacked sections |
+| secrets-vault | `secrets-vault-LAB` | Vault sections numbered 1–4; `.hops-grid` |
+| session | `session-LAB` | Session sections numbered; Dockerfile fixed to `COPY docs docs` |
+| spiffe-issuer | `spiffe-issuer-LAB` | Issuer sections numbered via `data-n`/`::before` |
+| stolen-token | `stolen-token-LAB` | Token sections numbered 1–5; grid stacks <900px |
+| token-workbench | `token-workbench-LAB` | Workbench sections numbered; `.duo` pairing |
+| wimse-lab | `wimse-lab-LAB` | WIMSE sections numbered; `.hops-grid` for hops |
+| worker-demo | `worker-demo-LAB` | Worker sections numbered; Dockerfile fixed to `COPY docs docs` |
+| workload-cert-lab | `workload-cert-lab-LAB` | Cert sections numbered 1–4; grid stacks <900px |
+
+Not applicable in this batch (single-form/diagram/InspectorShell layouts, or dead-CSS-only): ai-gateway-client, gateway-suite, intent-console-lab, jev-lab, jit-lab, mcp-elicitation, obo-lab, pdf-to-md, personal-agent-demo, privilege-api-explorer.
+
 ## Gotcha: Docker builds that import files outside `web/`
 
-If the web build imports from outside `web/` (e.g. `import x from "../../docs/talk-track.md?raw"`), the Dockerfile must `COPY` those paths into the build stage — a plain `COPY web web` fails inside Docker even when the local build passes. Also check `.dockerignore` — a `docs` exclusion line silently defeats the COPY.
+If the web build imports from outside `web/` (e.g. `import x from "../../docs/talk-track.md?raw"`), the Dockerfile must `COPY` those paths into the build stage — a plain `COPY web web` fails inside Docker even when the local build passes. Also check `.dockerignore` — a `docs` exclusion line silently defeats the COPY. Batch 4 fixed this gap in 14 more repos (agent-mcp-door-demo, agentcore-pingone-demo, diagram-prove-lab, diagram-studio, env-map, intent-par-inspector, mcp-discovery, no-tool-no-promise, p1az-inspector, personal-agent-demo, poppy-verification, session, worker-demo, privilege-api-explorer) — grep for `talk-track.md?raw` imports when adding the pattern to any new app.
 
 ## Checklist for a new app
 
