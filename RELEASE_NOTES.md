@@ -20,6 +20,20 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.4 (2026-11-18)
+
+**New labs**
+
+- intent-console-lab-LAB (D134, Demo, port 7825): the Privilege console's AI Intents page as a standalone simulation — intents with exemplars, twins, floors and Acts (shapes measured from the console swagger), a per-app modelAIIntentConfig, and a lab-invented resolution engine over a stand-in encoder on the KServe v2 wire. Six doctor-checked scenarios; twin intents within 0.05 are refused as ambiguous, never guessed. Mock only, fully offline, no live mode.
+
+## 3.3 (2026-11-18)
+
+**New labs**
+
+- wimse-lab-LAB (D138, Demo, port 7822): a mock of the IETF WIMSE architecture — trust domains, Workload Identity Tokens (WIT) with a confirmation key, Workload Proof Tokens (WPT) binding audience + identity + user context per request, a multi-hop chain (gateway → orders → billing), and a Break-it pane (wrong audience, swapped context, swapped identity, expired, rogue trust domain) that shows the exact refusal each time.
+- workload-cert-lab-LAB (D139, Demo, port 7823): X.509/SPIFFE-style workload identity — a trust-domain root CA signs real short-lived certificates with SPIFFE SAN URIs, a 4-step mutual-TLS walkthrough, and a Break-it pane (foreign-domain cert, expired SVID, tampered bytes). Pairs with wimse-lab (JWT variant) and workload-identity-lab (Privilege gateway variant).
+
+
 ## 3.2 (2026-11-18)
 
 **Updated Authorize policy — if you use live Authorize, re-import it.**
