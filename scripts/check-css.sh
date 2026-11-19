@@ -53,7 +53,7 @@ for app in "${apps[@]}"; do
   # Colour literals are allowed on a token DEFINITION line (--x: #hex in :root); the rule is
   # "use tokens", and the shared stylesheet itself defines its tokens this way. The grep -v
   # drops definition lines; what remains is a literal used directly in a rule.
-  hits_filter="grep -v -E '^[^:]+:[0-9]+:[[:space:]]*--[a-z0-9-]+:[[:space:]]*(var\(|#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|linear-gradient)'"
+  hits_filter="grep -v -E '^[^:]+:[0-9]+:[[:space:]]*--[a-z0-9-]+:[[:space:]]*(var\(|#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|linear-gradient|light-dark\()'"
   check_filtered "colour literals (use tokens)" '#[0-9a-fA-F]{3,8}([^0-9a-fA-F]|$)|rgba?\(|hsla?\(' "$hits_filter" fail
   check "no prefers-color-scheme outside the shared file" '@media[^{]*prefers-color-scheme' fail
   check "no !important outside the shared file" '!important' fail
