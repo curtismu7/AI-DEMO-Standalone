@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.4 (2026-11-18)
+
+**New labs**
+
+- intent-console-lab-LAB (D134, Demo, port 7825): the Privilege console's AI Intents page as a standalone simulation — intents with exemplars, twins, floors and Acts (shapes measured from the console swagger), a per-app modelAIIntentConfig, and a lab-invented resolution engine over a stand-in encoder on the KServe v2 wire. Six doctor-checked scenarios; twin intents within 0.05 are refused as ambiguous, never guessed. Mock only, fully offline, no live mode.
+
 ## 3.3 (2026-11-18)
 
 **New labs**
