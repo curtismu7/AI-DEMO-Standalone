@@ -293,3 +293,9 @@
 [submodule "standalone/intent-console-lab-LAB"]
 	path = standalone/intent-console-lab-LAB
 	url = https://github.com/curtismu7/intent-console-LAB.git
+[submodule "standalone/privilege-google-secrets-LAB"]
+	path = standalone/privilege-google-secrets-LAB
+	url = https://github.com/curtismu7/privilege-google-secrets-LAB.git
+[submodule "standalone/agent-privilege-guide-lab-LAB"]
+	path = standalone/agent-privilege-guide-lab-LAB
+	url = https://github.com/curtismu7/agent-privilege-guide-lab.git
