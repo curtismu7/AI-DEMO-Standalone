@@ -74,6 +74,8 @@ jobs:
           test "$hist" = "0" && test "$tree_count" = "0"
       - name: No AI attribution
         run: bash scripts/check-no-ai-attribution.sh
+      - name: Token-decode guard (Rule 24b, advisory)
+        run: node scripts/check-token-decode.mjs
 
   lab-proxy-config:
     runs-on: ubuntu-latest
