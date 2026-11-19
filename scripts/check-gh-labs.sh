@@ -30,7 +30,9 @@ gh repo list "$owner" --limit 400 --json name --jq '.[].name' | grep -iE -- '-la
 git -C "$root" config --file .gitmodules --get-regexp 'submodule\..*\.url' \
   | awk '{print $2}' | sed -E 's|https://github\.com/[^/]+/||; s|git@github\.com:[^/]+/||; s|\.git$||' | tr '[:upper:]' '[:lower:]' | sort -u > /tmp/sub-urls.$$
 
-orphans=$(comm -23 <(tr '[:upper:]' '[:lower:]' < /tmp/gh-labs.$$ | sort -u) /tmp/sub-urls.$$)
+# Retired labs (merged into a survivor): they stay on GitHub but are no longer submodules.
+RETIRED_LABS="pingone-mcp-inspector-lab"
+orphans=$(comm -23 <(tr '[:upper:]' '[:lower:]' < /tmp/gh-labs.$$ | sort -u) /tmp/sub-urls.$$ | grep -vxF -e $RETIRED_LABS || true)
 
 status=0
 if [ -n "$orphans" ]; then

@@ -20,6 +20,80 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.4 (2026-11-18)
+
+**New labs**
+
+- intent-console-lab-LAB (D134, Demo, port 7825): the Privilege console's AI Intents page as a standalone simulation — intents with exemplars, twins, floors and Acts (shapes measured from the console swagger), a per-app modelAIIntentConfig, and a lab-invented resolution engine over a stand-in encoder on the KServe v2 wire. Six doctor-checked scenarios; twin intents within 0.05 are refused as ambiguous, never guessed. Mock only, fully offline, no live mode.
+
+## 3.3 (2026-11-18)
+
+**New labs**
+
+- wimse-lab-LAB (D138, Demo, port 7822): a mock of the IETF WIMSE architecture — trust domains, Workload Identity Tokens (WIT) with a confirmation key, Workload Proof Tokens (WPT) binding audience + identity + user context per request, a multi-hop chain (gateway → orders → billing), and a Break-it pane (wrong audience, swapped context, swapped identity, expired, rogue trust domain) that shows the exact refusal each time.
+- workload-cert-lab-LAB (D139, Demo, port 7823): X.509/SPIFFE-style workload identity — a trust-domain root CA signs real short-lived certificates with SPIFFE SAN URIs, a 4-step mutual-TLS walkthrough, and a Break-it pane (foreign-domain cert, expired SVID, tampered bytes). Pairs with wimse-lab (JWT variant) and workload-identity-lab (Privilege gateway variant).
+
+
+## 3.2 (2026-11-18)
+
+**Updated Authorize policy — if you use live Authorize, re-import it.**
+
+- `policy/ai-demo-p1az.standalone.snapshot.json` now includes the airline booking rules: an agent spend limit (500) and premium-only bookings over 750 (new attributes AgentSpendLimit and MemberTier, 2 conditions, 2 rules). It is now 3 policies, 35 rules, 43 conditions.
+- To pick it up: run the update command, then PingOne console -> Authorize -> Trust Framework -> Import the new file. There is no import API. Mock mode needs nothing.
+- Re-importing replaces the policy objects, so if you changed `HasValidMcpAudience` to your own gateway URI, set it again after the import.
+- New: a setup guide PDF (`docs/standalone-labs-setup-guide.pdf`) with the policy download link.
+
+## 3.1 (2026-11-18)
+
+**New labs**
+
+- pf-agent-client-sync-lab (D000 provisional, port 7824): PingFederate 13.1 AI-Agent-tagged OAuth clients (`_pf_system_tag_ai_agent`) synced one-way into simulated PingIDM managed agent records — the foundation for agent identity, ownership and lifecycle. Mock is fully offline; Real reads a real PF Admin API read-only from the app's own .env.
+
+## 3.0 (2026-11-17)
+
+**MAJOR — if you already have the labs installed, re-run setup to pick up the new PingOne flow.**
+
+- Setup now builds everything from just four inputs: your Administrators environment ID, a Worker app's client ID and secret, and the region. It creates the demo environment, the per-environment worker and user apps for you — no other console work.
+- All four can be passed in the install command itself:
+  `curl -fsSL https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/main/scripts/install.sh | PINGONE_REGION=com PINGONE_ADMIN_ENV_ID=<id> PINGONE_WORKER_CLIENT_ID=<id> PINGONE_WORKER_CLIENT_SECRET=<secret> bash`
+- Setup now prints the P1AZ policy snapshot path and the exact console import steps (live Authorize mode; mock mode needs nothing).
+- Fixed: teardown credentials were saved empty — teardown now runs without prompting as intended.
+
+## 2.17 (2026-11-16)
+
+**New lab**
+- poppy-verification-LAB (D136 provisional, Tester, port 7821): checks a Company and its issuer against the Personal Agent Protocol 1.0 (published 2026-11-14) with 107 spec-linked checks across discovery, issuer metadata, Poppy-Session, sign-in and resources. Mock runs a reference Company and issuer you can break with 28 defects and watch the named checks fail; Real probes the Company and issuer you type with this agent's own key (sign-in checks need a person and are skipped there). It is a fork of poppy-agent-tester-LAB. A pass is not a certification.
+
+## 2.16 (2026-11-16)
+
+**New lab**
+- cedar-in-privilege-LAB (D135, Demo, port 7820): a guided tour of Cedar AI policies in PingOne Privilege with a set-up guide and a Cedar IS / IS NOT panel. Three cases: hold a call for a human, narrow a token's scope, and match the agent's `act.sub` claim. All simulated in the lab; only the `act.sub` case was measured on a real tenant (one real agent, one run). The matching live pages are in the main demo app.
+
+## 2.15 (2026-11-16)
+
+**New lab**
+- cedar-act-sub-LAB (D134, Tester, port 7819): a mock gateway that walks a measured Cedar `act.sub` run — one door guarded by two Active `act.sub` policies, the tool whose policy matches the token's `act.sub` is allowed and the tool whose policy names a different value is refused. The run was measured on one real tenant with one real PingFederate token; everything else on the page is simulated and labelled as such. Mock by default; Real is disabled in the UI, and the real probe (`npm run real`) is a terminal script that is owner-run.
+
+## 2.14 (2026-11-14)
+
+**New lab**
+- privilege-bulk-users-lab (Tester, port 7817): register many people for PingOne Privilege by API instead of one at a time — a guide to the two routes (the PingOne Management API: create in the Privilege environment and add to the Privilege group; the Privilege console API, still unverified against a real console) and a runnable Plan, Apply and Verify lab with a typed-count gate, a shared 429 back-off, safe re-runs and six Mock scenarios. Mock by default; Real is owner-run.
+
+## 2.13 (2026-11-12)
+
+**New lab**
+- mfa-admin-mcp-lab (Tester, port 7815): administer PingOne's early-access MFA administration MCP tool set — environment MFA settings, device-authentication and FIDO passkey policies, notification policies, OATH tokens, and email/phone/WhatsApp delivery settings — through MCP tools instead of console pages. Safety classes (read/write/destructive), a confirm gate with exact-argument hashing, a metadata poison scan, a redacted audit log, and an inspector layout with talk track. Mock by default (26 MFA mock tools + a general-admin sample, role-gated viewer/admin); Live is owner-run against the hosted PingOne MCP server. Fork of pingone-mcp-inspector-LAB.
+
+## 2.12 (2026-11-12)
+
+**New lab**
+- ai-demo-standalone-lab (Demo, port 7810): the AI Demo standalone - the AI-DEMO2 dashboard as a standalone lab. All 87 use cases in one catalog; 31 run in-app against the mock PDP (token, gateway, policy, HITL obligations) covering foundations, attacks (token theft, takeover, bad client), controls (overscoped tokens, gateway search filter, public tools), HITL (step-up, consent, CIBA) and A2A hand-off; the rest open their shelf lab. Evidence views (chain map, token cards, demo hops, receipts), a scripted assistant, a talk track and a Quick Config dialog. Hardened with a real-browser e2e in CI and a Docker smoke.
+
+## 2.11 (2026-11-11)
+
+**New labs**
+- pf-privilege-obo-lab (Demo, port 7812): the simulated PingFederate to Privilege on-behalf-of chain - user SSO, RFC 8693 token exchange (sub = user, act.sub = agent), the Privilege federated-identity check, grant tiers, an Active Cedar policy and Pass Agent Token passthrough - as an interactive flow walk with eight scenarios and a twelve-card issues panel of measured traps and fixes.
+
 ## 2.10 (2026-11-10)
 
 **New labs**

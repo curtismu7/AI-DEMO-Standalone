@@ -47,7 +47,7 @@ banner patterns. Known convergence work for next PRs:
 
 ## 3. Page frame
 
-- One `max-width: 1100px` centered container, top padding small, bottom ≥ 2rem.
+- One wide centered container, `max-width: 2200px` (owner, 2026-11-16; was 1100px): the page fills a normal screen and stops growing on very large ones. Top padding small, bottom ≥ 2rem. Running text (lead paragraphs, prose) keeps its own `max-width` in `ch` (72–80ch); cards, tables and JSON panes use the full width. Two-column card grids collapse to one column below 900px (was 1100px). The shell bar stays full-bleed.
 - Page title is `h1` below the banner. Body text 14px base (per shared stylesheet).
 - Sections are labelled with a small uppercase kicker (`section-label` style) or an
   `h2` — not bare whitespace.
@@ -104,6 +104,18 @@ banner patterns. Known convergence work for next PRs:
   CSS lives in each app's stylesheet for now; promote to the shared file when the
   second renderer converges (it already has, three times — next touch migrates).
 
+
+## 8c. Diagram arrow labels and box details (owner, 2026-11-16)
+
+- Every diagram draws its arrow labels in a layer **above** the boxes, placed so no two labels overlap and none sits on a
+  box; the label of the arrow being walked turns bold and coloured and is raised above the others. Never an SVG label
+  under the boxes, never a fixed nudge that two labels can still collide through.
+- Clicking a box expands it in place with its details below its title: group, code pointers (links to the pinned commit,
+  called **Source**, never "Verified"), reach (boxes upstream and downstream), and the arrows in and out. Click again,
+  Close, or the empty canvas collapses it; Copy link opens the page with that box expanded.
+- One implementation for all labs: `shared/diagram-kit` (vendored into `web/src/diagram-kit/`, README there). A lab's
+  diagram needs only a graph of boxes and arrows, so a diagram that is not `diagram-studio/1` data still gets it.
+
 ## 8c. Token-chain evidence: sequence view, movie reel, step detail (owner, 2026-11-08)
 
 Any lab that shows a chain of hops uses the shared evidence screens in `shared/evidence/` (vendored into `web/src/evidence/`) fed by `demo-hop/1` hops from `shared/hop-detail/`. Do not draw a new sequence diagram or filmstrip by hand.
@@ -125,6 +137,35 @@ Any lab that shows a chain of hops uses the shared evidence screens in `shared/e
 - First user: the evidence actor card (`shared/evidence/ActorCard.jsx`). `scripts/check-ui-patterns.sh` reports a
   hand-rolled dialog as P11 WARN (advisory, never a failure) so apps converge when they next touch the page.
 
+### 8d.2 Shared services catalogue (owner, 2026-11-13)
+
+Reusable per-feature chrome lives under `shared/<name>/` with a README; vendor byte-for-byte, never edit a lab's
+copy. Current catalogue: `floating-dialog` (every modal), `talk-track`, `help-dialog`, `signin-dialog`, `rail`
+(collapsible sidebar), `story` (StoryPanel + fill.js), `json`, `untrusted`, `error-boundary`, `trace` (server),
+`doctor` (server), `health` (server), `shelf-link-server` (server). **2026-11-14 (amended):** `json` has two faces: `Json.jsx` (plain, untrusted-raw payloads) and **`JsonPane.jsx` + `JsonPane.css` (Rule 24: THE standard for every JSON pane — a Form | JSON toggle, one choice per page; important keys highlighted (defaults + a lab's own `hot` list); JWTs in three colored segments; one color standard from theme tokens; FULL VIEW, never a scroll box; vendored with sha256 pins; see `shared/json/README.md`). Promoted from appfire-agent-governance-LAB; `JsonView.jsx` is retired. Rule J1 of the static check enforces it. Rule: when two labs need the same feature,
+build it here third time at the latest — "shared means change it once and every app gets it."
+
+CSS too: the `.pill`, `.chip`, `.story`, `.presenter-say` and `.mode-toggle` blocks are now canonical in
+`shared/standalone-ui.css` (§ "Shared component blocks"). New labs must not re-declare them; existing labs
+drop their private copies as they touch the page (their copies currently win the cascade, so nothing breaks
+until then).
+
+### 8d.1 Shared dialog services: talk track and help (owner, 2026-11-13)
+
+Two app features are dialog services: every standalone app renders them through the same shared components, only
+the content changes. Both are movable, resizable and pop-out-able because they are FloatingDialogs.
+
+- **Talk track** — `shared/talk-track/TalkTrackDialog.jsx` (vendored to `web/src/talk-track/`). Props: `isOpen`,
+  `onClose`, `talk` (array of `{ id, title, say }`), `title`, `storageKey`. The TopMenu `talkTrack` prop toggles it;
+  the panel is a `noBackdrop`-style FloatingDialog docked right, `singletonKey="talk-track"`, so only one is open.
+- **Help** — `shared/help-dialog/HelpDialog.jsx` (vendored to `web/src/help-dialog/`). Props: `isOpen`, `onClose`,
+  `sections` (array of `{ heading, body | body[] }`), `docsUrl`, `title`, `storageKey`. The TopMenu Help button
+  opens it instead of navigating away; the full-docs URL is shown in the footer.
+- Both need `shared/floating-dialog/` vendored beside them. Never edit a lab's copy; change the shared component,
+  re-vendor (the sha256 pin convention, same as `return-link`).
+- New labs get both for free by vendoring and wiring; a lab that hand-rolls its talk-track or help panel is
+  reported by `scripts/check-ui-patterns.sh` as P11 WARN until converted.
+
 ## 8e. Return link: the way back after a hand-off (2026-11-09)
 
 An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
@@ -142,6 +183,14 @@ pinned by `return-link.sha256`).
 ## 9. Buttons and tabs
 
 - Primary action: `class="primary"` (shared gradient rule). One primary per view.
+- **Important buttons are Ping red (owner, 2026-11-13).** The one action that matters most on a view — sign in,
+  submit, start/run, confirm — uses `class="primary"` (the Ping Red gradient, white label). Never a bare
+  unstyled button for the action the page exists for. One primary per view still applies: pick the single
+  most important action and make it red; everything else is secondary.
+- **Sign-in is a dialog (owner, 2026-11-13).** The sign-in form renders in a `FloatingDialog` (section 8d) —
+  movable, resizable, pop-out — not as a page or a bare inline form. It must close itself on successful
+  sign-in (the app's auth state change is the signal), and the signed-in state replaces the button that
+  opened it. Shared component: `shared/signin-dialog/SignInDialog.jsx` (vendored to `web/src/signin-dialog/`).
 - Destructive actions use `--danger-text` text, not a filled red button.
 - Selected tab/toggle state lives in `aria-selected` / `aria-pressed` (shared rule
   fills it accent). No extra state classes. `aria-current` is a navigation hint, not a selected
@@ -180,6 +229,7 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | A1 | Buttons, links and form controls have an accessible name |
 | A2 | No `outline: none` without a replacement focus style |
 | A3 | Every `img` has `alt` |
+| J1 | JSON is shown through the shared JsonPane (Rule 24): no hand-rolled `<pre>{JSON.stringify()}`, no `max-height` / `overflow: auto\|scroll` on a JSON pane (full view; a `pre` cap is a WARN). Reported as DRIFT but ADVISORY for enforced pages until the Rule 24 sweep has merged (`J1_ENFORCE=1`, or drop J1 from `ADVISORY_RULES`, enforces it) |
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
 | C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |

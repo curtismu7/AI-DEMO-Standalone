@@ -418,3 +418,19 @@ describe("hops not in this run", () => {
     expect(detail().getAttribute("aria-label")).toBe("Step 9 detail");
   });
 });
+
+describe("Rule 24b: tokens in a step's request/response are decoded under the panes", () => {
+  const b64 = (o) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const jwtOf = (header, claims, sig = "c2lnbmF0dXJl") => [b64(header), b64(claims), sig].join(".");
+  test("an access_token in a response body gets a decoded-token block with Header, Payload, Signature", () => {
+    const token = jwtOf({ alg: "RS256", kid: "mock-key-1" }, { sub: "travel-assistant", aud: "https://gateway.mock.example", scope: "accounts:read" });
+    const hop = { ...UC1_DENY_RUN.find((h) => h.n === 6), response: { status: 200, headers: {}, body: { access_token: token, token_type: "Bearer", expires_in: 300 } } };
+    render(<StepDetailPanel hops={[hop]} selected={6} onSelect={() => {}} />);
+    const decoded = screen.getByTestId("decoded-token");
+    expect(decoded.textContent).toMatch(/access_token/);
+    for (const h of ["Header", "Payload", "Signature"]) expect(within(decoded).getByText(h)).toBeTruthy();
+    expect(decoded.textContent).toMatch(/RS256/);
+    expect(decoded.textContent).toMatch(/travel-assistant/);
+    expect(decoded.textContent).toMatch(/accounts:read/);
+  });
+});

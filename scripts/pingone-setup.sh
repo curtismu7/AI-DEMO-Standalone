@@ -30,13 +30,14 @@ set -euo pipefail
 
 # ── style ─────────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
+  BOLD=$'\033[1m'; RED=$'\033[31m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
 else
-  BOLD=''; RED=''; GREEN=''; BLUE=''; RESET=''
+  BOLD=''; RED=''; GREEN=''; BLUE=''; YELLOW=''; RESET=''
 fi
 info() { echo "${BLUE}${BOLD}==>${RESET} $*"; }
 ok()   { echo "${GREEN}✓${RESET}  $*"; }
 err()  { echo "${RED}✗${RESET} $*" >&2; }
+warn() { echo "${YELLOW}!${RESET}  $*"; }
 fatal() { err "$*"; exit 1; }
 
 ask() { # ask <prompt> <envvar-name>
@@ -99,8 +100,10 @@ echo "    Roles: Organization Admin (so it can create environments)."
 echo "  Then enter its credentials below. Everything else is automated."
 echo ""
 
-ask "PingOne region (com, eu, ca, asia): " PINGONE_REGION
-PINGONE_REGION="${PINGONE_REGION:-com}"
+ask "PingOne region (na, eu, ca, asia): " PINGONE_REGION
+PINGONE_REGION="${PINGONE_REGION:-na}"
+# North America is the .com domain: accept "na" (the name people use) and map it to the TLD.
+[[ "$(printf %s "$PINGONE_REGION" | tr A-Z a-z)" == "na" ]] && PINGONE_REGION=com
 ask "Administrators environment ID: " PINGONE_ADMIN_ENV_ID
 ask "Worker client ID: " PINGONE_WORKER_CLIENT_ID
 ask_secret "Worker client secret: " PINGONE_WORKER_CLIENT_SECRET
@@ -113,10 +116,14 @@ info "Minting an organization token..."
 # Tokens live on the AS host; the management API host rejects token POSTs
 # (measured). Workers default to client_secret_basic — POST-body auth is
 # rejected on current tenants (measured).
-tok="$(curl -s --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
+tok_rc=0
+tok="$(curl -sS --max-time 30 -X POST "$auth/$PINGONE_ADMIN_ENV_ID/as/token" \
   -u "$PINGONE_WORKER_CLIENT_ID:$PINGONE_WORKER_CLIENT_SECRET" \
   -H 'content-type: application/x-www-form-urlencoded' \
-  --data-urlencode 'grant_type=client_credentials')"
+  --data-urlencode 'grant_type=client_credentials' 2>&1)" || tok_rc=$?
+# Without this, set -e quit here with no message when curl itself failed (DNS,
+# timeout, TLS, proxy) — the run just stopped after "Minting an organization token...".
+[[ "$tok_rc" -ne 0 ]] && fatal "could not reach $auth (curl exit $tok_rc): $tok — check network/VPN/proxy and the region."
 access="$(printf '%s' "$tok" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
 if [[ -z "$access" ]]; then
   err "Token mint failed:"
@@ -125,13 +132,27 @@ if [[ -z "$access" ]]; then
 fi
 ok "organization token minted"
 
-# Early permission check: a worker with no admin role mints a token fine but
-# fails much later with a cryptic ACCESS_FAILED on the first management call.
-# Probe a call that needs Organization Admin; on 403 tell the user exactly what
-# to fix before re-running.
-perm_probe="$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$api/organizations" -H "authorization: Bearer $access")"
-if [[ "$perm_probe" != "200" ]]; then
-  err "the Worker app you entered has no organization-level admin role (HTTP $perm_probe)."
+# Early permission check: a worker with the wrong admin role mints a token fine
+# and even passes a GET /organizations probe (Environment Admin org-scoped does),
+# then fails much later with a cryptic ACCESS_FAILED on environment creation.
+# So read the worker's actual role assignments and verify the ORGANIZATION-scoped
+# role is Organization Admin — naming the role it did find when it isn't.
+# (Role assignments live on the worker's app resource; listing them needs no
+# special role beyond the worker itself — measured on tenants with the wrong role.)
+worker_role_json="$(curl -s --max-time 30 "$api/environments/$PINGONE_ADMIN_ENV_ID/applications/$PINGONE_WORKER_CLIENT_ID/roleAssignments" \
+  -H "authorization: Bearer $access")"
+worker_roles_out="$(printf '%s' "$worker_role_json" | python3 -c '
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    assigns = d.get("_embedded", {}).get("roleAssignments", [])
+except Exception:
+    assigns = []
+org_scoped = [a for a in assigns if a.get("scope", {}).get("type") == "ORGANIZATION"]
+for a in org_scoped:
+    print(a.get("role", {}).get("id", ""))' 2>/dev/null || true)"
+if [[ -z "$worker_roles_out" ]]; then
+  err "the Worker app you entered holds no organization-scoped admin role (HTTP check of its role assignments failed or returned none)."
   echo "" >&2
   echo "  Fix in the PingOne console (Administrators environment):" >&2
   echo "    Applications → your Worker → Roles → assign Organization Admin" >&2
@@ -139,7 +160,26 @@ if [[ "$perm_probe" != "200" ]]; then
   echo "  Then re-run this script with the same credentials." >&2
   exit 1
 fi
-ok "worker has an organization admin role"
+org_admin_role_id=""
+for rid in $worker_roles_out; do
+  rname="$(curl -s --max-time 30 "$api/roles/$rid" -H "authorization: Bearer $access" \
+    | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
+  if [[ "$rname" == "Organization Admin" ]]; then org_admin_role_id="$rid"; break; fi
+  found_scoped_role="$rname"
+done
+if [[ -z "$org_admin_role_id" ]]; then
+  err "the Worker app's organization-scoped role is \"${found_scoped_role:-unknown}\" — Organization Admin is required."
+  echo "" >&2
+  echo "  Environment Admin scoped to the Organization is NOT enough: it can read" >&2
+  echo "  licenses but cannot create environments or assign roles (ACCESS_FAILED)." >&2
+  echo "" >&2
+  echo "  Fix in the PingOne console (Administrators environment):" >&2
+  echo "    Applications → your Worker → Roles → replace it with Organization Admin" >&2
+  echo "    (scope: the Organization, not a single environment)" >&2
+  echo "  Then re-run this script with the same credentials." >&2
+  exit 1
+fi
+ok "worker has Organization Admin (organization scope)"
 
 # ── 2. license ────────────────────────────────────────────────────────────────
 info "Looking for an active license with the demo's entitlements..."
@@ -174,29 +214,63 @@ ok "license found"
 
 # ── 3. create the environment ─────────────────────────────────────────────────
 ENV_NAME="Standalone Labs Demo"
-# Name-collision safety: PingOne allows duplicate environment names, so a rerun
-# would silently burn another license seat on an identically-named orphan. Look
-# first; if one exists, ask whether to reuse it or create a fresh one anyway.
-existing_env="$(curl -s --max-time 30 "$api/environments?filter=name%20eq%20%22$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$ENV_NAME")%22" \
-  -H "authorization: Bearer $access" \
-  | python3 -c '
-import sys, json
+# The create endpoint takes the region CODE (NA, CA, EU, AP, AU), not the domain
+# suffix: uppercasing "com" sent "COM" and PingOne rejected it (allowedValues ["NA"]).
+case "$(printf '%s' "$PINGONE_REGION" | tr 'A-Z' 'a-z')" in
+  com) env_region=NA ;;
+  ca) env_region=CA ;;
+  eu) env_region=EU ;;
+  asia) env_region=AP ;;
+  com.au) env_region=AU ;;
+  *) env_region="$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z')" ;;
+esac
+# Name-collision safety: PingOne rejects a second environment with the same name
+# (UNIQUENESS_VIOLATION), so look first. The list endpoint cannot filter by name,
+# so match client-side. If one exists, only reuse it when it is OURS.
+existing_env="$(ENV_API="$api" ENV_TOK="$access" ENV_WANT="$ENV_NAME" python3 -c '
+import os, sys, json, urllib.request
+# The environments endpoint rejects filter=name eq (HTTP 400), so list every
+# environment (following _links.next) and match the display name here.
+url = os.environ["ENV_API"] + "/environments?limit=100"
+tok, want = os.environ["ENV_TOK"], os.environ["ENV_WANT"]
+hits = []
 try:
-    envs = json.load(sys.stdin).get("_embedded", {}).get("environments", [])
+    while url:
+        req = urllib.request.Request(url, headers={"authorization": "Bearer " + tok})
+        d = json.load(urllib.request.urlopen(req, timeout=30))
+        hits += [e for e in d.get("_embedded", {}).get("environments", []) if e.get("name") == want]
+        url = d.get("_links", {}).get("next", {}).get("href")
 except Exception:
-    envs = []
-print(envs[0]["id"] if envs else "")' 2>/dev/null || true)"
+    pass
+hits.sort(key=lambda e: e.get("createdAt", ""))  # oldest first
+print(hits[0]["id"] if hits else "")' 2>/dev/null || true)"
 new_env=""
 if [[ -n "$existing_env" ]]; then
   ok "an environment named \"$ENV_NAME\" already exists: $existing_env"
-  if [[ -t 0 || -r /dev/tty ]]; then
-    read -r -p "Reuse it (r), or create a new one anyway (n)? [r/n, default r] " reuse_answer </dev/tty 2>/dev/null || reuse_answer="r"
+  # Our own earlier run wrote its id into the settings file; anything else may be a
+  # colleague's (shared organizations). Reuse re-mints that environment's worker
+  # secret, which would break the owner's labs.
+  is_mine=0
+  [[ -f "$ENV_FILE" ]] && grep -qx "PINGONE_ENVIRONMENT_ID=$existing_env" "$ENV_FILE" && is_mine=1
+  if [[ "$is_mine" == 1 ]]; then
+    ok "it matches PINGONE_ENVIRONMENT_ID in $ENV_FILE — it is yours"
+    default_answer="r"
   else
-    reuse_answer="${ASSUME_REUSE:-r}"
+    warn "it does NOT match PINGONE_ENVIRONMENT_ID in $ENV_FILE — it may belong to a colleague."
+    warn "reusing it re-creates its lab worker's secret and breaks the owner's labs. Only answer r if you created it."
+    default_answer="n"
   fi
-  if [[ "${reuse_answer:-r}" != "n" && "${reuse_answer:-r}" != "N" ]]; then
+  if [[ -t 0 || -r /dev/tty ]]; then
+    read -r -p "Reuse it (r), or stop (n)? [r/n, default $default_answer] " reuse_answer </dev/tty 2>/dev/null || reuse_answer=""
+  else
+    reuse_answer="${ASSUME_REUSE:-}"
+  fi
+  reuse_answer="${reuse_answer:-$default_answer}"
+  if [[ "$reuse_answer" == "r" || "$reuse_answer" == "R" ]]; then
     new_env="$existing_env"
     ok "reusing the existing environment"
+  else
+    fatal "stopped: PingOne does not allow a second environment named \"$ENV_NAME\" in this organization. If it is a colleague's, ask them, or delete it in the console if it is an orphan of yours."
   fi
 fi
 if [[ -z "$new_env" ]]; then
@@ -205,13 +279,25 @@ info "Creating the SANDBOX demo environment (SSO, MFA, DaVinci, Authorize)..."
 # SANDBOX licenses reject PING_ONE_FRAUD (Privilege is not a BOM product).
 env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
   -H "authorization: Bearer $access" -H 'content-type: application/json' \
-  -d '{"name":"'"$ENV_NAME"'","region":"'"$(printf '%s' "$PINGONE_REGION" | tr 'a-z' 'A-Z' | sed 's/COM\.AU/COM_AU/')"'",
+  -d '{"name":"'"$ENV_NAME"'","region":"'"$env_region"'",
        "type":"SANDBOX","description":"Created by AI-DEMO-Standalone pingone-setup.sh",
        "license":{"id":"'"$license_id"'"},
        "billOfMaterials":{"products":[{"type":"PING_ONE_BASE"},{"type":"PING_ONE_MFA"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}]}}')"
 new_env="$(printf '%s' "$env_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
 if [[ -z "$new_env" ]]; then
   err "Environment creation failed:"
+  printf '%s\n' "$env_json" >&2
+  exit 1
+fi
+# Trust nothing: a create response can carry an id yet the environment can be
+# absent (a 403 body parsed as success — measured). GET it before proceeding;
+# if it is not there, the run cannot continue without lying to the user.
+env_check_code="$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$api/environments/$new_env" -H "authorization: Bearer $access")"
+if [[ "$env_check_code" != "200" ]]; then
+  err "environment $new_env was reported created but a GET returns HTTP $env_check_code — it does not exist."
+  echo "" >&2
+  echo "  Most likely cause: the worker cannot actually create environments" >&2
+  echo "  (needs Organization Admin scoped to the Organization)." >&2
   printf '%s\n' "$env_json" >&2
   exit 1
 fi
@@ -274,8 +360,41 @@ fi
 secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/secret" \
   -H "authorization: Bearer $access" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
-[[ -z "$secret" ]] && { err "secret mint failed:"; printf '%s\n' "$secret_json" >&2; exit 1; }
+[[ -z "$secret" ]] && { err "secret mint failed:"; exit 1; }
 ok "worker minted in the new environment"
+
+# ── 4b. per-env NATIVE app (authorization code + PKCE) ───────────────────────
+# The user token path (ping-services-stub-LAB's pi.flow sign-in) needs a user app,
+# not the worker: worker client_credentials tokens are scope-less and carry no sub.
+# The app authenticates with CLIENT_SECRET_POST (what PINGONE_USER_TOKEN_ENDPOINT_AUTH_METHOD
+# names) and its redirect URI is the family's standard BFF callback.
+user_app_json="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications" \
+  -H "authorization: Bearer $access" -H 'content-type: application/json' \
+  -d '{"name":"Standalone Labs User","description":"Authorization-code user app for the standalone labs (pi.flow sign-in)","protocol":"OPENID_CONNECT","type":"NATIVE_APP","enabled":true,"grantTypes":["AUTHORIZATION_CODE","REFRESH_TOKEN"],"responseTypes":["CODE"],"tokenEndpointAuthMethod":"CLIENT_SECRET_POST","redirectUris":["https://local.ping-devops.com:4000/api/auth/oauth/user/callback"],"postLogoutRedirectUris":["https://local.ping-devops.com:4000"]}')"
+user_app_id="$(printf '%s' "$user_app_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+# The create response does not carry the secret (the worker path had the same surprise —
+# measured); mint it separately, same POST /secret as the worker.
+user_secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$user_app_id/secret" \
+  -H "authorization: Bearer $access" \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
+if [[ -z "$user_app_id" || -z "$user_secret" ]]; then
+  # A previous run may have created it (secret is not re-mintable here); look it up and warn.
+  user_app_id="$(curl -s --max-time 30 "$api/environments/$new_env/applications?filter=name%20eq%20%22Standalone%20Labs%20User%22" \
+    -H "authorization: Bearer $access" \
+    | python3 -c '
+import sys, json
+try:
+    apps = json.load(sys.stdin).get("_embedded", {}).get("applications", [])
+except Exception:
+    apps = []
+print(apps[0]["id"] if apps else "")' 2>/dev/null || true)"
+  if [[ -n "$user_app_id" ]]; then
+    warn "user app exists from a previous run; PINGONE_USER_CLIENT_SECRET not refreshed — reset it in the PingOne console if the lab's sign-in fails."
+  else
+    warn "user app creation failed — pi.flow sign-in labs will fall back to their own configuration"
+    printf '%s\n' "$user_app_json" | sed -E 's/("secret")[^,}]*/\1:<redacted>/' >&2
+  fi
+fi
 
 # ── 5. write the shared settings file ─────────────────────────────────────────
 # Merge, never overwrite: this file is shared by every lab and the owner's other
@@ -295,6 +414,14 @@ new_keys=$(mktemp)
   echo "PINGONE_WORKER_CLIENT_SECRET=$secret"
   echo "PINGONE_WORKER_ID=$app_id"
   echo "PINGONE_WORKER_SECRET=$secret"
+  # The user app (authorization code + PKCE, pi.flow sign-in). Empty values are
+  # skipped by the merge below only if absent — write them so later runs update.
+  if [[ -n "${user_app_id:-}" && -n "${user_secret:-}" ]]; then
+    echo "PINGONE_USER_CLIENT_ID=$user_app_id"
+    echo "PINGONE_USER_CLIENT_SECRET=$user_secret"
+    echo "PINGONE_USER_REDIRECT_URI=https://local.ping-devops.com:4000/api/auth/oauth/user/callback"
+    echo "PINGONE_USER_TOKEN_ENDPOINT_AUTH_METHOD=client_secret_post"
+  fi
 } > "$new_keys"
 if [[ -f "$ENV_FILE" ]]; then
   python3 - "$ENV_FILE" "$new_keys" <<'PYEOF'
@@ -333,8 +460,8 @@ cat > "$CRED_FILE" <<EOF
 # Written by scripts/pingone-setup.sh $(date +%Y-%m-%d). Do not copy this file around.
 PINGONE_REGION=$PINGONE_REGION
 PINGONE_ADMIN_ENV_ID=$PINGONE_ADMIN_ENV_ID
-PINGONE_ADMIN_CLIENT_ID=$PINGONE_ADMIN_CLIENT_ID
-PINGONE_ADMIN_CLIENT_SECRET=$PINGONE_ADMIN_CLIENT_SECRET
+PINGONE_ADMIN_CLIENT_ID=$PINGONE_WORKER_CLIENT_ID
+PINGONE_ADMIN_CLIENT_SECRET=$PINGONE_WORKER_CLIENT_SECRET
 EOF
 chmod 600 "$CRED_FILE"
 ok "admin credentials saved: $CRED_FILE (mode 600) — teardown reads them automatically"
@@ -344,3 +471,9 @@ ok "Done. Now run:  scripts/bootstrap.sh"
 echo "  Teardown later is prompt-free: admin creds were saved to ~/.config/demo-kit/provisioning.json"
 echo "  Every lab reads PINGONE_ENVIRONMENT_ID/REGION from that file; the worker"
 echo "  creds above stay in it for labs that provision their own resources."
+echo ""
+echo "  One manual step for live Authorize (mock mode works without it) — import"
+echo "  the P1AZ policy snapshot once, in the PingOne console:"
+echo "    Console → your new environment → Authorize → Trust Framework → Import →"
+echo "    ${STANDALONE_SNAPSHOT:-$HOME/Development/AI-DEMO-Standalone/policy/ai-demo-p1az.standalone.snapshot.json}"
+echo "  (scripts/bootstrap.sh checks the tenant and prints this path again if the policy is missing.)"

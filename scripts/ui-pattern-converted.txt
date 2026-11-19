@@ -29,3 +29,308 @@ privilege-demo-LAB/policies
 privilege-demo-LAB/trace
 # 2026-11-11: mcp-skills-LAB skills (true three-column inspector) and mcp-demo-client-privilege-LAB index converted; their pins are bumped in the same PR.
 mcp-demo-client-privilege-LAB/index
+# 2026-11-11: p1-third-party-exchange-LAB (all 11 pages) converted in the lab repo; its pin is bumped in the same PR.
+p1-third-party-exchange-LAB/admin
+p1-third-party-exchange-LAB/compare
+p1-third-party-exchange-LAB/diagram
+p1-third-party-exchange-LAB/exchange
+p1-third-party-exchange-LAB/live
+p1-third-party-exchange-LAB/realbrowser
+p1-third-party-exchange-LAB/reallocal
+p1-third-party-exchange-LAB/setup
+p1-third-party-exchange-LAB/talk
+p1-third-party-exchange-LAB/walk
+p1-third-party-exchange-LAB/wire
+
+# 2026-11-11: agent-registry-demo-LAB (all 5 pages, shell-bar + one-primary + rule-19 TopMenu) and
+# ai-gateway-client-LAB (both pages, InspectorShell main + frame + banner-first + /api/mode) converted;
+# their pins are bumped in the same PR.
+agent-registry-demo-LAB/registry
+agent-registry-demo-LAB/lifecycle
+agent-registry-demo-LAB/gateway
+agent-registry-demo-LAB/start-boxes
+agent-registry-demo-LAB/raw
+ai-gateway-client-LAB/flow
+ai-gateway-client-LAB/templates
+
+# 2026-11-15: legacy header -> shell-bar, batch 1: agent-kill-switch-LAB index, demo-field-guide-LAB template,
+# jit-lab-LAB broker and workload-identity-LAB index converted (0 drift); their pins are bumped in the same PR.
+# idjag-runner-LAB idjag-se-guide also converted and pinned, but stays advisory: M1 (no Mock/Real toggle on a
+# static guide of a real-PF-only lab, rule-19 waiver) has no line for an allow escape.
+agent-kill-switch-LAB/index
+demo-field-guide-LAB/template
+jit-lab-LAB/broker
+workload-identity-LAB/index
+
+# 2026-11-15: legacy header -> shell-bar, batch 2: mcp-elicitation-LAB index, worker-demo-LAB index,
+# session-LAB index, mcp-discovery-LAB inventory and personal-agent-demo-LAB pattern converted (0 drift);
+# their pins are bumped in the same PR.
+mcp-elicitation-LAB/index
+worker-demo-LAB/index
+session-LAB/index
+mcp-discovery-LAB/inventory
+personal-agent-demo-LAB/pattern
+
+# 2026-11-15: legacy header -> shell-bar, batch 3: meridian-a2a-hop-LAB sign-in, no-tool-no-promise-LAB index,
+# obo-lab-LAB run and progressive-trust-ladder-LAB index converted (0 drift); their pins are bumped in the same PR.
+# ai-guard-sidecar-LAB h2 also converted and pinned, but stays advisory: P9 (8 primaries) needs a view redesign.
+meridian-a2a-hop-LAB/sign-in
+no-tool-no-promise-LAB/index
+obo-lab-LAB/run
+progressive-trust-ladder-LAB/index
+
+# 2026-11-16: legacy header -> shell-bar, batch 4: diagram-prove-lab index, ciba-hitl-lab flow + run,
+# jev-lab-LAB judge + bakeoff, privilege-map-LAB stories + stories-stories-page, a2a-lab-LAB gate + diagram + talk
+# converted (0 drift); their pins are bumped in the same PR.
+diagram-prove-lab/index
+ciba-hitl-lab/flow
+ciba-hitl-lab/run
+jev-lab-LAB/judge
+jev-lab-LAB/bakeoff
+privilege-map-LAB/stories
+privilege-map-LAB/stories-stories-page
+a2a-lab-LAB/gate
+a2a-lab-LAB/diagram
+a2a-lab-LAB/talk
+
+# 2026-11-16: legacy header -> shell-bar, batch 5: agent-preferences-lab gate + diagram + talk + talk-verify-mark,
+# delegation-lab-LAB gate + diagram + talk, hitl-mfa-lab-LAB gate + diagram + talk, stolen-token-LAB attack +
+# gateway + token + diagram + raw, privilege-api-explorer-LAB audit + connections + diagram + help + explorer
+# converted (0 drift); their pins are bumped in the same PR.
+agent-preferences-lab/gate
+agent-preferences-lab/diagram
+agent-preferences-lab/talk
+agent-preferences-lab/talk-verify-mark
+delegation-lab-LAB/gate
+delegation-lab-LAB/diagram
+delegation-lab-LAB/talk
+hitl-mfa-lab-LAB/gate
+hitl-mfa-lab-LAB/diagram
+hitl-mfa-lab-LAB/talk
+stolen-token-LAB/attack
+stolen-token-LAB/gateway
+stolen-token-LAB/token
+stolen-token-LAB/diagram
+stolen-token-LAB/raw
+privilege-api-explorer-LAB/audit
+privilege-api-explorer-LAB/connections
+privilege-api-explorer-LAB/diagram
+privilege-api-explorer-LAB/help
+privilege-api-explorer-LAB/explorer
+
+# 2026-11-16: legacy header -> shell-bar, batch 6: agent-mcp-door-demo-LAB index, chatgpt-mcp-flow-LAB sequence +
+# interlocks + about, mcp-scanner-lab-LAB scan + diagram + about + talk, coding-agents-LAB agents + evaluate + gateway
+# + config + diagram + talk, ping-gateway-route-LAB routes + simulator + lint + introspection + diagram + raw
+# converted (0 drift); their pins are bumped in the same PR.
+agent-mcp-door-demo-LAB/index
+chatgpt-mcp-flow-LAB/sequence
+chatgpt-mcp-flow-LAB/interlocks
+chatgpt-mcp-flow-LAB/about
+mcp-scanner-lab-LAB/scan
+mcp-scanner-lab-LAB/diagram
+mcp-scanner-lab-LAB/about
+mcp-scanner-lab-LAB/talk
+coding-agents-LAB/agents
+coding-agents-LAB/evaluate
+coding-agents-LAB/gateway
+coding-agents-LAB/config
+coding-agents-LAB/diagram
+coding-agents-LAB/talk
+ping-gateway-route-LAB/routes
+ping-gateway-route-LAB/simulator
+ping-gateway-route-LAB/lint
+ping-gateway-route-LAB/introspection
+ping-gateway-route-LAB/diagram
+ping-gateway-route-LAB/raw
+
+# 2026-11-16: legacy header -> shell-bar, batch 7: data-protection-LAB (7 pages), agent-governance-LAB (9),
+# hostile-mcp-LAB (6), mcp-auth-conformance-LAB (6), intent-par-inspector-LAB (5) converted (0 drift);
+# their pins are bumped in the same PR.
+data-protection-LAB/detect
+data-protection-LAB/rules
+data-protection-LAB/promptlog
+data-protection-LAB/insights
+data-protection-LAB/owasp
+data-protection-LAB/diagram
+data-protection-LAB/talk
+agent-governance-LAB/inventory
+agent-governance-LAB/review
+agent-governance-LAB/ownership
+agent-governance-LAB/sync
+agent-governance-LAB/gateway
+agent-governance-LAB/private
+agent-governance-LAB/diagram
+agent-governance-LAB/talk
+agent-governance-LAB/live
+hostile-mcp-LAB/gallery
+hostile-mcp-LAB/run
+hostile-mcp-LAB/rugpull
+hostile-mcp-LAB/limits
+hostile-mcp-LAB/diagram
+hostile-mcp-LAB/gateway
+mcp-auth-conformance-LAB/scorecard
+mcp-auth-conformance-LAB/stories
+mcp-auth-conformance-LAB/probe
+mcp-auth-conformance-LAB/clients
+mcp-auth-conformance-LAB/diagram
+mcp-auth-conformance-LAB/raw
+intent-par-inspector-LAB/request
+intent-par-inspector-LAB/server
+intent-par-inspector-LAB/token
+intent-par-inspector-LAB/start-boxes
+intent-par-inspector-LAB/raw
+
+# 2026-11-16: legacy header -> shell-bar, batch 8: pingfederate-LAB (5 pages), pingone-LAB (5), mock-authorize-LAB (5),
+# p1az-inspector-LAB (3), agent-audit-trail-LAB (6) converted (0 drift); their pins are bumped in the same PR.
+pingfederate-LAB/shelf
+pingfederate-LAB/run
+pingfederate-LAB/settings
+pingfederate-LAB/playground
+pingfederate-LAB/live
+pingone-LAB/shelf
+pingone-LAB/run
+pingone-LAB/settings
+pingone-LAB/playground
+pingone-LAB/talk
+mock-authorize-LAB/connect
+mock-authorize-LAB/decisions
+mock-authorize-LAB/diagram
+mock-authorize-LAB/rules
+mock-authorize-LAB/try
+p1az-inspector-LAB/console
+p1az-inspector-LAB/diagram
+p1az-inspector-LAB/settings
+agent-audit-trail-LAB/events
+agent-audit-trail-LAB/diagram
+agent-audit-trail-LAB/integrity
+agent-audit-trail-LAB/retention
+agent-audit-trail-LAB/tools
+agent-audit-trail-LAB/story
+
+# 2026-11-16: legacy header -> shell-bar, batch 9: poppy-agent-tester-LAB (3 pages), saas-access-LAB (9),
+# secrets-vault-LAB (9), observability-LAB (7) converted (0 drift); pingone-mcp-inspector-LAB (8) retired 2026-11-18 (merged into mfa-admin-mcp-LAB, entries removed);
+# their pins are bumped in the same PR.
+poppy-agent-tester-LAB/run
+poppy-agent-tester-LAB/chat
+poppy-agent-tester-LAB/diagram
+saas-access-LAB/request
+saas-access-LAB/approvals
+saas-access-LAB/timeline
+saas-access-LAB/drift
+saas-access-LAB/platforms
+saas-access-LAB/diagram
+saas-access-LAB/talk
+saas-access-LAB/live
+saas-access-LAB/request-privilege-check
+secrets-vault-LAB/vault
+secrets-vault-LAB/injection
+secrets-vault-LAB/stores
+secrets-vault-LAB/governance
+secrets-vault-LAB/diagram
+secrets-vault-LAB/talk
+secrets-vault-LAB/live
+secrets-vault-LAB/live-clock-bar
+secrets-vault-LAB/mock
+observability-LAB/logs
+observability-LAB/products
+observability-LAB/label
+observability-LAB/alerts
+observability-LAB/pipeline
+observability-LAB/talk
+observability-LAB/searches
+
+# 2026-11-16: legacy header -> shell-bar, batch 10: pingone-signin-LAB, gateway-suite-LAB, gateway-claims-LAB,
+# mcp-surface-LAB, mcp-tools-LAB converted; their pins are bumped in the same PR. Only the 28 clean pages are listed:
+# pages with P9 (more than one primary) stay advisory by owner decision 2026-11-16 (pingone-signin use-login/
+# use-step-up/use-ciba/use-passkey; gateway-claims scope/agentcore/console/latest/posture/talk; mcp-tools
+# connect/server/offline).
+pingone-signin-LAB/use-scenarios
+pingone-signin-LAB/diagram
+pingone-signin-LAB/raw
+pingone-signin-LAB/talk-track
+gateway-suite-LAB/end-to-end
+gateway-suite-LAB/mcp
+gateway-suite-LAB/talk
+gateway-claims-LAB/gate
+gateway-claims-LAB/claimsusers
+gateway-claims-LAB/obo
+gateway-claims-LAB/diagram
+mcp-surface-LAB/aggregate
+mcp-surface-LAB/discovery
+mcp-surface-LAB/openapi
+mcp-surface-LAB/credentials
+mcp-surface-LAB/catalog
+mcp-surface-LAB/authorization
+mcp-surface-LAB/creation
+mcp-surface-LAB/diagram
+mcp-surface-LAB/talk
+mcp-surface-LAB/live
+mcp-surface-LAB/live-gateway-trace-panel
+mcp-surface-LAB/talk-claim-tag
+mcp-tools-LAB/stories
+mcp-tools-LAB/diagram
+mcp-tools-LAB/limits
+mcp-tools-LAB/gateway
+mcp-tools-LAB/proxy
+
+# 2026-11-16: shared ErrorBoundary "Try again" now carries a P9 escape (AI-DEMO-Standalone #328, re-vendored in
+# gateway-claims-LAB #18), which clears the last drift on these four gateway-claims pages. scope and console keep P9
+# and stay advisory (owner decision).
+gateway-claims-LAB/agentcore
+gateway-claims-LAB/latest
+gateway-claims-LAB/posture
+gateway-claims-LAB/talk
+
+# 2026-11-16: legacy header -> shell-bar, batch 11: intent-purpose-behaviour-LAB (5 pages), aggregate-entitlement-LAB (3),
+# attack-gallery-LAB (8), mcp-gateway-lab-LAB (3), agentcore-pingone-demo-LAB (6) converted (0 drift); their pins are
+# bumped in the same PR.
+intent-purpose-behaviour-LAB/signals
+intent-purpose-behaviour-LAB/baseline
+intent-purpose-behaviour-LAB/obo
+intent-purpose-behaviour-LAB/diagram
+intent-purpose-behaviour-LAB/talk
+aggregate-entitlement-LAB/stories
+aggregate-entitlement-LAB/limits
+aggregate-entitlement-LAB/gateway
+attack-gallery-LAB/gallery
+attack-gallery-LAB/attack
+attack-gallery-LAB/controls
+attack-gallery-LAB/compare
+attack-gallery-LAB/limits
+attack-gallery-LAB/stories
+attack-gallery-LAB/diagram
+attack-gallery-LAB/asi
+mcp-gateway-lab-LAB/gate
+mcp-gateway-lab-LAB/diagram
+mcp-gateway-lab-LAB/talk
+agentcore-pingone-demo-LAB/gate
+agentcore-pingone-demo-LAB/three-lo
+agentcore-pingone-demo-LAB/obo
+agentcore-pingone-demo-LAB/diagram
+agentcore-pingone-demo-LAB/talk
+agentcore-pingone-demo-LAB/real
+
+# 2026-11-16: legacy header -> shell-bar, batch 12: ai-policies-LAB (9 pages) and federated-identity-LAB converted;
+# their pins are bumped in the same PR. federated-identity identities/issuers/models/sensors/audit/talk/live keep P9 and
+# stay advisory (owner decision: picking one primary there is a design call).
+ai-policies-LAB/evaluate
+ai-policies-LAB/policies
+ai-policies-LAB/approvals
+ai-policies-LAB/where
+ai-policies-LAB/closed
+ai-policies-LAB/diagram
+ai-policies-LAB/talk
+ai-policies-LAB/live
+ai-policies-LAB/live-gateway-hop
+federated-identity-LAB/verify
+federated-identity-LAB/diagram
+federated-identity-LAB/live-privilege-check
+
+# 2026-11-16: muse-LAB shell-bar frame (muse-LAB #35 React page, #36 static pages); its pin is bumped in the same PR.
+# Only the React page is enforced. cimd, clients and how-agent-connect-works are hand-written static pages with no
+# Mock/Real toggle, so they stay advisory for M1 only (same position as the idjag-runner SE guide).
+muse-LAB/index
+
+# 2026-11-16: privilege-k8-kits-LAB cleanup (#4): the unserved orphan kits/privilege-k8-kits.html is deleted and the served
+# page public/index.html is standard (h1, labelled selects, data-font-step, mode-aware banner); its pin is bumped in the same PR.
+privilege-k8-kits-LAB/index

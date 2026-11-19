@@ -56,3 +56,15 @@ else
   echo "MISSING scripts/standalone-ui.sha256 (run scripts/check-ui-standard.sh --pin)"; status=1
 fi
 exit $status
+
+# Rule 24 (owner, 2026-11-14): no hand-rolled JSON panes. A lab rendering JSON with
+# a bare <pre>{JSON.stringify(...)} in JSX (and no vendored JsonView) fails.
+# Advisory until labs converge; fix drift in the PR that touches the page.
+hand_rolled=$(grep -rn --include='*.jsx' -E '<pre[^>]*>\{?\s*JSON\.stringify' web/src 2>/dev/null | grep -v JsonView | wc -l | tr -d ' ')
+if [ "${RULE24_STRICT:-0}" = "1" ] && [ "$hand_rolled" -gt 0 ]; then
+  echo "RULE24 FAIL: $hand_rolled hand-rolled JSON pane(s) in web/src (use the shared JsonView)"
+  exit 1
+fi
+if [ "$hand_rolled" -gt 0 ]; then
+  echo "RULE24 WARN: $hand_rolled hand-rolled JSON pane(s) in web/src (migrate to shared JsonView when touching the page)"
+fi

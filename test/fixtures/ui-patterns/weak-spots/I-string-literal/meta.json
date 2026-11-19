@@ -1,0 +1,1 @@
+{ "rule": "J1", "status": "DRIFT", "note": "I: a JS string literal holding an unclosed <tag> (\"<IMPORTANT>\", `<b>`) is not a JSX element, so it neither opens a phantom element that swallows a later pretty JSON.stringify nor hides a real hand-rolled JSON pane after it", "match": { "broken": "<pre> shows hand-rolled JSON", "broken-jsx-text": "<pre> shows hand-rolled JSON" } }

@@ -175,6 +175,14 @@ Usage:
                                          rebuild and restart only the labs you had running.
 
 After setup, open the shelf: https://local.ping-devops.com:8443
+
+Day-to-day lab management (does not need setup again):
+  labs list | status                     What is running, and each lab's proxy URL
+  labs up <name|group>...                Start labs (groups come from the shelf's starter sets)
+  labs down <name|group>... | --all      Stop labs (--all stops every lab, never AI-DEMO2)
+  labs up --history [n]                  Start your last n labs (same source as setup.sh)
+  labs restart <name...>; labs url <name>
+  (the launcher is scripts/labs; if ~/.local/bin is on PATH, just: labs)
 USAGE
     exit 0
     ;;

@@ -39,6 +39,7 @@
  *   A1  buttons, links and form controls have an accessible name
  *   A2  no outline:none without a replacement focus style
  *   A3  every img has alt
+ *   J1  JSON is shown through the shared JsonPane, never hand-rolled, and a JSON pane is never capped (no max-height / overflow scroll)
  *   V1  the page loads a standalone-ui.css identical to shared/standalone-ui.css
  *   M1  Mock / Real toggle on the page, wired to /api/mode
  *   C1  token contrast: primary gradient, chips, muted text, borders, focus ring on content and on the dark shell bar
@@ -98,11 +99,15 @@ export const RULES = {
   A1: 'buttons, links and form controls have an accessible name',
   A2: 'no outline:none without a replacement focus style',
   A3: 'every img has alt (role=img needs a label)',
+  J1: 'JSON is shown through the shared JsonPane (Rule 24): no hand-rolled <pre>{JSON.stringify()}, and no max-height / overflow scroll on a JSON pane (full view)',
   V1: 'the page loads a standalone-ui.css identical to the canonical shared/standalone-ui.css',
   M1: 'a visible Mock / Real toggle on the page, wired to /api/mode',
   C1: 'token contrast of the primary gradient, chips, muted text, borders, and the focus ring on content and on the dark shell bar (4.5:1 text, 3:1 non-text)',
 };
 export const RULE_IDS = Object.keys(RULES);
+// Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
+// their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
+const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
 
@@ -171,6 +176,65 @@ function closeBracket(src, i) {
     j += 1;
   }
   return src.length;
+}
+
+/**
+ * [start, end) spans of JS regex literals that hold a `<`, e.g. `/<IMPORTANT>[\s\S]*?<\/IMPORTANT>/`, so the JSX scan does not read
+ * their `<tag>` as an element (the escaped `<\/tag>` never closes it, and it swallowed the rest of the file). A `/` opens a regex only
+ * after `( , = : [ ! & | ? { ;`, `return` / `typeof` or at the start; the literal ends on its own line at an unescaped `/` outside a
+ * class that is not `</` or `/>`, and flags are followed by a JS character, so `/` in JSX text (`a: /x</p>`, `<br/>`) is never one.
+ */
+function regexSpans(src) {
+  const spans = [];
+  for (let p = src.indexOf('/'); p !== -1; p = src.indexOf('/', p + 1)) {
+    if (src[p - 1] === '<' || '/*>'.includes(src[p + 1] || '/')) continue;
+    let b = p - 1;
+    while (b >= 0 && /\s/.test(src[b])) b -= 1;
+    if (b >= 0 && !/[(,=:[!&|?{;]$|(?:^|[^\w$])(?:return|typeof)$/.test(src.slice(Math.max(0, b - 6), b + 1))) continue;
+    let q = p + 1;
+    let cls = false;
+    for (; q < src.length && src[q] !== '\n'; q += 1) {
+      if (src[q] === '\\') q += 1;
+      else if (src[q] === '[') cls = true;
+      else if (src[q] === ']') cls = false;
+      else if (src[q] === '/' && !cls) break;
+    }
+    if (src[q] !== '/' || src[q - 1] === '<' || src[q + 1] === '>') continue;
+    const end = q + 1 + /^[dgimsuyv]*/.exec(src.slice(q + 1, q + 10))[0].length;
+    if (end < src.length && !/[\s.,;)\]}:?|&]/.test(src[end])) continue;
+    if (src.slice(p, end).includes('<')) spans.push([p, end]);
+    p = end - 1;
+  }
+  return spans;
+}
+
+/**
+ * [start, end) spans of JS string literals that hold an unclosed `<tag>`, e.g. `const MARKER = "<code>";` or `` `<span>${x}` ``, so the
+ * JSX scan does not read their `<tag>` as an element that swallows the rest of the file (and a later pretty JSON.stringify with it).
+ * A quote opens a string only where a JS value can start: after `( , = : [ ! & | ? { ; +`, `=>`, `return` / `typeof` / `case` or at the
+ * start; `'` and `"` end on their own line. Only a string with a `<` and no `</` or `/>` counts, so balanced markup in JSX text
+ * (`<p>Raw: "<pre>...</pre>"</p>`) is never hidden: an unclosed tag inside quotes is not valid JSX text anyway.
+ */
+function stringSpans(src, skip = []) {
+  const spans = [];
+  for (let p = 0; p < src.length; p += 1) {
+    const q = src[p];
+    if (q !== '"' && q !== "'" && q !== '`') continue;
+    const rx = skip.find(([s, e]) => p > s && p < e);
+    if (rx) {
+      p = rx[1] - 1;
+      continue;
+    }
+    let b = p - 1;
+    while (b >= 0 && /\s/.test(src[b])) b -= 1;
+    if (b >= 0 && !/[(,=:[!&|?{;+]$|=>$|(?:^|[^\w$])(?:return|typeof|case)$/.test(src.slice(Math.max(0, b - 6), b + 1))) continue;
+    const end = skipQuoted(src, p);
+    if (q !== '`' && src.slice(p, end).includes('\n')) continue;
+    const body = src.slice(p + 1, end - 1);
+    if (body.includes('<') && !body.includes('</') && !body.includes('/>')) spans.push([p, end]);
+    p = end - 1;
+  }
+  return spans;
 }
 
 // ============================== markup (HTML + JSX) ==============================
@@ -259,12 +323,20 @@ export function parseMarkup(src, { kind, file }) {
   const li = lineIndexer(src);
   const els = [];
   const root = { name: '#root', attrs: new Map(), children: [], parent: null, innerStart: 0, innerEnd: src.length };
+  const rxSpans = kind === 'jsx' ? regexSpans(src) : [];
+  const regexes = kind === 'jsx' ? [...rxSpans, ...stringSpans(src, rxSpans)] : [];
+  const inRegex = (at) => regexes.find(([s, e]) => at > s && at < e);
   const scan = (from, to, top) => {
     const stack = [top];
     let i = from;
     while (i < to) {
       const lt = src.indexOf('<', i);
       if (lt === -1 || lt >= to) break;
+      const rx = inRegex(lt);
+      if (rx) {
+        i = rx[1];
+        continue;
+      }
       if (src[lt + 1] === '/') {
         if (kind === 'jsx' && src[lt + 2] === '>') {
           for (let k = stack.length - 1; k >= 1; k -= 1) {
@@ -851,7 +923,10 @@ const over = (fg, bg) => (fg.length > 3 && fg[3] < 1 ? fg.slice(0, 3).map((c, i)
 // ============================== files and imports ==============================
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.vite', '.next', '__tests__', 'tests', 'test', 'fixtures', 'docs', 'mocks', 'mock', 'e2e', 'playwright-report', 'data', '.data', 'storybook-static']);
-const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link']);
+const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link', 'gateway-trace', 'diagram-kit']);
+// Single vendored files (shared/json): pinned byte for byte by their sha256 files, so the rules do not judge them.
+const VENDORED_FILES = new Set(['JsonPane.jsx', 'JsonPane.css', 'Json.jsx']);
+const isVendoredPath = (appDir, p) => VENDORED_FILES.has(path.basename(p)) || path.relative(appDir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
 const CODE_EXT = /\.(?:[cm]?[jt]sx?)$/i;
 const RESOLVE_EXT = ['', '.jsx', '.js', '.tsx', '.ts', '.mjs', '/index.jsx', '/index.js', '/index.tsx', '/index.ts'];
 
@@ -1101,6 +1176,9 @@ export function discoverPages(appDir, cache = new FileCache()) {
     if (mount && entry && /\.[jt]sx?$/.test(entry) && !doc.els.some((e) => e.name === 'main' || e.name === 'h1')) {
       // single-page app
       const { views } = detectViews(cache, [], entry, htmlRoot, rel);
+      // A vendored component (shared/gateway-trace, ...) that a page renders behind a mode check looks like a routed view to viewEvidence():
+      // it is pinned byte for byte, so it is never a page of its own.
+      for (const vf of [...views.keys()]) if (isVendoredPath(appDir, vf)) views.delete(vf);
       const stop = new Set(views.keys());
       const chrome = closure(cache, entry, stop, htmlRoot, rel);
       const cssLinks = doc.els.filter((e) => e.name === 'link' && /stylesheet/i.test(attrText(e, 'rel') || '')).map((e) => resolveLocal(html, attrText(e, 'href'), htmlRoot)).filter(Boolean);
@@ -1157,7 +1235,7 @@ function buildUnit(app, page, cache) {
       if (r && /\.css$/i.test(r)) addCss(r, p);
     }
   };
-  const isVendored = (p) => path.relative(app.dir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
+  const isVendored = (p) => isVendoredPath(app.dir, p);
   for (const f of page.files) {
     if (/\.css$/i.test(f)) addCss(f, null);
     else if (/\.html?$/i.test(f) || /\.[jt]sx$/i.test(f)) {
@@ -1332,7 +1410,7 @@ function bindingsOf(doc) {
 function makeResolver(u) {
   const { app, page, cache } = u;
   const underApp = (p) => !path.relative(app.dir, p).startsWith('..');
-  const vendored = (p) => path.relative(app.dir, p).split(path.sep).some((x) => VENDORED_DIRS.has(x));
+  const vendored = (p) => isVendoredPath(app.dir, p);
   const otherViews = new Set((page.viewFiles || []).filter((f) => f !== page.viewFile));
   const memo = new Map();
   return (el) => {
@@ -1414,7 +1492,7 @@ function buildForest(u) {
         state.defs.add(r.def);
         state.n += 1;
         const inst2 = state.n;
-        c.rendered = topEls(r.doc, r.def).map((e) => clone(e, c, inst2, [...stack, r.def]));
+        c.rendered = topEls(r.doc, r.def).map((e) => { const x = clone(e, c, inst2, [...stack, r.def]); x.componentUse = c; x.defSrc = r.doc && r.doc.src ? r.doc.src.slice(r.def.start, r.def.end) : null; return x; });
         if (r.def === viewDef) for (const x of c.rendered) x.isViewRoot = true;
         // JSX passed as a prop renders where the component renders that prop; when that spot is not found it stays at the host
         const inside = c.rendered.flatMap((x) => [x, ...descendantsOf(x)]).filter((x) => !x.isContainer);
@@ -1773,7 +1851,7 @@ function ruleP3(u) {
         if (d.prop === 'max-width') {
           const v = resolveVars(d.value, tokenMaps(u.sheets.flatMap((x) => x.parsed.rules)).light);
           const inner = /^(?:min|clamp)\(/.test(v) ? (v.match(/-?\d*\.?\d+(?:px|rem|em|ch)/g) || []).map(px).filter((x) => x !== null) : [px(v)];
-          const best = inner.filter((x) => x !== null && x >= 600 && x <= 1200)[0];
+          const best = inner.filter((x) => x !== null && x >= 600 && x <= 2400)[0];
           if (best) frame = { r, d };
         }
         if ((d.prop === 'margin' && /\bauto\b/.test(d.value)) || (/^margin-(?:inline|left|right)/.test(d.prop) && /\bauto\b/.test(d.value))) centred = true;
@@ -1781,7 +1859,7 @@ function ruleP3(u) {
       }
     }
   }
-  if (!frame) return mk(R, 'DRIFT', `<main> (${fmt(loc(main))}) has no centred max-width frame (max-width 600px..1200px, standard 1100px) in the loaded CSS`, [loc(main, 'no page frame')]);
+  if (!frame) return mk(R, 'DRIFT', `<main> (${fmt(loc(main))}) has no centred max-width frame (max-width 600px..2400px, standard 2200px) in the loaded CSS`, [loc(main, 'no page frame')]);
   if (!centred) return mk(R, 'WARN', `the page frame at ${frame.r.file}:${frame.d.line} has a max-width but is not centred (margin: 0 auto)`);
   return PASS(R);
 }
@@ -1843,6 +1921,35 @@ function ruleP7(u) {
 }
 
 // ---- P9
+/** A primary element that sits in the primary arm of `{prop ? (this) : (that)}` never renders primary when the
+ *  component use site does not pass the prop (a bool prop absent at the use site is false). Returns the element
+ *  itself when it is pruned, else null. Read on the ORIGINAL markup (the gap before the arm names the prop). */
+function primaryArmPruned(el) {
+  const o = origOf(el);
+  const p = o.parent;
+  if (!p) return null;
+  const gap = gapBefore(o);
+  const m = /([A-Za-z_$][\w$]*)\s*\?\s*\(?\s*$/.exec(gap);
+  if (!m) return null;
+    const prop = m[1];
+  // the component use site this instance was cloned for: the clone root carries componentUse
+  let host = null;
+  let defSrc = null;
+  for (let c = el; c; c = c.parent) {
+    if (c.componentUse) { host = c.componentUse; defSrc = c.defSrc || null; break; }
+  }
+  
+  if (!host || !host.attrs) return null;
+  // only prune when the guard names a PROP of the component: if the identifier is declared inside the
+  // component's own body (a useState/state variable, a local const), the guard is internal, not prop flow.
+  
+  if (defSrc && new RegExp(String.raw`\b(?:const|let|var)\s+[^;]*\b${prop}\b[^;]*=`).test(defSrc)) return null;
+  const a = host.attrs && (host.attrs.get(prop) || host.attrs.get(prop.toLowerCase()));
+  if (!a && host.attrs && !host.attrs.has(prop)) return el; // prop not passed -> falsy -> the primary arm never renders
+  if (a && (a.type === 'bool') && a.text === 'false') return el;
+  if (a && a.type === 'str' && a.text === 'false') return el;
+  return null;
+}
 // Judged on the render forest (component use sites expanded, attribute JSX at its host, view at the layout slot).
 // Two primaries are one state unless the code proves they exclude each other: arms of one ternary (fragment or element,
 // nested), different early returns (`if`/`else`/`case`/`default` + return), `X === 'a' && <A/>` against `X === 'b' && <B/>`
@@ -1853,7 +1960,7 @@ function ruleP9(u) {
   const forest = forestOf(u);
   const own = (forest ? forest.all : u.els).filter((e) => !e.vendored && !e.isContainer && e.name !== '#frag');
   const excl = forest ? (a, b) => exclusiveTree(a, b, true) : exclusiveFlat;
-  const prim = own.filter(isPrimaryEl);
+  const prim = own.filter(isPrimaryEl).filter((e) => !primaryArmPruned(e));
   const looped = prim.filter((e) => !isConditionalClass(e) && inLoop(e));
   if (looped.length) return mk(R, 'DRIFT', `a primary button is rendered inside a loop (${fmt(loc(looped[0]))}), so it repeats once per item`, uniqLocs(looped.map((e) => loc(e, 'primary in a loop'))));
   const groups = new Map();
@@ -2212,6 +2319,88 @@ function ruleA3(u) {
   return bad.length ? mk(R, 'DRIFT', first(bad), bad) : PASS(R);
 }
 
+// ---- J1 (Rule 24, owner 2026-11-14): JSON through the shared JsonPane, in full view
+// What is shown as JSON text by hand: a <pre> whose own text (child elements cut out) holds JSON.stringify(...), or any element that prints a
+// pretty-printed one (JSON.stringify(x, null, 2)). A compact JSON.stringify(v) inline in a <code> is a value, not a pane, so it passes.
+const JSON_ANY = /JSON\.stringify\s*\(/;
+const JSON_PRETTY = /JSON\.stringify\s*\((?:[^()]|\([^()]*\))*,\s*(?:null|undefined)\s*,\s*[\d"'`]/;
+const REAL_TAG = /^(?:pre|code|samp|div|span|p|td|th|li|dd|dt|output|section|article|figure|details|summary|blockquote|textarea|[A-Z]\w*)$/;
+const JSON_COMPONENT = /^(?:Json|JsonPane|JsonView)$/;
+const NOT_A_CAP = /^(?:none|unset|initial|inherit|revert|visible)\b/i;
+function ownInnerText(e) {
+  if (e.raw !== null || e.innerEnd <= e.innerStart) return '';
+  let out = '';
+  let at = e.innerStart;
+  for (const c of [...e.children].sort((a, b) => a.index - b.index)) {
+    if (c.index > at) out += e.src.slice(at, c.index);
+    at = Math.max(at, c.fullEnd);
+  }
+  if (at < e.innerEnd) out += e.src.slice(at, e.innerEnd);
+  return out;
+}
+// A helper that pretty-prints JSON (`const pretty = (v) => JSON.stringify(v, null, 2)`, `function show(p) { return JSON.stringify(p, null, 2); }`)
+// counts as JSON.stringify(x, null, 2) wherever the page calls it, in any file of the page (it usually lives in a lib/format.js).
+const HELPER_DEFS = [
+  new RegExp(String.raw`(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\([^()]*\)|[A-Za-z_$][\w$]*)\s*=>\s*\(?\s*` + JSON_PRETTY.source, 'g'),
+  new RegExp(String.raw`function\s+([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*\{\s*return\s+` + JSON_PRETTY.source, 'g'),
+];
+function prettyHelpers(u) {
+  const names = new Set();
+  for (const t of u.texts) for (const re of HELPER_DEFS) for (const m of t.text.matchAll(re)) names.add(m[1]);
+  return names;
+}
+const escName = (s) => s.replace(/[$]/g, '\\$&');
+// Props that never show their value as a pane: handlers, links, keys and styling, tooltips, and copy / download targets.
+const NOT_SHOWN_PROP = /^(?:on[A-Z]\w*|href|download|key|ref|id|className|class|style|title|aria-[\w-]+|data-[\w-]+)$|copy|clipboard|download/i;
+const INPUT_TAG = /^(?:textarea|input|select|option)$/;
+function ruleJ1(u) {
+  const R = 'J1';
+  const bad = [];
+  const warn = [];
+  const helpers = [...prettyHelpers(u)];
+  const helperCall = helpers.length ? new RegExp(String.raw`(?<![\w$.])(?:${helpers.map(escName).join('|')})\s*\(`) : null;
+  const pretty = (t) => JSON_PRETTY.test(t) || (helperCall !== null && helperCall.test(t));
+  for (const e of u.els) {
+    if (e.vendored || e.name === '#frag' || JSON_COMPONENT.test(e.name) || !REAL_TAG.test(e.name)) continue;
+    const own = ownInnerText(e);
+    if (e.name === 'pre' ? JSON_ANY.test(own) || pretty(own) : pretty(own)) {
+      bad.push(loc(e, `<${e.name}> shows hand-rolled JSON text (use the shared JsonPane)`));
+      continue;
+    }
+    // JSON handed to a component or element as a prop: <Untrusted block text={pretty(x)} />, <Code value={JSON.stringify(x, null, 2)} />.
+    // Inputs (a textarea's value is an editor, not a view) and copy buttons are not panes.
+    if (/copy|clipboard/i.test(e.name)) continue;
+    for (const [name, a] of e.attrs) {
+      if (a.type !== 'expr' || NOT_SHOWN_PROP.test(name)) continue;
+      if (INPUT_TAG.test(e.name) && /^(?:value|defaultValue)$/.test(name)) continue;
+      if (pretty(a.text)) {
+        bad.push(loc(e, `<${e.name} ${name}={...}> shows hand-rolled JSON text (use the shared JsonPane)`));
+        break;
+      }
+    }
+  }
+  for (const s of ownSheets(u)) {
+    for (const r of s.parsed.rules) {
+      const parts = selParts(r.selector);
+      const isJson = parts.some((p) => /json/i.test(p));
+      const isPre = parts.some((p) => /(?:^|[^a-z])pre(?:[^a-z]|$)/i.test(p));
+      if (!isJson && !isPre) continue;
+      for (const d of r.decls) {
+        const cap = (d.prop === 'max-height' && !NOT_A_CAP.test(d.value.trim())) || (/^overflow(?:-[xy])?$/.test(d.prop) && /\b(?:auto|scroll)\b/i.test(d.value));
+        if (!cap) continue;
+        const where = { file: r.file, line: d.line, msg: `${r.selector} { ${d.prop}: ${d.value.trim()} } caps a ${isJson ? 'JSON' : 'pre'} pane (full view: it must grow to its content)` };
+        (isJson ? bad : warn).push(where);
+      }
+    }
+  }
+  for (const x of u.texts.filter((t) => !t.vendored && !/\.[jt]sx$/.test(t.file))) {
+    if (/\.(?:textContent|innerText|innerHTML)\s*=\s*[^;\n]*JSON\.stringify\s*\(/.test(x.text)) warn.push({ file: x.file, line: 1, msg: 'script writes JSON.stringify output into the page by hand (use a coloured, Form | JSON pane)' });
+  }
+  if (bad.length) return mk(R, 'DRIFT', first(bad), bad);
+  if (warn.length) return mk(R, 'WARN', first(warn), warn);
+  return PASS(R);
+}
+
 // ---- V1
 function ruleV1(u, canonicalCss) {
   const R = 'V1';
@@ -2439,7 +2628,7 @@ function ruleC1(u) {
   return PASS(R);
 }
 
-const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleV1, ruleM1, ruleC1];
+const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1];
 
 /** Apply the `ui-pattern: allow` escapes: a finding on the escape's line or the line below is let through. */
 function applyEscapes(results, u) {
@@ -2527,7 +2716,7 @@ export function runCheck({ root = DEFAULT_ROOT, appDirs = [], only = [], allowli
       const results = checkPageUnit(unit, { tier: rec.tier, canonicalCss });
       const drift = results.filter((r) => r.status === 'DRIFT');
       const enforced = strict || allowlist.includes(key);
-      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.length === 0 };
+      const page = { key, app: app.name, id: p.id, kind: p.kind, how: p.how || null, file: p.file, enforced, results, drift: drift.map((r) => r.rule), clean: drift.every((r) => ADVISORY_RULES.has(r.rule)) };
       rec.pages.push(page);
       out.pages.push(page);
     }

@@ -130,9 +130,6 @@
 [submodule "standalone/agent-gateway-inspector-LAB"]
 	path = standalone/agent-gateway-inspector-LAB
 	url = https://github.com/curtismu7/agent-gateway-inspector-LAB.git
-[submodule "standalone/pingone-mcp-inspector-LAB"]
-	path = standalone/pingone-mcp-inspector-LAB
-	url = https://github.com/curtismu7/pingone-mcp-inspector-LAB.git
 [submodule "standalone/agent-audit-trail-LAB"]
 	path = standalone/agent-audit-trail-LAB
 	url = https://github.com/curtismu7/agent-audit-trail-LAB.git
@@ -248,3 +245,51 @@
 [submodule "standalone/privilege-owasp-lab-LAB"]
 	path = standalone/privilege-owasp-lab-LAB
 	url = https://github.com/curtismu7/privilege-owasp-lab-LAB.git
+[submodule "standalone/pf-privilege-obo-LAB"]
+	path = standalone/pf-privilege-obo-LAB
+	url = https://github.com/curtismu7/pf-privilege-obo-LAB
+[submodule "standalone/privilege-api-explorer-LAB"]
+	path = standalone/privilege-api-explorer-LAB
+	url = https://github.com/curtismu7/privilege-api-explorer-LAB
+[submodule "standalone/mcp-scanner-lab-LAB"]
+	path = standalone/mcp-scanner-lab-LAB
+	url = https://github.com/curtismu7/mcp-scanner-lab-lab.git
+[submodule "standalone/appfire-agent-governance-LAB"]
+	path = standalone/appfire-agent-governance-LAB
+	url = https://github.com/curtismu7/appfire-agent-governance-LAB
+[submodule "standalone/mfa-admin-mcp-lab"]
+	path = standalone/mfa-admin-mcp-lab
+	url = https://github.com/curtismu7/mfa-admin-mcp-lab.git
+[submodule "standalone/workload-identity-LAB"]
+	path = standalone/workload-identity-LAB
+	url = https://github.com/curtismu7/workload-identity-LAB
+[submodule "standalone/privilege-bulk-users-LAB"]
+	path = standalone/privilege-bulk-users-LAB
+	url = https://github.com/curtismu7/privilege-bulk-users-LAB
+[submodule "standalone/pdf-to-md-LAB"]
+	path = standalone/pdf-to-md-LAB
+	url = https://github.com/curtismu7/pdf-to-md-LAB.git
+[submodule "standalone/cedar-act-sub-LAB"]
+	path = standalone/cedar-act-sub-LAB
+	url = https://github.com/curtismu7/cedar-act-sub-LAB.git
+[submodule "standalone/cedar-in-privilege-LAB"]
+	path = standalone/cedar-in-privilege-LAB
+	url = https://github.com/curtismu7/cedar-in-privilege-LAB.git
+[submodule "standalone/poppy-verification-LAB"]
+	path = standalone/poppy-verification-LAB
+	url = https://github.com/curtismu7/poppy-verification-LAB.git
+[submodule "standalone/trusted-issuers-LAB"]
+	path = standalone/trusted-issuers-LAB
+	url = https://github.com/curtismu7/trusted-issuers-LAB.git
+[submodule "standalone/pf-agent-client-sync-lab"]
+	path = standalone/pf-agent-client-sync-lab
+	url = https://github.com/curtismu7/pf-agent-client-sync-LAB
+[submodule "standalone/wimse-lab-LAB"]
+	path = standalone/wimse-lab-LAB
+	url = https://github.com/curtismu7/wimse-lab-LAB
+[submodule "standalone/workload-cert-lab-LAB"]
+	path = standalone/workload-cert-lab-LAB
+	url = https://github.com/curtismu7/workload-cert-lab-LAB
+[submodule "standalone/intent-console-lab-LAB"]
+	path = standalone/intent-console-lab-LAB
+	url = https://github.com/curtismu7/intent-console-LAB.git

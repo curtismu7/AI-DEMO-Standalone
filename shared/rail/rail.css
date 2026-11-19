@@ -1,0 +1,34 @@
+/* rail.css: chrome for the shared Rail (collapsible sidebar). Colours come from the standalone-ui.css tokens. */
+
+.rail-wrap { display: flex; align-items: stretch; min-width: 0; width: fit-content; }
+.rail-wrap--right { flex-direction: row-reverse; }
+
+.rail { min-width: 0; }
+.rail-wrap--collapsed .rail {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The toggle strip: always visible, hugs the rail's page edge. */
+.rail__toggle {
+  flex: none;
+  width: 18px;
+  border: none;
+  background: var(--surface, canvas);
+  color: var(--text-body, canvastext);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.5rem 0.1rem;
+  border-right: 1px solid var(--border, color-mix(in srgb, canvastext 15%, transparent));
+}
+.rail-wrap--right .rail__toggle { border-right: none; border-left: 1px solid var(--border, color-mix(in srgb, canvastext 15%, transparent)); }
+.rail__toggle:hover { background: var(--accent, highlight); color: var(--on-accent, highlighttext); }
+
+/* Collapsed: the wrap keeps only the toggle strip. The wrap always sizes itself (expanded = its content's
+   width; collapsed = the strip), so a grid column of `auto` — never a fixed track — shrinks with it and the
+   rest of the page takes the freed space. Recipe for the lab's grid: `grid-template-columns: auto minmax(0, 1fr)`. */
+.rail-wrap { position: relative; width: fit-content; }
+.rail-wrap--collapsed { width: 18px; }
+.rail-wrap--collapsed .rail { display: none; }

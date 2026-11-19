@@ -195,14 +195,24 @@ test("every standalone lab in .gitmodules is classified somewhere in the doc", (
   assert.deepEqual(missing, [], "labs missing from the doc (add a line, or the doc is stale)");
 });
 
-test("the 'not yet standalone' labs from the audit are all marked inline and listed", () => {
+test("the 'not yet standalone' labs are all marked inline and listed", () => {
   const list = docText.match(/^## Not yet standalone, in one list[\s\S]*$/m)[0];
   const lines = docText.split("\n");
-  for (const n of ["ping-services-stub-LAB", "ping-gateway-route-LAB", "muse-LAB", "jit-lab-LAB", "p1az-inspector-LAB", "mcp-tools-LAB", "pingone-mcp-inspector-LAB", "privilege-a2a-anthropic-demo-LAB", "observability-LAB", "pingcli-LAB", "pingone-events-LAB"]) {
+  for (const n of ["ping-gateway-route-LAB", "muse-LAB", "jit-lab-LAB", "privilege-a2a-anthropic-demo-LAB", "pingcli-LAB", "pingone-events-LAB"]) {
     assert.ok(list.includes("`" + n + "`"), `${n} not in the one-list`);
     // the marker sits on the first line of its bullet; the lab may be named on that line or the continuation lines
     const hit = lines.some((l, i) => l.includes("NOT YET STANDALONE") && [l, lines[i + 1] ?? "", lines[i + 2] ?? ""].join(" ").includes("`" + n + "`"));
     assert.ok(hit, `${n} has no inline NOT YET STANDALONE marker`);
+  }
+});
+
+test("the six labs repointed on 2026-11-17 are no longer marked not-yet-standalone", () => {
+  const list = docText.match(/^## Not yet standalone, in one list[\s\S]*$/m)[0];
+  for (const n of ["ping-services-stub-LAB", "p1az-inspector-LAB", "mcp-tools-LAB", "demo-map-LAB", "observability-LAB"]) { // pingone-mcp-inspector-LAB retired 2026-11-18 (merged into mfa-admin-mcp-LAB)
+    assert.ok(list.includes(n), `${n} should be named in the one-list as repointed`);
+    const lines = docText.split("\n");
+    const marked = lines.some((l, i) => l.includes("NOT YET STANDALONE") && [l, lines[i + 1] ?? "", lines[i + 2] ?? ""].join(" ").includes("`" + n + "`"));
+    assert.ok(!marked, `${n} still carries a NOT YET STANDALONE marker`);
   }
 });
 
