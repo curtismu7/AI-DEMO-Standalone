@@ -2,3 +2,6 @@ standalone/demo-shelf-LAB/
 # per-machine bootstrap state (what's-new baseline) — never shared
 .bootstrap-labs
 .DS_Store
+
+# scratch worktrees of other agent sessions (never commit)
+.wt-*/
