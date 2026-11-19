@@ -39,6 +39,12 @@ One toggle on every pane, one choice for the whole page (kept in localStorage):
   audiences as chips, timestamps with their date, true/false as chips. A HAL-style link — a single-key object
   whose only entry is a string `href` (e.g. `_links.branding`) — collapses to one row: the parent key with the
   URL as its value, in the url style. Multi-key objects and arrays of such objects stay nested.
+  **Deep payloads stay compact** (a gateway's MCP `tools/list` is the test case): a row whose value nests further
+  stacks under its label at full width, so a level costs one indent and never a label column; from the third level a
+  flat object (every entry a scalar, chip list or link) sits beside its label like a scalar row; indentation stops
+  growing at level 3 (a thin rule); list items carry their number in a gutter beside the item; long text wraps at
+  word boundaries (an unbroken run still breaks); below 600px every row stacks. `jsonpane.test.jsx` pins the rules
+  (it also reads `JsonPane.css`, because jsdom does no layout), so vendor the test file next to the component.
 - **JSON** — the exact JSON text, colored by the table above.
 
 A lab whose point is the raw wire JSON can open on the JSON view: `setDefaultJsonView("raw")` once in main.jsx (a visitor's saved choice still wins). Form stays the family default.
