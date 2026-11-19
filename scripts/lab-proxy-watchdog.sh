@@ -98,6 +98,12 @@ proxy_up() {
 proxy_ok() {
   curl -sk -o /dev/null --max-time 4 "https://local.ping-devops.com:8443/api/health" 2>/dev/null
 }
+# proxy_ok only proves the shelf answers: a freshly recreated proxy passes it while every lab
+# 502s until the networks are (re-)attached and nginx reloaded. lab_ok proves an actual lab
+# route works (the proxy's entry rule sets the lab cookie itself, so no cookie is needed).
+lab_ok() {
+  curl -sk -o /dev/null --max-time 4 "https://local.ping-devops.com:8443/privilege-demo/api/health" 2>/dev/null
+}
 
 # proxy_up: plain up -d — recreates only when config/image changed, so manual network
 # attaches (step 1b) survive a run where nothing changed.
@@ -118,7 +124,14 @@ if ! proxy_conf_current; then
 fi
 # New networks mean new DNS interfaces for nginx: reload when the attach pass added any.
 attach_lab_networks && docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 nginx -s reload >/dev/null 2>&1
-if proxy_ok; then
+# A recreate starts nginx before the networks are attached; a reload after attaching re-resolves
+# the lab names. Reload once more (cheap, zero downtime) whenever a lab route is still failing.
+if ! lab_ok; then
+  docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 nginx -s reload >/dev/null 2>&1
+  sleep 2
+  attach_lab_networks && docker --context "$docker_ctx" exec lab-proxy-lab-proxy-1 nginx -s reload >/dev/null 2>&1
+fi
+if lab_ok && proxy_ok; then
   echo "lab-proxy-watchdog: https://local.ping-devops.com:8443 is serving"
   exit 0
 fi
