@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Rule 24b guard (advisory): a lab that renders a JWT must do it through the shared decoded JsonPane.
+// Rule 24b guard (enforced since 2026-11-19): a lab that renders a JWT must do it through the shared decoded JsonPane.
 // Fails when a web source file shows token-shaped strings via hand-rolled display sites instead of the
 // shared pane, or hand-rolls JWT segment decoding. Advisory: exit 0 always, findings printed with ADVICE.
-// Flip to enforced (exit 1 on findings) with CHECK_TOKEN_DECODE_ENFORCE=1 once the sweep completes.
+// Enforcement: exit 1 on findings when CHECK_TOKEN_DECODE_ENFORCE=1 (set in CI).
 import fs from "node:fs";
 import path from "node:path";
 
@@ -32,10 +32,11 @@ if (fs.existsSync(web)) {
   }
 }
 if (findings.length) {
-  console.log(`check-token-decode (advisory): ${findings.length} finding(s)`);
+  const mode = process.env.CHECK_TOKEN_DECODE_ENFORCE === "1" ? "enforced" : "advisory";
+  console.log(`check-token-decode (${mode}): ${findings.length} finding(s)`);
   for (const f of findings) console.log(`  ADVICE ${f}`);
   if (process.env.CHECK_TOKEN_DECODE_ENFORCE === "1") process.exit(1);
 } else {
-  console.log("check-token-decode (advisory): clean");
+  console.log(`check-token-decode (${process.env.CHECK_TOKEN_DECODE_ENFORCE === "1" ? "enforced" : "advisory"}): clean`);
 }
 process.exit(0);
