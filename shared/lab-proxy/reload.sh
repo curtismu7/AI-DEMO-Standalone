@@ -46,11 +46,13 @@ for net in $need; do
 done
 docker exec "$proxy" nginx -s reload >/dev/null 2>&1 || true
 
-# verify
+# verify: the shelf route (/api/health) AND a real lab route (a fresh recreate passes the shelf
+# check while every lab still 502s until the attaches above are reloaded through)
 code="$(curl -sk -o /dev/null --max-time 4 -w '%{http_code}' https://local.ping-devops.com:8443/api/health 2>/dev/null || echo 000)"
-if [ "$code" = "200" ]; then
+labcode="$(curl -sk -o /dev/null --max-time 4 -w '%{http_code}' https://local.ping-devops.com:8443/privilege-demo/api/health 2>/dev/null || echo 000)"
+if [ "$code" = "200" ] && [ "$labcode" = "200" ]; then
   echo "lab-proxy reloaded OK (attached $attached network(s)); https://local.ping-devops.com:8443 is serving"
 else
-  echo "WARNING: proxy reloaded but /api/health answered $code; check: docker logs $proxy" >&2
+  echo "WARNING: proxy reloaded but /api/health answered $code and the privilege-demo lab answered $labcode; check: docker logs $proxy" >&2
   exit 1
 fi

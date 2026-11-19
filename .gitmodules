@@ -299,3 +299,6 @@
 [submodule "standalone/agent-privilege-guide-lab-LAB"]
 	path = standalone/agent-privilege-guide-lab-LAB
 	url = https://github.com/curtismu7/agent-privilege-guide-lab.git
+[submodule "standalone/spiffe-issuer-LAB"]
+	path = standalone/spiffe-issuer-LAB
+	url = https://github.com/curtismu7/spiffe-issuer-LAB
