@@ -60,9 +60,20 @@ The old layout used `grid-template-columns: repeat(auto-fit, minmax(...))` mosai
 | agent-preferences-lab | `agent-preferences-lab` | Closest mirror of the a2a-lab reference; 7 numbered sections + `.hops-grid` |
 | agent-privilege-guide | `agent-privilege-guide-LAB` | Section pages numbered 1–5 with `n.1/n.2` sub-badges; diagram arrows explained in a numbered `.hops-grid` step list under the canvas; compare cards numbered |
 
+### Batch 3 (2026-11-19)
+
+| App | Repo | Notes |
+|---|---|---|
+| hostile-a2a | `hostile-a2a-LAB` | Gallery category sections numbered; page already 2200px so kept |
+| hostile-mcp | `hostile-mcp-LAB` | Same gallery treatment; `.cols` also converted |
+| delegation-lab | `delegation-lab-LAB` | Gate mosaic → 5 numbered sections; AgentCall + DirectoryBoard in `.duo`; hops in `.hops-grid` |
+| gateway-claims | `gateway-claims-LAB` | Nested-claim gate: 5 numbered sections, `.hops-grid` |
+| idjag-runner | `idjag-runner-LAB` | Flow tab Acts 1–4 numbered; form grid stacks <900px |
+| mock-authorize | `mock-authorize-LAB` | Rules/Decisions/Connect/Try numbered 1–4 via `data-n`/`::before` (tests assert heading text); Dockerfile fix: `COPY docs docs` AND remove `docs` from `.dockerignore` (web imports `../../docs/talk-track.md?raw`) |
+
 ## Gotcha: Docker builds that import files outside `web/`
 
-If the web build imports from outside `web/` (e.g. `import x from "../../docs/talk-track.md?raw"`), the Dockerfile must `COPY` those paths into the build stage — a plain `COPY web web` fails inside Docker even when the local build passes.
+If the web build imports from outside `web/` (e.g. `import x from "../../docs/talk-track.md?raw"`), the Dockerfile must `COPY` those paths into the build stage — a plain `COPY web web` fails inside Docker even when the local build passes. Also check `.dockerignore` — a `docs` exclusion line silently defeats the COPY.
 
 ## Checklist for a new app
 
