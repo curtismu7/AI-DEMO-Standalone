@@ -134,6 +134,10 @@ gateway moved to another port is not found by the probe. Not fixed here.
 - `gateway-suite-LAB`: `CENTRAL_AGENT_A2A_URL` and an optional bearer. `.env.example`.
 - `workload-identity-LAB`: `WI_REAL_GATEWAY_URL` and `WI_REAL_CLIENT_SECRET` in the compose-side `.env`; unset keeps Real
   refused with the reason. README "Real mode settings".
+- `spiffe-issuer-LAB`: mints test JWT-SVIDs (valid, mismatched, untrusted) and publishes the JWKS; Mock is fully offline. Real
+  needs `PUBLIC_URL` (a public https origin the gateway can fetch `/.well-known/` from), `SPIFFE_GW_URL` and `SPIFFE_GW_APPS`
+  in the lab's own `.env`, plus a Federated Identity and an agent key on the gateway; unset keeps Real refused with the missing
+  keys named. README "Mock and Real modes".
 
 ## E. Owner only
 
