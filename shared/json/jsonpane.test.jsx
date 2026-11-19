@@ -97,7 +97,7 @@ describe("decoded tokens (Rule 24b)", () => {
   test("a PingOne-shaped token in a body: raw in its field, then Header, Payload and Signature under the pane, named by the field", () => {
     const token = jwtOf(
       { alg: "RS256", kid: "mock-key-1", typ: "JWT" },
-      { sub: "u-123", client_id: "bank-app", iss: "https://auth.ping-devops.com/as", aud: ["gateway"], scope: "openid transfer", iat: 1769000000, exp: 1769003600, may_act: JSON.stringify({ sub: "agent-1" }) }
+      { sub: "u-123", client_id: "bank-app", iss: "https://auth.pingone.com/as", aud: ["gateway"], scope: "openid transfer", iat: 1769000000, exp: 1769003600, may_act: JSON.stringify({ sub: "agent-1" }) }
     );
     render(<Json label="Token response" value={{ access_token: token, token_type: "Bearer", expires_in: 3600 }} />);
     const box = screen.getByTestId("decoded-tokens");
