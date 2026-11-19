@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.5 (2026-11-19)
+
+**New labs**
+
+- privilege-google-secrets-LAB (D137, Demo, port 7827): Privilege Hubs brokering a Google Secret Manager credential to an AI agent — the agent holds only a Privilege agent access key; the gateway policy allows the in-scope secret (custodian release, masked, labelled mock) and refuses the out-of-scope ask, the refusal rendered as the gateway's own decision. GatewayTrace on every hop; ReactFlow flow with Simulate/Reset/speed; Mock/Real toggle (Mock fully offline, no live mode shipped). Also registered: agent-privilege-guide-lab (D136, port 7826, by its own session).
+
 ## 3.4 (2026-11-18)
 
 **New labs**
