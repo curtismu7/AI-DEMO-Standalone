@@ -306,3 +306,6 @@
 [submodule "standalone/privilege-shelf-LAB"]
 	path = standalone/privilege-shelf-LAB
 	url = https://github.com/curtismu7/privilege-shelf-LAB.git
+[submodule "standalone/pf-array-claims-LAB"]
+	path = standalone/pf-array-claims-LAB
+	url = https://github.com/curtismu7/pf-array-claims-LAB.git
