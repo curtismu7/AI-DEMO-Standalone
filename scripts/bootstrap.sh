@@ -461,7 +461,17 @@ if [ ! -f "$env_file" ]; then
   touch "$env_file" && chmod 600 "$env_file" 2>/dev/null || true
 fi
 if grep -q "^SHELF_URL=" "$env_file" 2>/dev/null; then
-  step_ok "already set in $(basename "$env_file")"
+  # Owner rule 2026-11-03: apps are reached by DOMAIN, never a raw loopback URL. An older
+  # settings file may still carry the pre-proxy loopback launcher (127.0.0.1:4400); rewrite it.
+  old_shelf="$(grep -E "^SHELF_URL=" "$env_file" | tail -1 | cut -d= -f2-)"
+  case "$old_shelf" in
+    *127.0.0.1*|*localhost*)
+      sed -i '' "s|^SHELF_URL=.*|SHELF_URL=$shelf_default|" "$env_file" 2>/dev/null \
+        || sed -i "s|^SHELF_URL=.*|SHELF_URL=$shelf_default|" "$env_file"
+      step_ok "rewrote loopback SHELF_URL ($old_shelf) to $shelf_default"
+      ;;
+    *) step_ok "already set in $(basename "$env_file")" ;;
+  esac
 else
   printf '\n# Demo shelf (launcher) URL — read by every app for the header "Shelf" button\nSHELF_URL=%s\n' "$shelf_default" >> "$env_file" \
     && step_ok "$shelf_default" \
@@ -488,6 +498,22 @@ if [ "$env_rc" != 0 ]; then
   step_warn "settings file needs attention (below)${ui_note:+; $ui_note}"
 else
   step_ok "$ui_note"
+fi
+
+step "Lab compose shelf-URL defaults"
+# Labs started by hand (docker compose up, not through this script) use the SHELF_URL default
+# baked into their compose file. A raw loopback default (127.0.0.1:4400) puts a loopback URL in
+# the browser's Shelf button (owner rule 2026-11-03: domain URLs only). Report drift; fixing it
+# is one sed per file and stays a maintainer task so this step never rewrites checked-out repos.
+loopback_defaults=""
+for f in "$root"/standalone/*/docker-compose.yml; do
+  grep -q 'SHELF_URL:-http://127\.0\.0\.1:4400' "$f" 2>/dev/null && loopback_defaults="$loopback_defaults $(basename "$(dirname "$f")")"
+done
+if [ -n "$loopback_defaults" ]; then
+  if [ "$verbose" = 1 ]; then step_detail "labs with a loopback SHELF_URL default:$loopback_defaults"; fi
+  step_warn "$(echo "$loopback_defaults" | wc -w | tr -d ' ') lab(s) carry an old loopback Shelf-button default (cosmetic, maintainer fix)"
+else
+  step_ok
 fi
 
 step "Shared services"
