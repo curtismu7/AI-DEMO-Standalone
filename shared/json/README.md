@@ -28,7 +28,7 @@ tokens), so light and dark follow the theme and no lab ever writes a color liter
 | id (uuid) | `--j-id` | |
 | time (iso, `iat` `exp` `nbf`) | `--j-time` | bold; Form view adds the date |
 | punctuation | `--j-punct` (muted) | |
-| IMPORTANT key | `--j-hot-bg` (accent soft) | bold, tinted, accent edge |
+| IMPORTANT key | `--j-hot-bg` (neutral grey tint) + `--j-hot-edge` (info blue) | bold, tinted, blue edge; never red (red is only for errors / decisions) |
 | error / decision | `--danger-text` | bold |
 | token, 3 segments | header `--danger-text`, payload `--status-warn`, signature `--status-info` | one colour each |
 
