@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.6 (2026-11-20)
+
+**New labs**
+
+- privilege-shelf-LAB (Demo, port 7830): the Privilege family on one page — all 40 Privilege-tagged standalone labs with a one-line what-it-does, catalog id and its open link through the shared lab proxy, plus 21 Privilege feature cards and three presenter stories. Search across the cards. Index only, mock only: the page opens links, it makes no calls.
+
 ## 3.5 (2026-11-19)
 
 **New labs**

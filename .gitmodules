@@ -302,3 +302,7 @@
 [submodule "standalone/spiffe-issuer-LAB"]
 	path = standalone/spiffe-issuer-LAB
 	url = https://github.com/curtismu7/spiffe-issuer-LAB
+
+[submodule "standalone/privilege-shelf-LAB"]
+	path = standalone/privilege-shelf-LAB
+	url = https://github.com/curtismu7/privilege-shelf-LAB.git
