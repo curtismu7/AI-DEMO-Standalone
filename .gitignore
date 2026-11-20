@@ -5,3 +5,7 @@ standalone/demo-shelf-LAB/
 
 # scratch worktrees of other agent sessions (never commit)
 .wt-*/
+
+# another session's in-flight sweep artifacts (not mine to commit or delete)
+standalone/DIAGRAM-KIT-CONVERSION-RECIPE.md
+standalone/old-files/
