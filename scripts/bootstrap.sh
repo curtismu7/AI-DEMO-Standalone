@@ -20,7 +20,7 @@ if [ -t 1 ]; then
 else
   C_G=""; C_Y=""; C_R=""; C_B=""; C_DIM=""; C_0=""
 fi
-STEP_TOTAL=16
+STEP_TOTAL=17
 STEP_N=0
 STEP_NAME=""
 STEP_DETAIL=""

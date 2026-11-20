@@ -65,7 +65,7 @@ scripts/setup.sh --verbose              # show all tool output (brew, npm)
 
 ## What setup does
 
-16 steps, one status line each (`[n/16] Step ..... OK`), a summary box at the end:
+17 steps, one status line each (`[n/17] Step ..... OK`), a summary box at the end:
 
 1. **Homebrew** — installs it if missing (macOS's package manager; everything below uses it)
 2. **Node 26** — required version; detects nvm or brew, resolves version-manager shadowing automatically
@@ -79,10 +79,11 @@ scripts/setup.sh --verbose              # show all tool output (brew, npm)
 10. **Shelf + installs** — builds the demo shelf and installs the four main labs' npm dependencies
 11. **Shelf URL** — saves `SHELF_URL` in `~/Development/.env` so every lab's header can link back to the shelf
 12. **UI standard + env** — runs the family's quick consistency checks
-13. **Shared services** — starts each `shared/<service>` compose project, and ping-shared's PingFederate when you have a licence file; skips what is not configured
-14. **PingGateway** — optional: reuses a healthy minimal PingGateway, otherwise asks y/N (default N) when `shared/ping-shared/.env` has `GATEWAY_ISSUER` and `GATEWAY_AUDIENCE`
-15. **Customer Agent LAB: PingOne apps for full Real** — optional: when the lab is checked out, `~/.config/demo-kit/provisioning.json` exists and the lab's own `.env` lacks any of its eight `CAL_*` settings, shows a preview of the two PingOne apps, then asks y/N (default N) before creating them and writing the lab's `.env` (backed up first); with the settings all there it says "already configured". Never asks in `--non-interactive` or `--dry-run`, and a failure is a WARN. The Authorize policy entry and the SE ingress stay manual (the output lists the commands); the SE Agent Gateway accepts only the owner's environment, so a colleague's own PingOne environment cannot use it
-16. **Launcher** — starts the lab-proxy at `https://local.ping-devops.com:8443` and installs a launchd agent so it survives reboots
+13. **Lab compose shelf-URL defaults** — reports labs whose compose file still bakes in a loopback Shelf-button default (cosmetic drift; the fix is one sed per file and stays a maintainer task)
+14. **Shared services** — starts each `shared/<service>` compose project, and ping-shared's PingFederate when you have a licence file; skips what is not configured
+15. **PingGateway** — optional: reuses a healthy minimal PingGateway, otherwise asks y/N (default N) when `shared/ping-shared/.env` has `GATEWAY_ISSUER` and `GATEWAY_AUDIENCE`
+16. **Customer Agent LAB: PingOne apps for full Real** — optional: when the lab is checked out, `~/.config/demo-kit/provisioning.json` exists and the lab's own `.env` lacks any of its eight `CAL_*` settings, shows a preview of the two PingOne apps, then asks y/N (default N) before creating them and writing the lab's `.env` (backed up first); with the settings all there it says "already configured". Never asks in `--non-interactive` or `--dry-run`, and a failure is a WARN. The Authorize policy entry and the SE ingress stay manual (the output lists the commands); the SE Agent Gateway accepts only the owner's environment, so a colleague's own PingOne environment cannot use it
+17. **Launcher** — starts the lab-proxy at `https://local.ping-devops.com:8443` and installs a launchd agent so it survives reboots
 
 Then it prints a summary: mode (live/mock), how many labs and containers are running, and the shelf URL.
 

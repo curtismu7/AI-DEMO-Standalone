@@ -360,8 +360,10 @@ test("the step count is consistent: STEP_TOTAL equals the number of steps, and S
   const total = Number(src.match(/^STEP_TOTAL=(\d+)$/m)[1]);
   const steps = [...src.matchAll(/^step "([^"]+)"$/gm)].map((m) => m[1]);
   assert.equal(steps.length, total, `steps: ${steps.join(" | ")}`);
-  assert.equal(total, 16);
+  assert.equal(total, 17);
   assert.equal(steps[steps.length - 2], "Customer Agent LAB: PingOne apps for full Real", "just before the launcher");
+  assert.equal(steps[steps.length - 5], "Lab compose shelf-URL defaults", "the drift-only step sits before Shared services");
+  assert.equal(steps[steps.length - 4], "Shared services");
   assert.equal(steps[steps.length - 3], "PingGateway");
   assert.equal(steps[steps.length - 1], "Launcher");
   const setup = readFileSync(join(repoRoot, "SETUP.md"), "utf8");
