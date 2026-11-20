@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.7 (2026-11-20)
+
+**New labs**
+
+- pf-array-claims-LAB (Tester, port 7828): the isMemberOf claim-shape use case — a PingFederate token can carry groups as a delimited string or a JSON array, and a group policy answers differently: substring search over the string over-grants to decoy names, the array gives exact membership. Mint panel (both shapes, decoded claims), three simulated cases, "The fix" guide, IS/IS-NOT panel. Mock only, example group names.
+
 ## 3.6 (2026-11-20)
 
 **New labs**

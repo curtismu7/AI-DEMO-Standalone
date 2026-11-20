@@ -11,15 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New lab: privilege-shelf-LAB (port 7830) — the whole Privilege family on one page: 40 labs with links, 21 feature cards, presenter stories. Run the update to pick it up.
-
-New lab: privilege-google-secrets-LAB — Privilege Hubs brokering a Google Secret Manager credential to an AI agent (D137, port 7827): agent key in, policy decision, masked secret out. Run the update command below, then start it from the shelf.
-
-Two new labs: wimse-lab-LAB (IETF WIMSE mock: trust domains, WIT/WPT, multi-hop chain) and workload-cert-lab-LAB (X.509/SPIFFE workload identity, mTLS walkthrough). Run the update command below, then start them from the shelf.
-
-
-New lab: agent-privilege-guide-LAB (D136) — the five Agent Privilege console sections as a guided tour. Run the update to pick it up.
-
-New lab: pf-agent-client-sync-lab — PingFederate 13.1 AI-agent clients synced into PingIDM agent records. Re-run the update to pick it up.
-
-**Version 3.0 (major)** — setup is now four inputs and one command: your admin environment ID, worker client ID/secret and region, passed right in the install line — the demo environment and apps are created for you. Setup also prints the P1AZ policy import steps. If you have the labs already, re-run `scripts/setup.sh setup` with the same command's credentials to pick this up. Run the update command below first, then re-run setup.
+New lab: pf-array-claims-LAB (Tester) — the isMemberOf claim-shape use case: delimited string vs JSON array, why the shape decides the policy answer. Update to get it on your shelf.
