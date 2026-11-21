@@ -309,3 +309,6 @@
 [submodule "standalone/pf-array-claims-LAB"]
 	path = standalone/pf-array-claims-LAB
 	url = https://github.com/curtismu7/pf-array-claims-LAB.git
+[submodule "standalone/agent-identity-academy-LAB"]
+	path = standalone/agent-identity-academy-LAB
+	url = https://github.com/curtismu7/agent-identity-academy-LAB.git

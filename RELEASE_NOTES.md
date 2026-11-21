@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.8 (2026-11-20)
+
+**New labs**
+
+- agent-identity-academy-LAB (Demo, port 7831): the Agent Identity Academy as a standalone — 13 lessons, one per agent type and per control (landscape, OIDC/PKCE sign-in, RFC 8693 delegated access, the Personal Agent, the enterprise Digital Assistant, MCP discovery vs execution, Authorize permit/deny, human approval/CIBA, A2A delegation, Privilege MCP, threat defense, lifecycle and revocation, the evidence map), each with a frame-by-frame evidence reel, a mock claim-diff table and a diagram-studio diagram, over the discover/register/authenticate/authorize/govern lifecycle. Mock only, every token a labelled mock sample.
+
 ## 3.7 (2026-11-20)
 
 **New labs**
