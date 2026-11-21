@@ -20,6 +20,15 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.9 (2026-11-21)
+
+**Improved**
+
+- diagram-studio-LAB (Tool, port 6001): a new **All diagrams** page, and the shelf's Open button now lands on it. Every diagram is in a section (Basics, Architecture, Tokens and delegation, Agent privilege, Personal agent, Agent onboarding and audit, Sign-in and approval, Lab flows), with a text filter. Tags work like the shelf's: a **Ping product** menu that lists only the products that appear in diagrams, plus tag chips for Ping products, Subjects and Standards and protocols (alternatives inside a group, all apply across groups, with counts), a Close button whose open or closed state is remembered, and **Group by** Section, Ping product, Subject or Standard. The view is in the address, so a filtered page can be shared. Tags are derived from each diagram's own words and the standards its steps cite, then corrected by a short curated list; some may be wrong.
+- diagram-studio-LAB: the library grows from 52 to **92 diagrams**. 40 were converted from the demo family's own diagram pages with generic names: 29 box-and-arrow flows and 11 Mermaid sequences drawn as lifeline sequences. The step text of the converted sequences is generated from the messages and its standards links come from keyword rules, so treat them as a starting point. Pages that need live data, an editor, or a customer's names (server topology, System Flow Live, Canvas, two customer-specific pages) are not included, and the page lists them with the reason.
+- diagram-studio-LAB: a new **sequence layout** (lifelines, numbered messages in order, phase bands, notes, alt and loop frames), and the first diagram that uses it: an agent booking held for out-of-band CIBA approval, 71 messages across ten lifelines. Click any message for its request, response and the RFCs behind it, or Simulate to walk it. Generic component names only.
+- demo-shelf-LAB (Shelf): a card's open path (`openPath`) now also applies to its lab-proxy address, so a lab that has a proxy route can open on a specific page. Diagram Studio uses it (`/#all`).
+
 ## 3.8 (2026-11-20)
 
 **New labs**
