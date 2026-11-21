@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New lab: agent-identity-academy-LAB (Demo) — the Agent Identity Academy standalone: 13 lessons, one per agent type and per control, frame-by-frame evidence reels with mock claim diffs. Update to get it on your shelf.
+Updated: diagram-studio-LAB (Tool) and the shelf. Diagram Studio now opens on a new All diagrams page: 92 diagrams in sections, with a Ping product menu, tag filters like the ones on this shelf, and a Group by switch. 40 diagrams are new, plus a 71-message CIBA approval sequence you can click through. Update to get it on your shelf.
