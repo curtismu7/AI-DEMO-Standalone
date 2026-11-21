@@ -312,3 +312,6 @@
 [submodule "standalone/agent-identity-academy-LAB"]
 	path = standalone/agent-identity-academy-LAB
 	url = https://github.com/curtismu7/agent-identity-academy-LAB.git
+[submodule "standalone/meridian-air-LAB"]
+	path = standalone/meridian-air-LAB
+	url = https://github.com/curtismu7/meridian-air-LAB.git
