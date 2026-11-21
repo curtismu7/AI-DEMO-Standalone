@@ -166,7 +166,24 @@ the content changes. Both are movable, resizable and pop-out-able because they a
 - New labs get both for free by vendoring and wiring; a lab that hand-rolls its talk-track or help panel is
   reported by `scripts/check-ui-patterns.sh` as P11 WARN until converted.
 
-## 8e. Return link: the way back after a hand-off (2026-11-09)
+## 8f. Diagram walkthrough controls: Simulate / Pause / Prev / Next (owner, 2026-11-21, from diagram-studio-LAB)
+
+Any lab whose diagram walks its arrows in order (a stepper) follows these rules. Reference implementation:
+diagram-studio-LAB (`web/src/useStepper.js` + `core/src/stepper.js`, the pure reducer; copy both, do not re-derive).
+
+- **The controls always work.** Nothing that opens during the walkthrough may block them: a detail panel that
+  follows the stepped message is a **non-modal** FloatingDialog (`noBackdrop`) — a modal backdrop that covers
+  the toolbar while the simulation runs is the bug this section exists to prevent (owner, 2026-11-21).
+- **A walkthrough can start either playing or stepped.** `Simulate` starts at step 1 playing. `Next` from a
+  fresh page starts the walkthrough **paused at step 1** (Prev does the same from step 2); the buttons are not
+  disabled just because the walkthrough has not started. The speed control and Reset stay as they are.
+- One pure reducer owns the state (`step: -1` = off; `simulate` / `tick` / `pause` / `resume` / `prev` / `next`
+  / `goto` / `speed` / `stop` / `total`); the web hook only drives `tick` on a timer. A lab adds no second
+  stepper and no ad-hoc setTimeout walking.
+- While stepping, the active edge is accented (`--accent`), its label raised, and the counter reads
+  "Message/Arrow N of M" with `aria-live="polite"`.
+
+## 8g. Return link: the way back after a hand-off (2026-11-09)
 
 An app that Customer Agent LAB can hand a use case to vendors `shared/return-link/` into `web/src/return-link/` (byte for byte,
 pinned by `return-link.sha256`).
