@@ -1,0 +1,10 @@
+services:
+  ap-self-hosted-lab:
+    build: .
+    image: ap-self-hosted-lab:local
+    environment:
+      PORT: "5301"
+      HOST_PORT: "7842"
+    ports:
+      - "127.0.0.1:7842:5301"
+    restart: unless-stopped

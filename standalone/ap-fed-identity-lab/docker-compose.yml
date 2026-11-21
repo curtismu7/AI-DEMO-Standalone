@@ -1,0 +1,10 @@
+services:
+  ap-fed-identity-lab:
+    build: .
+    image: ap-fed-identity-lab:local
+    environment:
+      PORT: "5301"
+      HOST_PORT: "7841"
+    ports:
+      - "127.0.0.1:7841:5301"
+    restart: unless-stopped

@@ -1,0 +1,10 @@
+services:
+  ap-registry-lab:
+    build: .
+    image: ap-registry-lab:local
+    environment:
+      PORT: "5301"
+      HOST_PORT: "7839"
+    ports:
+      - "127.0.0.1:7839:5301"
+    restart: unless-stopped
