@@ -1,0 +1,10 @@
+services:
+  ap-agentic-apps-lab:
+    build: .
+    image: ap-agentic-apps-lab:local
+    environment:
+      PORT: "5301"
+      HOST_PORT: "7840"
+    ports:
+      - "127.0.0.1:7840:5301"
+    restart: unless-stopped

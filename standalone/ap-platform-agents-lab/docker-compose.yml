@@ -1,0 +1,10 @@
+services:
+  ap-platform-agents-lab:
+    build: .
+    image: ap-platform-agents-lab:local
+    environment:
+      PORT: "5301"
+      HOST_PORT: "7843"
+    ports:
+      - "127.0.0.1:7843:5301"
+    restart: unless-stopped
