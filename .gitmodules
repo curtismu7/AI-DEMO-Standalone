@@ -315,3 +315,7 @@
 [submodule "standalone/meridian-air-LAB"]
 	path = standalone/meridian-air-LAB
 	url = https://github.com/curtismu7/meridian-air-LAB.git
+[submodule "standalone/ciba-approval-sequence-LAB"]
+	path = standalone/ciba-approval-sequence-LAB
+	url = https://github.com/curtismu7/ciba-approval-sequence-LAB.git
+	branch = main

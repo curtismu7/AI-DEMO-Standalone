@@ -334,3 +334,8 @@ muse-LAB/index
 # 2026-11-16: privilege-k8-kits-LAB cleanup (#4): the unserved orphan kits/privilege-k8-kits.html is deleted and the served
 # page public/index.html is standard (h1, labelled selects, data-font-step, mode-aware banner); its pin is bumped in the same PR.
 privilege-k8-kits-LAB/index
+
+# 2026-11-21: ciba-approval-sequence-LAB step 2 (web): flow + talk are the lab's two pages; the walkthrough is the
+# ported AI-DEMO2 sequence renderer with the §8f controls, vendored JsonPane/TopMenu, and the standard shell.
+ciba-approval-sequence-LAB/flow
+ciba-approval-sequence-LAB/talk
