@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-Updated: diagram-studio-LAB (Tool) and the shelf. Diagram Studio now opens on a new All diagrams page: 92 diagrams in sections, with a Ping product menu, tag filters like the ones on this shelf, and a Group by switch. 40 diagrams are new, plus a 71-message CIBA approval sequence you can click through. Update to get it on your shelf.
+New lab: ciba-approval-sequence-LAB (port 7834) — the CIBA approval flow as a clickable 71-message sequence diagram with decoded tokens and the RFCs behind each step. Update to get it on your shelf.
