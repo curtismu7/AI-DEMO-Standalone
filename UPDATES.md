@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New lab: pf-array-claims-LAB (Tester) — the isMemberOf claim-shape use case: delimited string vs JSON array, why the shape decides the policy answer. Update to get it on your shelf.
+New lab: agent-identity-academy-LAB (Demo) — the Agent Identity Academy standalone: 13 lessons, one per agent type and per control, frame-by-frame evidence reels with mock claim diffs. Update to get it on your shelf.
