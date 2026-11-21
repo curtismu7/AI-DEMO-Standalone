@@ -36,7 +36,9 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   `agentcore-pingone-demo-LAB` (Real answers 409 until the owner wires a live engine), `demo-field-guide-LAB`,
   `privilege-owasp-lab-LAB` (Real runs the live-evidence card against a Privilege console the owner points it at; Mock streams the recorded deck table).
   `pf-privilege-obo-LAB` (Real answers 409: the chain is simulated by design; Mock mirrors measured gateway log lines),
-  `agent-identity-academy-LAB` (13 lessons, one per agent type and per control, over the discover/register/authenticate/authorize/govern lifecycle; Mock only, every token a labelled mock sample, no live mode).
+  `agent-identity-academy-LAB` (13 lessons, one per agent type and per control, over the discover/register/authenticate/authorize/govern lifecycle; Mock only, every token a labelled mock sample, no live mode),
+  `meridian-air-LAB` (the airline day as 11 chat-first scenes; Mock runs offline, Real needs a llama.cpp brain and is owner-run),
+  `ciba-approval-sequence-LAB` (the 71-message CIBA booking sequence as a clickable diagram; Mock only).
 - Live is a local simulation, no credential: `agent-governance-LAB`, `ai-policies-LAB`, `coding-agents-LAB`,
   `data-protection-LAB`, `federated-identity-LAB`, `intent-purpose-behaviour-LAB`, `mcp-surface-LAB`,
   `saas-access-LAB`, `secrets-vault-LAB`.
