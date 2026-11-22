@@ -31,6 +31,8 @@ their behalf and every policy point each left a trace, and to see honestly where
 - Hostile input in a log line (tokens, long lines, markup, request text that imitates a decision line): masked server-side, rendered inert, and matchers are anchored so such text never becomes a `logged` decision row.
 - A search cut at its cap (Elasticsearch 500 documents, a 2 MB file tail): the layer stays `not-logged` but reads **Not found (partial search)** and says absence is not proof.
 - Two runs overlapping in time can interleave window-matched rows; rows matched by an id from the run are tagged `id`.
+- A row whose line shape is UNVERIFIED keeps its outcome on the row but is counted as information in the summary, never as allowed, refused or blocked.
+- A log source that is a FIFO, device or directory, an indented line under a JSON entry, a hostile line of 100 KB: named error, ignored, or cut; never a hang, never a hidden real line.
 - Record `source` differs from the page mode: refused on screen.
 
 ## Out of scope (follow-ups, owner-gated)

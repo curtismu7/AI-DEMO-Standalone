@@ -28,8 +28,9 @@ import { checkPin } from '../scripts/run-observability-checkPin.mjs';
 assert.deepEqual(checkPin(labRoot), []);      // or:  node scripts/run-observability-checkPin.mjs <labRoot>
 ```
 
-`checkPin` verifies every pinned file that exists in the lab, fails on a mismatch, fails when the core is missing from the lab or the pin, fails on a pin line it cannot read or one that points outside the lab,
-and fails when a known vendored file exists in the lab but is not in the pin. A lab without the readers file passes (the readers line is skipped). Re-pin (in this folder): `shasum -a 256` each vendored file and write
+`checkPin` FAILS when: the pin file is missing, has a line it cannot read, a duplicate, a non-canonical path (`./`, `//`, `..`, absolute) or a path that is not a vendored file; a REQUIRED file (every web file and the core) is missing from the lab or the pin;
+ANY file in `web/src/run-observability/` or any `server/src/runObservability*` file is not in the pin (the readers file may be absent, but if it is there it must be pinned); a pinned file is a symlink, a directory or anything but a regular file, or resolves outside the lab; or a hash differs.
+The command line exits 0 when fine, 1 with the problems on stderr, and 2 with the usage when no path is given; it compares real paths, so a folder with a space or a symlinked folder (macOS `/tmp`) still runs the check. Re-pin (in this folder): `shasum -a 256` each vendored file and write
 `<hash>  <lab-relative path>` (the table above gives the paths).
 
 ## The six layers
@@ -56,7 +57,7 @@ Every row has an **origin**. The panel and `assertRunObservability` enforce it.
 
 - Mock mode produces `simulated` rows; Real mode produces `logged`, `response` and `not-logged`. A real record cannot hold a `simulated` row, a mock record cannot hold `logged` or `response`.
 - An `info` row (a hold, a verdict that does not say what the gateway did, a pass-through) is **never counted as passed**: the summary counts `info` apart ("for information").
-- Rows whose line shape nobody has measured carry `basis: "unverified-shape"` and the panel tags them `UNVERIFIED shape`.
+- Rows whose line shape nobody has measured carry `basis: "unverified-shape"` and the panel tags them `UNVERIFIED shape`. Such a row keeps its own outcome, but the summary counts it as information (`info`, and `unverified` says how many), never as `allowed`, `refused` or `blocked`.
 - A row matched only by the run's time window (not by an id from the run) carries `matchedBy: "window"` and the panel says so.
 - Per layer, `coverage` is one of `logged | simulated | response | not-logged | unreachable`, and it is exactly what the rows support (a logged row wins over a response row, which wins over a simulated one). `unreachable` always comes with a reason (Rule 23: structured, never an empty 200 or an HTML page).
 - **Caps and partial searches.** A record holds at most 500 rows, counting the `not-logged` rows. Past that the OLDEST rows go first, from the layer holding the most, so every layer keeps its newest rows; `truncated` is set and `coverage` is rebuilt from the rows that are left (a layer that lost every row becomes `not-logged` and says so). `summary` counts the rows in the record.
@@ -86,7 +87,7 @@ res.json(record);
 Mock mode: `source: 'mock'` and give each layer `simulated: [{ at, product?, outcome, message, detail? }]`; no readers are used. A layer with no events is
 `not-logged` with the reason you give (`reason`). On a failure answer `{ error, message }` as JSON (Rule 23) and pass that to the panel.
 
-`collectRun` throws `RunObsError` (`code`, `status`) for a bad window, layer, row or lab matcher: answer it as JSON. A layer the lab does not list is `not-logged` ("This lab did not ask for this layer."), so every record names all six.
+`collectRun` throws `RunObsError` (`code`, `status` 400) for a bad window (times must be between the years 2000 and 2100), layer spec (an unknown or duplicate layer, `products` that is not an array of known product ids, meaning ids that have a matcher), row or lab matcher: answer it as JSON. It never throws anything else for bad input. A layer the lab does not list is `not-logged` ("This lab did not ask for this layer."), so every record names all six.
 `at` on a simulated or response row, like the window, is an ISO string or epoch milliseconds; the record always carries ISO text.
 
 Page: `<RunObservability record={record} source="mock" | "real" streams={[{ product, lives, streams }]} />`, under the lab's Run. `source` is REQUIRED (the page's current mode): without it, or with any other value, the panel shows an alert and nothing else, and never guesses from the record. A new record starts a clean panel (open rows and the layer filter reset).
@@ -99,9 +100,9 @@ Record (what `collectRun` returns and the panel reads):
 ```
 { runId, window: { from, to }, source: 'mock'|'real', excerpt: true, truncated,
   rows: [{ id, at (ISO, null for not-logged), atExact (the source's own timestamp text), layer, product, outcome: 'allowed'|'refused'|'blocked'|'info',
-           message, origin: 'logged'|'simulated'|'response'|'not-logged', basis?, matchedBy?, matcher?, detail? }],
+           message, origin: 'logged'|'simulated'|'response'|'not-logged', basis?, matchedBy?, matcher?, multiline?, detail? }],
   coverage: { <layer>: 'logged'|'simulated'|'response'|'not-logged'|'unreachable' },
-  reasons: { <layer>: string }, partial: { <layer>: true }, summary: { allowed, refused, blocked, info } }
+  reasons: { <layer>: string }, partial: { <layer>: true }, summary: { allowed, refused, blocked, info, unverified } }
 ```
 
 Tests: `assertRunObservability(record)` returns a list of problems (empty = fine); every lab test calls it on a real and a mock record. It fails on an unmasked
@@ -113,9 +114,10 @@ a `simulated` or `response` row presented as read from a log; a missing summary 
 ## Reader selection and environment
 
 Owner decision 2026-11-22: **Elasticsearch is the default reader. The Docker reader is opt-in** (ad-hoc runs and video capture), off unless `RUN_OBS_DOCKER=1`.
-`readersFromEnv()` returns them in that order. For each product the first reader that can read it and does not fail wins; a failure falls to the next reader,
-and the fallback is recorded in the layer's `reasons` (never silent). A reader that answers with no lines is an answer (`not-logged`), not a failure. If no reader is configured,
-or all fail, the layer is `unreachable` and the reason says what to set.
+`readersFromEnv()` returns them in that order. For each product the first reader that returns lines wins. A reader that fails, OR returns no usable lines, hands over to the next one, and the layer's `reasons`
+say which reader gave the lines and why the others did not ("read from docker after elasticsearch: returned no usable lines"; never silent). If every reader answered but none had a line, the layer is `not-logged`. If no reader is configured, or all fail,
+the layer is `unreachable` and the reason says what to set.
+Honest limits of the Elasticsearch read: the query is the window plus the product and nothing else (no id or text filter), and the matchers run AFTER Elasticsearch has returned its newest 500 documents, so noise in the window can push a relevant line out; hitting the cap is reported as a partial search.
 
 | Variable | Meaning |
 |---|---|
@@ -134,7 +136,8 @@ Product ids: `pingfederate`, `pinggateway`, `privilege-gateway`, `privilege-siem
 Inside a lab container, loopback is the container: use a forwarder in the lab's network namespace (the same approach observability-LAB's `siem` profile uses with `alpine/socat`).
 
 **Docker reader (opt-in).** Only `GET /containers/{name}/logs?stdout=1&stderr=1&timestamps=1&since&until` on the Docker engine socket: never POST, never exec, never another path. It reads the
-file log for a product if `RUN_OBS_LOG_FILES` names one.
+file log for a product if `RUN_OBS_LOG_FILES` names one. A log file must be a REGULAR file (a FIFO, device or directory is a named error and is never opened, so it cannot hang), is opened non-blocking with a 3 s limit, may use CRLF, and an empty file is named as empty.
+An indented line under a JSON entry is never joined to it (it would break the parse and hide the real line, or forge one); under a text entry it is joined, the row says `multiline: true`, and ids are matched on the first line only. Container and file names are looked up with own-property checks, so `__proto__` and friends are never a product.
 
 **Why Docker is not the default, and why a compose file must NOT mount the socket by default.** Mounting `/var/run/docker.sock` into a lab breaks the loopback-only, non-root,
 read-only-filesystem rules: even `:ro` the socket exposes the whole Docker API (a client can still create containers through it). The collector (`shared/ping-log-collector`) is the one thing that holds the
@@ -168,8 +171,8 @@ Per-layer parsers are a small table in `runObservability.js` (`layerMatchers`). 
 
 | Matcher | Product | Layer | Status |
 |---|---|---|---|
-| `pf-audit` (positional `audit.log` line; subject present = person, absent = agent) | pingfederate | person / agent | measured for `failure` and `inprogress`; a `success` status is UNVERIFIED |
-| `p1az-decision` (`[P1AZ] DECISION: PERMIT ...`; PERMIT with `obligation=hitl` is a hold = `info`) | pinggateway | authorize | measured for PERMIT; any other decision is UNVERIFIED (DENY is `refused`; INDETERMINATE, NOT_APPLICABLE, ERROR and the rest are `info`) |
+| `pf-audit` (the measured container prefix `/opt/out/instance/log/audit.log:`, then EXACTLY 14 pipe-delimited columns from `tid:`; a value with a pipe shifts the count and the line is not read; subject present = person, absent = agent) | pingfederate | person / agent | measured for `failure` and `inprogress`; a `success` status is UNVERIFIED |
+| `p1az-decision` (`[P1AZ] DECISION: PERMIT ...` followed only by ` \| key=value` fields whose values hold no space and no repeated key, so a tool name cannot rewrite `obligation`; PERMIT with `obligation=hitl` is a hold = `info`) | pinggateway | authorize | measured for PERMIT; any other decision is UNVERIFIED (DENY is `refused`; INDETERMINATE, NOT_APPLICABLE, ERROR and the rest are `info`) |
 | `p1az-hitl` (`INDETERMINATE - HITL challenge ... minted`) | pinggateway | authorize | measured |
 | `pinggateway-access` (`OPENIG-HTTP-ACCESS` JSON; 401/403 refused; any other status is `info`, because the line shows no response body and an MCP error can ride in a 200) | pinggateway | gateway | measured |
 | `pinggateway-mcp` (`PING-GATEWAY-MCP` JSON) | pinggateway | gateway | measured |
@@ -180,8 +183,8 @@ Per-layer parsers are a small table in `runObservability.js` (`layerMatchers`). 
 | `siem-policy-decision` (`Index: policy-decision-log`, `Data.Decision`), `siem-aiguard` | privilege-siem | privilege | shape relayed (not read by this folder's authors) |
 | `siem-approval` (`agent-approval-log`) | privilege-siem | privilege | **UNVERIFIED** |
 | `promptguard-allow`, `promptguard-flagged` (flag is `info`) | promptguard | privilege | measured |
-| `mcp-server-validation` (`[time] INFO: token audience validated`) | mcp-server | resource | measured |
-| `mcp-server-refused` (any of denied, refused, forbidden, unauthorized, insufficient, invalid, failed, expired, mismatch, rejected, not allowed), `mcp-server-served` | mcp-server | resource | **UNVERIFIED** |
+| `mcp-server-validation` (`[time] INFO: token audience validated`; a message starting with token, audience, introspection or scope is `info`) | mcp-server | resource | measured |
+| `mcp-server-refused` (a WARN or ERROR header whose message STARTS with a closed phrase: tool call denied, access denied, insufficient scope, token validation failed, token expired, audience mismatch, invalid token, forbidden, unauthorized, request rejected), `mcp-server-served` (INFO, the whole message `Tool <name> called/executed/completed/served`) | mcp-server | resource | **UNVERIFIED**; free text after the header never decides an outcome |
 
 The `privilege-gateway` file log's `time=` prefix format is UNVERIFIED: a line whose time is not an ISO 8601 timestamp is skipped, never given a guessed time. An Elasticsearch document whose `@timestamp` is not ISO is skipped the same way.
 
@@ -212,15 +215,17 @@ const obs = createRunObservability({
 // and lists the product:  layers: [{ layer: 'resource', products: ['my-lab'] }]
 ```
 
-An unanchored pattern, an unknown layer or basis, a duplicate id, or a missing `build` throws `RunObsError` (`bad_matcher`) when the panel is created. A line that does not match the whole pattern (for example one with text typed by a caller in front of it) is dropped. JSON log lines are not supported for lab matchers yet.
+A pattern that is not anchored (^ ... $), has a `g`, `y` or `m` flag, a top-level alternation, a lookaround, `.*` or `.+`, or fewer than 8 characters of your own fixed text, an unknown layer or basis, a duplicate id, or a missing `build` throws `RunObsError` (`bad_matcher`) when the panel is created.
+`build(match, line)` receives frozen copies; its output is validated (an unknown outcome yields no row, the message is cut) and a `build` that throws is ignored for that line: the layer's reason says "N lab matcher errors were ignored" and coverage is never changed by it. A line that does not match the whole pattern (for example one with text typed by a caller in front of it) is dropped. JSON log lines are not supported for lab matchers yet.
 
 ## Masking
 
 Applied to every text field of every row (message, product, host, timestamp text, detail; also `simulated` and `response` rows) before it leaves the server, with the same intent as the collector (`shared/ping-log-collector/vector.yaml`): the values of `Authorization`, `Proxy-Authorization`,
 `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Amz-Security-Token` and `X-Auth-Token` headers; `Bearer`, `Basic`, `DPoP` and `ApiKey` credentials (only a credential-shaped value: "Basic Authentication failed" and "bearer token expired" keep their words); JWTs (`<jwt>`, also a lone header or payload segment);
-`sk-`, Slack, GitHub and AWS keys; the values of `client_secret`, `password`, `passwd`, `pwd`, `passphrase`, `secret`, `secret_key`, `private_key`, `api_key`, `client_assertion`, `assertion`, `code_verifier`, `session_id`, any `*_token` (access, refresh, id, subject, actor, auth), and
+`sk-` and `sk_live_` style, Slack, GitHub and AWS keys; the values of `client_secret`, `password`, `passwd`, `pwd`, `passphrase`, `secret`, `secret_key`, `private_key`, `api_key`, `client_assertion`, `assertion`, `code_verifier`, `session_id`, `JSESSIONID`, `PHPSESSID`, `connect.sid`, `(secret)=value` forms, any `*_token` (access, refresh, id, subject, actor, auth), and
 `token=`, `pass=`, `sid=`, `session=` and `code` parameters (same line, JSON with escaped quotes, and the multi-line dump form); zero-width and other format characters are stripped first so they cannot hide a token; plus IPv4 and IPv6 addresses (`<ip>`), emails, hostnames under known suffixes (`<host>`),
-and ids (UUIDs, long hex, long mixed strings) shortened to their first 4 and last 2 characters. Objects are walked to a bounded depth and width, and a value under a secret-looking key is dropped. Tokens a lab shows raw elsewhere (Rule 4) are not shown here.
+and ids: every UUID, long hex string or long mixed string becomes `<id>` and keeps none of its characters; only the ids the lab declared in `correlation` (sub, actor client id, trace id, request ids) are kept, shortened to their first 4 and last 2 characters, so a presenter can still correlate. Objects are walked to a bounded depth and width (8 KB of detail in all), and a value under a secret-looking key is dropped.
+**Bounds.** Every line is cut to 4000 characters before it is classified (a cut sets `truncated`) and every string to 2000 before it is masked; every masker and matcher pattern is linear (bounded repetition, no nested quantifier), and the tests time them on 100 KB hostile lines. Tokens a lab shows raw elsewhere (Rule 4) are not shown here.
 
 ## Where these logs live and where they stream (Rule 27)
 

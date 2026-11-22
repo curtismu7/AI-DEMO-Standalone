@@ -6,9 +6,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import http from 'node:http';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-  createMasker, createRunObservability, ReaderError, RunObsError, layerMatchers, classify, defaultLayers, saasLayer, assertRunObservability, LAYERS, LIMITS,
+  createMasker, keepPattern, maskRules, createRunObservability, ReaderError, RunObsError, layerMatchers, classify, defaultLayers, saasLayer, assertRunObservability, LAYERS, LIMITS,
 } from './runObservability.js';
 import { DockerLogReader, ElasticsearchReader, readersFromEnv } from './runObservabilityReaders.js';
 import { mockRecord, realRecord, longRecord, emptyRecord, partialRecord } from './fixtures.js';
@@ -117,13 +118,16 @@ test('masker: headers, bearer, basic, JWT, sk- key and secret-named fields never
   assert.match(mask('Bearer abcdefghij'), /^Bearer \*\*\*$/);
 });
 
-test('masker: addresses, emails and hostnames become placeholders; ids keep the first 4 and last 2', () => {
+test('masker: addresses, emails and hostnames become placeholders; ids become <id> (only an id the lab declared is kept, shortened)', () => {
   assert.equal(mask('from 203.0.113.9 to 10.0.0.1:8443'), 'from <ip> to <ip>:8443');
   for (const v6 of ['2001:db8::1', '::1', 'fe80::a:b', '2001:0db8:0000:0000:0000:0000:0000:0001']) assert.equal(mask(`peer ${v6} up`), 'peer <ip> up', v6);
   assert.equal(mask('call https://gw.lab.example/mcp and svc.cluster.local and a@b.example'), 'call https://<host>/mcp and <host> and <email>');
-  assert.equal(mask('user 123e4567-e89b-12d3-a456-426614174000 done'), 'user 123e…00 done');
-  assert.equal(mask('trace 4bf92f3577b34da6a3ce929d0e0e4736'), 'trace 4bf9…36');
-  assert.equal(mask('ref Wm9vZ2xlVGVuYW50QEBAZGVmYXVsdEBAQDEyMzQ1Njc4'), 'ref Wm9v…c4');
+  assert.equal(mask('user 123e4567-e89b-12d3-a456-426614174000 done'), 'user <id> done');
+  assert.equal(mask('trace 4bf92f3577b34da6a3ce929d0e0e4736'), 'trace <id>');
+  assert.equal(mask('ref Wm9vZ2xlVGVuYW50QEBAZGVmYXVsdEBAQDEyMzQ1Njc4'), 'ref <id>', 'a generic catch keeps none of its characters');
+  const keep = keepPattern({ sub: '123e4567-e89b-12d3-a456-426614174000', traceId: '4bf92f3577b34da6a3ce929d0e0e4736' });
+  assert.equal(mask('user 123e4567-e89b-12d3-a456-426614174000 other 223e4567-e89b-12d3-a456-426614174000', keep), 'user 123e…00 other <id>');
+  assert.equal(mask('trace 4bf92f3577b34da6a3ce929d0e0e4736', keep), 'trace 4bf9…36');
   // idempotent: masking masked text changes nothing
   const once = mask(`id 123e4567-e89b-12d3-a456-426614174000 ip 203.0.113.9 host a.example Bearer ${JWT}`);
   assert.equal(mask(once), once);
@@ -242,7 +246,7 @@ test('readersFromEnv: Elasticsearch is the default; Docker is OFF unless RUN_OBS
   assert.deepEqual(readersFromEnv({ ...dockerVars, RUN_OBS_DOCKER: 'true' }), [], 'only the exact value 1 turns it on');
   const both = readersFromEnv({ ...es, ...dockerVars, RUN_OBS_DOCKER: '1' });
   assert.deepEqual(both.map((r) => r.name), ['elasticsearch', 'docker']);
-  assert.deepEqual(both[1].containers, { pingfederate: 'pf', pinggateway: 'gw' });
+  assert.deepEqual({ ...both[1].containers }, { pingfederate: 'pf', pinggateway: 'gw' });
   assert.deepEqual(readersFromEnv({ ...dockerVars, RUN_OBS_DOCKER: '1' }).map((r) => r.name), ['docker']);
   assert.deepEqual(readersFromEnv({ RUN_OBS_DOCKER: '1' }), [], 'the flag without containers or files is nothing');
   assert.deepEqual(readersFromEnv({ RUN_OBS_ES_URL: 'http://127.0.0.1:9200' }), [], 'a URL without the read key is nothing');
@@ -261,14 +265,15 @@ test('selection: Elasticsearch first; Docker only when Elasticsearch fails for t
     const first = await createRunObservability({ readers: [esReader, reader] }).collectRun({ ...RUN, layers });
     assert.equal(first.coverage.resource, 'logged'); assert.equal(first.rows[0].at, '2026-11-22T10:00:06.500Z');
     assert.equal(es.seen.length, 1); assert.equal(d.seen.length, 0, 'Docker was not asked');
-    // Elasticsearch answered with nothing: that is an answer, not a failure, so no fallback
+    // Elasticsearch answered with nothing usable: the next reader is consulted, and the record says which one gave the lines
     mode = 'empty';
     const quiet = await createRunObservability({ readers: [esReader, reader] }).collectRun({ ...RUN, layers });
-    assert.equal(quiet.coverage.resource, 'not-logged'); assert.equal(d.seen.length, 0);
+    assert.equal(quiet.coverage.resource, 'logged'); assert.equal(d.seen.length, 1, 'Docker was consulted');
+    assert.match(quiet.reasons.resource, /read from docker after elasticsearch: returned no usable lines/);
     // Elasticsearch refuses the key: fall back to Docker for that product, and say so
     mode = 'denied';
     const fb = await createRunObservability({ readers: [esReader, reader] }).collectRun({ ...RUN, layers });
-    assert.equal(d.seen.length, 1, 'the fallback asked Docker');
+    assert.equal(d.seen.length, 2, 'the fallback asked Docker');
     assert.equal(fb.coverage.resource, 'logged'); assert.equal(fb.rows.find((r) => r.matcher === 'mcp-server-refused').at, '2026-11-22T10:00:07.000Z');
     assert.match(fb.reasons.resource, /read from docker after elasticsearch: Elasticsearch refused the read credential/, 'a fallback is never silent');
   } finally { es.close(); close(); }
@@ -315,7 +320,9 @@ test('collectRun (real): six layers from real-shaped lines, time-ordered, exact 
     assert.ok(!logged.some((r) => /Success: principal/.test(r.message)), 'policy-evaluation noise is not a row');
     assert.equal(rec.coverage.person, 'logged'); assert.equal(rec.coverage.privilege, 'logged');
     assert.ok(!JSON.stringify(rec).includes('203.0.113.9'));
-    assert.equal(rec.summary.info, rec.rows.filter((r) => r.origin !== 'not-logged' && r.outcome === 'info').length);
+    assert.equal(rec.summary.info, rec.rows.filter((r) => r.origin !== 'not-logged' && (r.outcome === 'info' || r.basis === 'unverified-shape')).length);
+    assert.equal(rec.summary.unverified, rec.rows.filter((r) => r.basis === 'unverified-shape').length);
+    assert.equal(rec.summary.refused, rec.rows.filter((r) => r.outcome === 'refused' && r.basis !== 'unverified-shape').length, 'an UNVERIFIED refusal is not counted as refused');
     for (const l of LAYERS) assert.ok(rec.coverage[l], `coverage names ${l}`);
   } finally { close(); }
 });
@@ -723,4 +730,288 @@ test('the core has no imports, no network and no file access (a lab with no log 
   assert.ok(!/\bfetch\s*\(|socketPath|node:|require\(|child_process|XMLHttpRequest|WebSocket/.test(core), 'no network, socket, node: module or process spawning in the core');
   const readers = fs.readFileSync(path.join(HERE, 'runObservabilityReaders.js'), 'utf8');
   assert.deepEqual([...readers.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]).sort(), ['./runObservability.js', 'node:fs/promises', 'node:http']);
+});
+
+// ======================================================================================================================
+// Regressions from the second independent review.
+// ======================================================================================================================
+const ms = (fn) => { const t = performance.now(); fn(); return performance.now() - t; };
+const UNITS = ['a-', 'a_', 'abc-', 'a.', '@', '.', '-', '_', '1', '1.', 'a@', 'a=', '"', "'", '\\', 'eyJ', 'Bearer ', 'password=', 'secret=" ', '::', '1:', 'a:', '/', '|', ' ', '\t', 'tid:', 'a.b.', '0123456789abcdef', 'a.com.'];
+const shapesOf = (n) => [...UNITS.map((u) => u.repeat(Math.ceil(n / u.length))), 'a'.repeat(n), `${'a-'.repeat(Math.floor(n / 2))}x`];
+
+test('regression 10 (ReDoS): no mask or classify call is slow on hostile shapes (100 KB lines), and a 60-line collectRun is fast', async () => {
+  const worst = { ms: 0, what: '' };
+  for (const sh of shapesOf(100_000)) {
+    const m = ms(() => mask(sh)); if (m > worst.ms) { worst.ms = m; worst.what = `mask ${sh.slice(0, 10)}`; }
+    for (const product of ['pingfederate', 'pinggateway', 'privilege-gateway', 'privilege-siem', 'promptguard', 'mcp-server']) {
+      const c = ms(() => classify({ product, message: sh, at: 0 })); if (c > worst.ms) { worst.ms = c; worst.what = `classify ${product} ${sh.slice(0, 10)}`; }
+    }
+  }
+  assert.ok(worst.ms < 50, `slowest call ${worst.ms.toFixed(1)} ms: ${worst.what}`);
+  // shapes that start like the real lines, so the anchored patterns get past their prefix
+  const crafted = [
+    ['pingfederate', `/opt/out/instance/log/audit.log:  | tid:${'a-'.repeat(1900)}| t| OAuth| u| ip | | c| p| h| AS| failure| | d| 5`],
+    ['pingfederate', `/opt/out/instance/log/audit.log:  ${'| a '.repeat(900)}`],
+    ['pinggateway', `${PRE}[P1AZ] DECISION: PERMIT${' | a=b'.repeat(500)}`],
+    ['pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | tool=${'a|'.repeat(1000)}`],
+    ['pinggateway', `[a] ${'A '.repeat(900)}@${'b '.repeat(900)}`],
+    ['privilege-gateway', `level=info msg="${'a\\"'.repeat(900)}`],
+    ['privilege-gateway', `level=info msg="${'a '.repeat(1500)}"`],
+    ['mcp-server', `[t] ERROR: ${'token '.repeat(500)}`],
+    ['mcp-server', `[${']['.repeat(900)}`],
+  ];
+  for (const [product, message] of crafted) assert.ok(ms(() => classify({ product, message, at: 0 })) < 50, `${product} ${message.slice(0, 30)}`);
+  const lines = Array.from({ length: 60 }, (_, i) => stub('pingfederate', `/opt/out/instance/log/audit.log:  | tid:${'a-'.repeat(1900)}| t| OAuth| u| ip | | c| p| h| AS| failure| | d| 5`, T0 + 1000 + i));
+  const t0 = performance.now();
+  const rec = await collectWith([lineReader(lines)], { layers: ['person'] });
+  assert.ok(performance.now() - t0 < 1000, `60 hostile lines took ${(performance.now() - t0).toFixed(0)} ms`);
+  assert.deepEqual(assertRunObservability(rec), []);
+  // a line longer than the cap is cut, not read: a JSON access line of 5000 characters is not classified (its tail is gone)
+  assert.equal(cls('pinggateway', ACCESS(`/${'p'.repeat(5000)}`, '403')), null);
+  assert.equal(cls('pinggateway', ACCESS('/short', '403')).outcome, 'refused');
+  // a very long line is cut before it is classified, and the record says it was cut
+  const unfiltered = { name: 'r', canRead: () => true, readLines: async () => ({ lines: [stub('privilege-gateway', `level=info msg="Proxying to: http://x" ${'p'.repeat(100_000)}`)], truncated: false }) };
+  const long = await collectWith([unfiltered], { layers: ['gateway'] });
+  assert.equal(long.truncated, true);
+});
+
+test('regression 10b (regex safety): every masker pattern and every matcher is linear on 20 KB crafted inputs', () => {
+  for (const re of maskRules) {
+    for (const sh of shapesOf(20_000)) {
+      re.lastIndex = 0;
+      const t = ms(() => sh.replace(re, ''));
+      assert.ok(t < 300, `${re} took ${t.toFixed(0)} ms on ${sh.slice(0, 10)}`);
+    }
+  }
+  for (const m of layerMatchers) {
+    for (const sh of shapesOf(20_000)) {
+      const view = { text: sh, first: sh, obj: m.kind === 'json' ? { eventName: sh, msg: sh, Index: sh, client: { method: sh } } : null, multiline: false };
+      const t = ms(() => m.match(view));
+      assert.ok(t < 300, `${m.id} took ${t.toFixed(0)} ms on ${sh.slice(0, 10)}`);
+    }
+  }
+});
+
+test('regression 12: "absence is not proof" is never cut away, even with three products and long failure reasons', async () => {
+  const long = (p) => new ReaderError('x', `connection to the ${p} source refused because the endpoint answered with an unexpected and rather long failure description number 12345`);
+  const reader = { name: 'r', canRead: () => true, readLines: async ({ product }) => { if (product === 'privilege-siem' || product === 'privilege-gateway') throw long(product); return { lines: [], truncated: true }; } };
+  const rec = await collectWith([reader], { layers: ['privilege'] });
+  assert.equal(rec.coverage.privilege, 'not-logged'); assert.equal(rec.partial.privilege, true);
+  assert.ok(rec.reasons.privilege.startsWith('The search was cut at the cap, so absence is not proof.'), rec.reasons.privilege);
+  assert.deepEqual(assertRunObservability(rec), []);
+});
+
+test('regression 13: lab matchers reject g/y/m flags, top-level alternation, lookaround, unbounded wrappers and patterns with no fixed text of their own', () => {
+  const base = { id: 'lab-x', product: 'banking-mcp', layer: 'resource', basis: 'unverified-shape', build: () => null };
+  const bad = (pattern) => assert.throws(() => createRunObservability({ matchers: [{ ...base, pattern }] }), (e) => e.code === 'bad_matcher', String(pattern));
+  for (const p of [/^lab decision actor=\S+$/g, /^lab decision actor=\S+$/y, /^lab decision actor=\S+$/m, /^foo bar baz$|bar$/, /^lab decision$|^other thing here$/, /^.*$/, /^(?=.*x).*$/, /^.*lab decision actor=.*$/, /^.+lab decision actor=\S+$/,
+    /^(?!x)lab decision actor=\S+$/, /^\S+ \S+$/, /^\d{4} [a-z]+$/, /^abcdefg\S+$/, /lab decision actor=\S+$/, /^lab decision actor=\S+/]) bad(p);
+  const ok = createRunObservability({ matchers: [{ ...base, pattern: /^lab decision actor=(\S+) outcome=(allowed|refused)$/ }] });
+  assert.ok(ok);
+});
+
+test('regression 13b/14: a lab matcher gets frozen copies, its output is validated, and one that throws is ignored (counted in the reason, coverage unchanged)', async () => {
+  const lab = (build) => ({ id: 'lab-decision', product: 'banking-mcp', layer: 'resource', basis: 'measured-shape', pattern: /^lab decision actor=(\S+) outcome=(allowed|refused)$/, build });
+  const lines = [stub('banking-mcp', 'lab decision actor=u1 outcome=allowed', T0 + 1000), stub('banking-mcp', 'lab decision actor=u2 outcome=refused', T0 + 2000)];
+  const layers = [{ layer: 'resource', products: ['banking-mcp'] }];
+  const seen = [];
+  await collectWith([lineReader(lines)], { layers, matchers: [lab((m, line) => { seen.push([Object.isFrozen(m), Object.isFrozen(line)]); return { outcome: 'allowed', message: 'ok' }; })] });
+  assert.deepEqual(seen, [[true, true], [true, true]]);
+  for (const build of [() => { throw new Error('boom'); }, (m) => { m.push('x'); return { outcome: 'allowed', message: 'x' }; }, (m, line) => { line.message = 'forged'; return { outcome: 'allowed', message: 'x' }; }]) {
+    const rec = await collectWith([lineReader(lines)], { layers, matchers: [lab(build)] });   // does not reject
+    assert.equal(rec.coverage.resource, 'not-logged', 'a throwing build is not "unreachable"');
+    assert.match(rec.reasons.resource, /2 lab matcher errors were ignored/);
+    assert.deepEqual(assertRunObservability(rec), []);
+  }
+  const weird = await collectWith([lineReader(lines)], { layers, matchers: [lab(() => ({ outcome: 'passed', message: 'x' }))] });
+  assert.equal(weird.rows.filter((r) => r.origin === 'logged').length, 0, 'an invalid outcome yields no row');
+  const long = await collectWith([lineReader(lines)], { layers, matchers: [lab(() => ({ outcome: 'info', message: 'm'.repeat(5000), detail: 'not an object' }))] });
+  assert.ok(long.rows.find((r) => r.origin === 'logged').message.length <= 301);
+});
+
+const DOCK = '2026-11-22T10:00:05.000000000Z';
+async function viaDocker(lines, layers, extra = {}) {
+  const d = await fakeDocker({ gw: lines, pf: lines });
+  try { return await collectWith([new DockerLogReader({ socketPath: d.socketPath, containers: { pinggateway: 'gw', pingfederate: 'pf', 'mcp-server': 'gw' } })], { layers, ...extra }); } finally { d.close(); }
+}
+
+test('regression 15: an indented line after a JSON line is never joined (the real refusal survives) and a joined tail can never forge matchedBy:id', async () => {
+  const J = ACCESS('/mcp', '403');
+  const rec = await viaDocker([`${DOCK} ${J}`, `${DOCK.replace('05.0', '05.1')}   injected indented line`, `${DOCK.replace('05.0', '05.2')}   sub=u1u1u1u1`], ['gateway']);
+  assert.deepEqual(rec.rows.filter((r) => r.origin === 'logged').map((r) => [r.layer, r.outcome]), [['gateway', 'refused']], 'the 403 is still read');
+  assert.equal(rec.rows.find((r) => r.origin === 'logged').multiline, undefined, 'the JSON entry was not joined to the indented lines');
+  assert.equal(rec.coverage.gateway, 'logged');
+  const G = `${PRE}[P1AZ] DECISION: PERMIT | tool=a | sub=other`;
+  const forged = await viaDocker([`${DOCK} ${G}`, `${DOCK.replace('05.0', '05.1')}    runid-0123456789 sub=u1u1u1`], ['authorize'], { correlation: { sub: 'u1u1u1' } });
+  const row = forged.rows.find((r) => r.origin === 'logged');
+  assert.equal(row.matchedBy, 'window', 'an id in an indented continuation is not a match');
+  assert.equal(row.multiline, true, 'a row from a multi-line entry says so');
+  const single = await viaDocker([`${DOCK} ${G}`], ['authorize']);
+  assert.equal(single.rows.find((r) => r.origin === 'logged').multiline, undefined);
+  const orphan = await viaDocker([`${DOCK}    just an indented line`], ['authorize']);
+  assert.equal(orphan.rows.filter((r) => r.origin === 'logged').length, 0);
+});
+
+test('regression 16: free text on the MCP server cannot decide an outcome; an UNVERIFIED row is counted as information, never as allowed, refused or blocked', async () => {
+  const c = (m) => cls('mcp-server', `[2026-01-01T00:00:00Z] ${m}`);
+  assert.equal(c('INFO: GET /search?q=access denied'), null);
+  assert.equal(c('WARN: GET /search?q=access denied'), null);
+  assert.equal(c('ERROR: user note: token expired for mallory'), null, 'the closed phrase must START the message');
+  assert.equal(c('INFO: user note: the tool x was called by mallory'), null);
+  assert.equal(c('INFO: token expired').outcome, 'info', 'a refusal phrase at INFO level is not a refusal');
+  assert.equal(c('WARN: token expired').outcome, 'refused');
+  assert.equal(c('INFO: Tool echo called').outcome, 'allowed');
+  assert.equal(c('ERROR: Tool echo called'), null);
+  const lines = [stub('mcp-server', '[2026-11-22T10:00:06.000Z] INFO: Tool echo called', T0 + 1000), stub('mcp-server', '[2026-11-22T10:00:06.100Z] WARN: tool call denied', T0 + 2000), stub('mcp-server', '[2026-11-22T10:00:06.200Z] INFO: token audience validated', T0 + 3000)];
+  const rec = await collectWith([lineReader(lines)], { layers: ['resource'] });
+  assert.deepEqual(rec.summary, { allowed: 0, refused: 0, blocked: 0, info: 3, unverified: 2 });
+  assert.deepEqual(rec.rows.filter((r) => r.origin === 'logged').map((r) => r.outcome), ['allowed', 'refused', 'info'], 'each row keeps its own outcome');
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.ok(assertRunObservability({ ...rec, summary: { ...rec.summary, allowed: 1, info: 2 } }).some((p) => /summary\.allowed/.test(p)));
+});
+
+test('regression 17: a pipe or a space in a value cannot shift the PingFederate columns or the P1AZ fields', () => {
+  const pf = (cols) => cls('pingfederate', `/opt/out/instance/log/audit.log:  | tid:t1| ${cols.join('| ')}`);
+  const good = ['trk', 'OAuth', 'user-7', '1.2.3.4 ', '', 'agent', 'OAuth20', 'h', 'AS', 'failure', '', 'Invalid Client', '501'];
+  assert.equal(pf(good).outcome, 'refused');
+  assert.equal(pf([...good.slice(0, 5), '', 'a|success', ...good.slice(7)]), null, 'a value with a pipe makes 15 columns: not read');
+  assert.equal(pf(['trk', 'OAuth', 'user-7', '1.2.3.4 ', '', 'c|x', 'OAuth20', 'h', 'AS', 'failure', '', '7', '501']), null, 'a shift that keeps the last column numeric is still 15 columns');
+  assert.equal(pf(['trk', 'OAuth', 'u|v', ...good.slice(3)]), null);
+  assert.equal(pf(good.slice(0, 12)), null, 'too few columns');
+  assert.equal(cls('pingfederate', `GET /opt/out/instance/log/audit.log:  | tid:t1| ${good.join('| ')}`), null, 'the prefix is the measured container prefix');
+  assert.equal(cls('pingfederate', `/tmp/x/audit.log:  | tid:t1| ${good.join('| ')}`), null);
+  const ok = cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=pay | method=tools/call | vertical=u | obligation=none`);
+  assert.equal(ok.outcome, 'allowed');
+  assert.equal(cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=pay | obligation=hitl | method=tools/call | vertical=u | obligation=none`), null, 'a repeated key is unreadable');
+  assert.equal(cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=x | obligation=hitl | method=tools/call | vertical=u | obligation=none`), null);
+  assert.equal(cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=a | obligation=hitl | method=tools/call`).outcome, 'info', 'a real hitl obligation still holds');
+  assert.equal(cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=a b | method=tools/call`), null, 'a space inside a value: the whole line is not read');
+  assert.equal(cls('pinggateway', `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=u1 | tool=a | obligation=hitl extra`), null);
+});
+
+test('regression 18: when Elasticsearch has nothing usable the next reader is consulted, and the record says which reader gave the lines', async () => {
+  const es = await fakeEs(() => esOk([]));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rofb-'));
+  try {
+    const file = path.join(dir, 'g.log');
+    fs.writeFileSync(file, 'time="2026-11-22T10:00:05Z" level=info msg="Proxying to: http://x.lab.example"\n');
+    const rec = await collectWith([new ElasticsearchReader({ url: es.url, apiKey: ESKEY }), new DockerLogReader({ files: { 'privilege-gateway': file } })], { layers: [{ layer: 'gateway', products: ['privilege-gateway'] }] });
+    assert.equal(rec.coverage.gateway, 'logged');
+    assert.match(rec.reasons.gateway, /read from docker after elasticsearch: returned no usable lines/);
+    const none = await collectWith([new ElasticsearchReader({ url: es.url, apiKey: ESKEY })], { layers: [{ layer: 'gateway', products: ['privilege-gateway'] }] });
+    assert.equal(none.coverage.gateway, 'not-logged');
+  } finally { es.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('regression 19: bad times, bad layer specs and prototype names are RunObsError with status 400, never a RangeError or TypeError', async () => {
+  const ro = createRunObservability({ readers: [lineReader([])] });
+  const code = (c) => (e) => e instanceof RunObsError && e.code === c && e.status === 400;
+  const run = (o) => ro.collectRun({ startedAt: T0, endedAt: T1, ...o });
+  await assert.rejects(run({ startedAt: 1e16, endedAt: 1e16 + 1 }), code('bad_window'));
+  await assert.rejects(run({ startedAt: '9999-12-31T00:00:00Z', endedAt: '9999-12-31T23:59:59Z' }), code('bad_window'));
+  await assert.rejects(run({ startedAt: -1e15, endedAt: 0 }), code('bad_window'));
+  await assert.rejects(run({ startedAt: 5, endedAt: 1 }), code('bad_window'));
+  await assert.rejects(run({ startedAt: NaN }), code('bad_window'));
+  await assert.rejects(run({ endedAt: Infinity }), code('bad_window'));
+  await assert.rejects(run({ startedAt: new Date(1) }), code('bad_window'));
+  await assert.rejects(run({ startedAt: '+275760-09-13T00:00:00.000Z', endedAt: '+275760-09-13T00:00:00.000Z' }), code('bad_window'));
+  await assert.rejects(createRunObservability().collectRun({ runId: 'x', startedAt: T0, endedAt: T1, source: 'mock', layers: [{ layer: 'person', simulated: [{ at: 9e15, outcome: 'info', message: 'm' }] }] }), code('bad_simulated_row'));
+  await assert.rejects(createRunObservability().collectRun({ runId: 'x', startedAt: T0, endedAt: T1, source: 'mock', layers: [{ layer: 'person', simulated: [null] }] }), code('bad_simulated_row'));
+  for (const layers of [[{ layer: 'person', products: 'pingfederate' }], [{ layer: 'person', products: [{}] }], [{ layer: 'person', products: ['__proto__'] }], [{ layer: 'person', products: ['constructor'] }],
+    [{ layer: 'person', products: ['no-such-product'] }], [{ layer: 'person' }, { layer: 'person' }], [{ layer: '__proto__' }], [{ layer: 'constructor', products: [] }], [null], ['nope'], 'person', { layer: 'person' },
+    [{ layer: 'person', simulated: 'x' }], [{ layer: 'person', products: Array.from({ length: 30 }, () => 'pingfederate') }]]) {
+    await assert.rejects(run({ layers }), code('bad_layer'), JSON.stringify(layers));
+  }
+  const p = await run({ correlation: JSON.parse('{"__proto__":{"sub":"abcdefgh"}}'), layers: ['person'] });
+  assert.equal({}.sub, undefined); assert.ok(p);
+  // a reader asked about a prototype name has nothing
+  const dr = new DockerLogReader({ containers: JSON.parse('{"__proto__":"x"}'), files: {} });
+  assert.equal(dr.canRead('__proto__'), false); assert.equal(dr.canRead('constructor'), false); assert.equal(dr.canRead('toString'), false);
+  assert.deepEqual(Object.keys(readersFromEnv({ RUN_OBS_DOCKER: '1', RUN_OBS_CONTAINERS: '__proto__=x,constructor=y' })), [], 'prototype names are not accepted from the environment');
+  // all rows of two runs have unique ids
+  const rec = await run({ layers: ['person', 'gateway'] });
+  assert.equal(new Set(rec.rows.map((r) => r.id)).size, rec.rows.length);
+});
+
+test('regression 20: assertRunObservability catches a non-string message, a secret in detail, a deep secret, duplicate ids, too many rows, bad order, a reversed window and a matcher on a simulated row; and survives a cycle', () => {
+  const has = (r, re) => assert.ok(assertRunObservability(r).some((p) => re.test(p)), `${re}: ${assertRunObservability(r)}`);
+  const row = (o) => ({ ...realRecord.rows[0], ...o });
+  const withRows = (rows, over = {}) => ({ ...realRecord, rows: [...rows, ...realRecord.rows.slice(1)], ...over });
+  has(withRows([row({ message: { not: 'a string' } })]), /message must be a non-empty string/);
+  has(withRows([row({ detail: { password: 'hunter2' } })]), /secret-named/);
+  has(withRows([row({ detail: { client_secret: 'hunter2' } })]), /secret-named/);
+  has(withRows([row({ detail: { pass: 'hunter2' } })]), /token, pass, sid or session/);
+  let deep = { password: 'hunter2' }; for (let i = 0; i < 30; i++) deep = { a: deep };
+  has(withRows([row({ detail: deep })]), /secret-named/);
+  has(withRows([row({ id: 'r2' })]), /used twice/);
+  has({ ...realRecord, rows: [...realRecord.rows, ...Array.from({ length: 501 }, (_, i) => ({ ...realRecord.rows[0], id: `x${i}` }))] }, /more than 500 rows/);
+  has(withRows([row({ at: '2026-11-22T10:00:08.000Z' })]), /not in time order/);
+  has({ ...realRecord, window: { from: '2026-11-22T10:00:09.000Z', to: '2026-11-22T10:00:00.000Z' } }, /window\.from is after window\.to/);
+  has({ ...mockRecord, rows: [{ ...mockRecord.rows[0], matcher: 'pf-audit' }, ...mockRecord.rows.slice(1)] }, /simulated row is presented as read from a log/);
+  const cyc = { ...realRecord }; cyc.self = cyc; cyc.rows = [...realRecord.rows, cyc];
+  const t = performance.now(); const cycProblems = assertRunObservability(cyc); assert.ok(performance.now() - t < 500);
+  assert.ok(!cycProblems.some((p) => /too large/.test(p)), 'a cycle is walked once, not until the budget runs out');
+  const huge = { ...realRecord, rows: [{ ...realRecord.rows[0], detail: Object.fromEntries(Array.from({ length: 5000 }, (_, i) => [`k${i}`, 'x'.repeat(1000)])) }, ...realRecord.rows.slice(1)] };
+  has(huge, /too large to check/);
+});
+
+test('regression 21: masker gaps (sk_live_, JSESSIONID, (secret)=value) and a catch keeps none of its characters', () => {
+  const cases = [[['sk', 'live', 'abcdefghijklmnop'].join('_'), 'abcdefghijkl'], ['Cookie2: JSESSIONID=abc123def456; x=1', 'abc123def456'], ['PHPSESSID=abc123def456', 'abc123def456'], ['connect.sid=s%3Aabc123def456', 'abc123def456'],
+    ['(secret)=abc12345', 'abc12345'], ['"secret" : "abc12345"', 'abc12345'], ['[password]=hunter2', 'hunter2'], ['Authorization:ApiKey abc', 'abc']];
+  for (const [input, secret] of cases) assert.ok(!mask(input).includes(secret), `${input} -> ${mask(input)}`);
+  const tok = ['Zx9Qm3Tr7Wk2Pv5Ln8Bc'].join('');
+  assert.equal(mask(`opaque ${tok} end`), 'opaque <id> end');
+  assert.ok(!mask(`opaque ${tok} end`).includes('Zx9Q'));
+  const leak = (m) => assertRunObservability({ ...realRecord, rows: [{ ...realRecord.rows[0], message: m }, ...realRecord.rows.slice(1)] }).some((p) => /holds/.test(p));
+  for (const m of ['JSESSIONID=abc123def456', '(secret)=abc12345', ['sk', 'test', 'abcdefghijklmnop'].join('_')]) assert.ok(leak(m), m);
+});
+
+test('regression 22: the file reader takes regular files only (FIFO, directory, device are named errors, never a hang), reads CRLF, and names an empty file', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rofile-'));
+  const read = (file) => new DockerLogReader({ files: { g: file } }).readLines({ product: 'g', from: T0, to: T1 });
+  try {
+    const fifo = path.join(dir, 'f'); assert.equal(spawnSync('mkfifo', [fifo]).status, 0);
+    const t0 = Date.now();
+    await assert.rejects(read(fifo), (e) => e.code === 'file_not_regular' && /a FIFO/.test(e.message));
+    assert.ok(Date.now() - t0 < 1500, 'the FIFO is refused without opening it');
+    await assert.rejects(read(dir), (e) => e.code === 'file_not_regular' && /a directory/.test(e.message));
+    await assert.rejects(read('/dev/null'), (e) => e.code === 'file_not_regular' && /a device/.test(e.message));
+    await assert.rejects(read(path.join(dir, 'nope')), (e) => e.code === 'file_unreadable');
+    const empty = path.join(dir, 'empty.log'); fs.writeFileSync(empty, '');
+    const e0 = await read(empty); assert.deepEqual(e0.lines, []); assert.match(e0.notes[0], /empty/);
+    const crlf = path.join(dir, 'l.log');
+    fs.writeFileSync(crlf, 'time="2026-11-22T10:00:05Z" level=info msg="Proxying to: http://x.lab.example"\r\ntime="2026-11-22T10:00:06Z" level=info msg="Proxying to: http://y.lab.example"\r\n');
+    assert.equal((await read(crlf)).lines.length, 2);
+    const link = path.join(dir, 'link.log'); fs.symlinkSync(crlf, link);
+    assert.equal((await read(link)).lines.length, 2, 'a symlink to a regular file is fine');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('ordering: rows with the same time keep the order they were written in, also when the cap regroups them', async () => {
+  // the layer that first appears in time order is not the layer that was written first: equal times must still follow the write order
+  const t9 = T0 + 9000; const t5 = T0 + 5000;
+  const tie = await createRunObservability().collectRun({ runId: 'o', startedAt: T0, endedAt: T1, source: 'mock', layers: [
+    { layer: 'person', simulated: [{ at: t9, outcome: 'info', message: 'written first' }] },
+    { layer: 'gateway', simulated: [{ at: t5, outcome: 'info', message: 'earlier' }, { at: t9, outcome: 'info', message: 'written second' }] }] });
+  assert.deepEqual(tie.rows.filter((r) => r.origin === 'simulated').map((r) => r.message), ['earlier', 'written first', 'written second']);
+  const at = T0 + 1000;
+  const rec = await createRunObservability().collectRun({ runId: 'o', startedAt: T0, endedAt: T1, source: 'mock', layers: [
+    { layer: 'gateway', simulated: [{ at, outcome: 'info', message: 'first' }, { at, outcome: 'info', message: 'second' }] },
+    { layer: 'person', simulated: [{ at, outcome: 'info', message: 'third' }] },
+    { layer: 'gateway', ...{} }].slice(0, 2) });
+  assert.deepEqual(rec.rows.filter((r) => r.origin === 'simulated').map((r) => r.message), ['first', 'second', 'third']);
+  const old = LIMITS.maxRows; LIMITS.maxRows = 12;
+  try {
+    const sim = (layer, n) => ({ layer, simulated: Array.from({ length: n }, (_, i) => ({ at, outcome: 'info', message: `${layer}${i}` })) });
+    const capped = await createRunObservability().collectRun({ runId: 'o', startedAt: T0, endedAt: T1, source: 'mock', layers: [sim('resource', 5), sim('person', 5), sim('gateway', 5)] });
+    assert.equal(capped.truncated, true);
+    const order = capped.rows.filter((r) => r.origin === 'simulated').map((r) => r.message);
+    assert.deepEqual(order, [...order].sort((a, b) => (a.startsWith('resource') ? 0 : a.startsWith('person') ? 1 : 2) - (b.startsWith('resource') ? 0 : b.startsWith('person') ? 1 : 2) || a.localeCompare(b)), 'write order: resource rows, then person, then gateway');
+  } finally { LIMITS.maxRows = old; }
+});
+
+test('the core never names a reader, the socket or the network, even in a comment (a strict check a lab can run over the vendored file)', () => {
+  const core = fs.readFileSync(path.join(HERE, 'runObservability.js'), 'utf8');
+  for (const word of ['readersFromEnv', 'DockerLogReader', 'ElasticsearchReader', 'socketPath', 'fetch(', 'node:']) assert.ok(!core.includes(word), `the core mentions ${word}`);
+  assert.ok(!/^\s*import\s/m.test(core));
 });
