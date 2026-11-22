@@ -53,14 +53,16 @@ function lookup(key) {
   return undefined;
 }
 
-const missing = wanted.filter((k) => lookup(k) === undefined);
+const missing = wanted.filter((k) => lookup(k) === undefined && !(spec.envOptional || []).includes(k));
 if (missing.length) {
   console.error('Missing values in the shared env file for keys:');
   for (const k of missing) console.error(`  ${k} (lab expects: ${JSON.stringify(spec.env[k])})`);
   process.exit(2);
 }
 
-const values = wanted.map((k) => ({ key: k, value: lookup(k), enabled: true, type: 'secret' }));
+const values = wanted
+  .map((k) => ({ key: k, value: lookup(k) ?? (spec.envOptional || []).includes(k) ? spec.env[k] : undefined, enabled: true, type: 'secret' }))
+  .filter((v) => v.value !== undefined);
 const out = { name: `${spec.name} — Live (filled ${new Date().toISOString().slice(0, 10)})`, values };
 const outPath = join(outDir, `${slug}.live.environment.json`);
 writeFileSync(outPath, JSON.stringify(out, null, 2) + '\n');
