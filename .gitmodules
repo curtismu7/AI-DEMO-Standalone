@@ -319,3 +319,7 @@
 	path = standalone/ciba-approval-sequence-LAB
 	url = https://github.com/curtismu7/ciba-approval-sequence-LAB.git
 	branch = main
+[submodule "standalone/privilege-gateway-client-LAB"]
+	path = standalone/privilege-gateway-client-LAB
+	url = https://github.com/curtismu7/privilege-gateway-client-LAB.git
+	branch = main

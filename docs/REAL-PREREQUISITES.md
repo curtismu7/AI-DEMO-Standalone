@@ -133,6 +133,10 @@ gateway moved to another port is not found by the probe. Not fixed here.
 - `ai-gateway-client-LAB`: the gateway URL you enter; `server/.env.example`. Live is owner-run.
 - `mcp-demo-client-privilege-LAB`: MCP URL of your Privilege gateway and your app's client id (in the page).
 - `aggregate-entitlement-LAB`: `AGG_ENT_GW_URL`, `AGG_ENT_GW_APPS`, `AGG_ENT_GW_KEY_<NAME>`. README "Real mode settings".
+- `privilege-gateway-client-LAB`: `PGC_GW_URL`, `PGC_GW_APPS` (the three door names) and one agent key per door,
+  `PGC_GW_KEY_<DOOR>`, in the lab's own `.env`; the page login (pi.flow) also needs your own PingOne app:
+  `PGC_PINGONE_ENVIRONMENT_ID`, `PGC_PINGONE_REGION`, `PGC_USER_CLIENT_ID`. Real is owner-run and was only exercised against
+  a loopback stub; unset keeps Real refused with the missing names listed. `.env.example`.
 - `privilege-logging-LAB`: `PRIV_LOG_GATEWAY_URL`, `PRIV_LOG_AGENT_KEY`, optionally a search URL or kubectl proxy.
 - `gateway-suite-LAB`: `CENTRAL_AGENT_A2A_URL` and an optional bearer. `.env.example`.
 - `workload-identity-LAB`: `WI_REAL_GATEWAY_URL` and `WI_REAL_CLIENT_SECRET` in the compose-side `.env`; unset keeps Real
