@@ -13,8 +13,8 @@ SEs presenting live, customers watching, and viewers of the recorded videos. The
 their behalf and every policy point each left a trace, and to see honestly where one did not.
 
 ## Acceptance criteria (per lab)
-1. The shared files are vendored unmodified (pin test passes; an edited copy fails).
-2. The page shows the panel under the lab's Run in Mock AND Real, behind the existing rule-19 toggle (toggle not touched).
+1. The shared files are vendored unmodified: the lab's pin test calls `checkPin(labRoot)` (vendored as `scripts/run-observability-checkPin.mjs`) and an edited copy fails. A lab that reads no logs (Mock only, or `response` rows only) vendors the core `server/src/runObservability.js` and the web files, NOT `runObservabilityReaders.js`, so it exempts no `fetch`/socket in its safety tests; a lab with Real log reading vendors both.
+2. The page shows the panel under the lab's Run in Mock AND Real, behind the existing rule-19 toggle (toggle not touched), and passes the current mode as the required `source` prop.
 3. Mock: rows are `simulated`, computed from what the lab's own mock actually did; none is shown as read from a log.
    Real: Elasticsearch reader by default (`RUN_OBS_ES_URL`, `RUN_OBS_ES_READ_APIKEY`); unconfigured shows `unreachable` with the reason, never blank.
 4. The lab's own server logs each decision it makes (one timestamped line: actor, outcome) so Real has something to read.
@@ -28,7 +28,9 @@ their behalf and every policy point each left a trace, and to see honestly where
 - No run yet: "Run the demo" empty state.
 - Real mode on but the product writes no line for an event: `not-logged`, never inferred from a missing line.
 - Gateway refusal / Part 1 block lines (shapes unconfirmed), Authorize (no log), PingFederate sign-in (audit.log not shipped): `not-logged` or `response`, until the follow-ups below land.
-- Hostile input in a log line (tokens, long lines, markup): masked server-side, rendered inert.
+- Hostile input in a log line (tokens, long lines, markup, request text that imitates a decision line): masked server-side, rendered inert, and matchers are anchored so such text never becomes a `logged` decision row.
+- A search cut at its cap (Elasticsearch 500 documents, a 2 MB file tail): the layer stays `not-logged` but reads **Not found (partial search)** and says absence is not proof.
+- Two runs overlapping in time can interleave window-matched rows; rows matched by an id from the run are tagged `id`.
 - Record `source` differs from the page mode: refused on screen.
 
 ## Out of scope (follow-ups, owner-gated)
