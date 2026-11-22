@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.12 (2026-11-22)
+
+**New labs**
+
+- salesforce-privilege-LAB (Demo, D145, port 7835): a simulated rehearsal of connecting a Salesforce Developer org to PingOne Privilege and running a time-boxed permission set grant, then its revoke, against a mock org. It teaches what goes wrong while connecting (17 scripted scenarios, most of them a failure and its fix) and why. Mock by default; an owner-run, read-only Real mode reads one org's permission sets and users. Every behaviour was observed once on one org and is UNVERIFIED as a product claim.
+
 ## 3.11 (2026-11-22)
 
 **New labs**

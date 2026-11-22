@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New lab: privilege-gateway-client-LAB (port 7833) — a verdict-first client for a PingOne Privilege MCP gateway: three standing doors, the verdict and the identity first, and pop-out evidence panels. Update to get it on your shelf.
+New lab: salesforce-privilege-LAB (port 7835) — a simulated rehearsal of connecting a Salesforce Developer org to PingOne Privilege, then a time-boxed permission set grant and revoke, against a mock org. Update to get it on your shelf.
