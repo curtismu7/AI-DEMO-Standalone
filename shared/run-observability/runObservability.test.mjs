@@ -121,7 +121,7 @@ test('masker: headers, bearer, basic, JWT, sk- key and secret-named fields never
 test('masker: addresses, emails and hostnames become placeholders; ids become <id> (only an id the lab declared is kept, shortened)', () => {
   assert.equal(mask('from 203.0.113.9 to 10.0.0.1:8443'), 'from <ip> to <ip>:8443');
   for (const v6 of ['2001:db8::1', '::1', 'fe80::a:b', '2001:0db8:0000:0000:0000:0000:0000:0001']) assert.equal(mask(`peer ${v6} up`), 'peer <ip> up', v6);
-  assert.equal(mask('call https://gw.lab.example/mcp and svc.cluster.local and a@b.example'), 'call https://<host>/mcp and <host> and <email>');
+  assert.equal(mask('call https://gw.lab.example/mcp and svc.cluster.local and a@b.example'), 'call https://gw.lab.example/mcp and <host> and <email>');
   assert.equal(mask('user 123e4567-e89b-12d3-a456-426614174000 done'), 'user <id> done');
   assert.equal(mask('trace 4bf92f3577b34da6a3ce929d0e0e4736'), 'trace <id>');
   assert.equal(mask('ref Wm9vZ2xlVGVuYW50QEBAZGVmYXVsdEBAQDEyMzQ1Njc4'), 'ref <id>', 'a generic catch keeps none of its characters');
@@ -736,7 +736,7 @@ test('the core has no imports, no network and no file access (a lab with no log 
 // Regressions from the second independent review.
 // ======================================================================================================================
 const ms = (fn) => { const t = performance.now(); fn(); return performance.now() - t; };
-const UNITS = ['a-', 'a_', 'abc-', 'a.', '@', '.', '-', '_', '1', '1.', 'a@', 'a=', '"', "'", '\\', 'eyJ', 'Bearer ', 'password=', 'secret=" ', '::', '1:', 'a:', '/', '|', ' ', '\t', 'tid:', 'a.b.', '0123456789abcdef', 'a.com.'];
+const UNITS = ['a-', 'a_', 'abc-', 'a.', '@', '.', '-', '_', '1', '1.', 'a@', 'a=', '"', "'", '\\', 'eyJ', 'Bearer ', 'password=', 'secret=" ', '::', '1:', 'a:', '/', '|', ' ', '\t', 'tid:', 'a.b.', '0123456789abcdef', 'a.com.', 'a.example.', 'example.', 'x.example.evil.', 'a.invalid.', 'example.com.'];
 const shapesOf = (n) => [...UNITS.map((u) => u.repeat(Math.ceil(n / u.length))), 'a'.repeat(n), `${'a-'.repeat(Math.floor(n / 2))}x`];
 
 test('regression 10 (ReDoS): no mask or classify call is slow on hostile shapes (100 KB lines), and a 60-line collectRun is fast', async () => {
@@ -1056,4 +1056,22 @@ test('truncated and partial for real rows: a declared id in a logged line sets n
   assert.deepEqual(assertRunObservability(rec), []);
   const unfiltered = { name: 'r', canRead: () => true, readLines: async () => ({ lines: [line(`${decision} ${'p'.repeat(5000)}`)], truncated: false }) };
   assert.equal((await collectWith([unfiltered], { layers: ['authorize'], correlation: { sub: SUB } })).truncated, true);
+});
+
+test('hostnames: a reserved .example / .invalid host (RFC 2606) stays readable, every real-looking host is still masked', () => {
+  const kept = ['client.example', 'a.b.example', 'https://client.example/x.json', 'host.invalid', 'https://id.client.example/.well-known/x.json', 'foo.localhost', 'EXAMPLE.invalid'];
+  for (const k of kept) assert.equal(mask(`see ${k} ok`), `see ${k} ok`, k);
+  assert.equal(mask('client_id=https://a.example/x.json&b=https://b.example/x.json'), 'client_id=https://a.example/x.json&b=https://b.example/x.json', 'two clients that differ only by host stay distinguishable');
+  const masked = [['example.com', '<host>'], ['my.example.com', '<host>'], ['x.example.evil.net', '<host>'], ['notexample.org', '<host>'], ['a.example.internal', '<host>'], ['client.example.co', '<host>'],
+    ['my.example.com/x.json', '<host>/x.json'], ['127.0.0.1', '<ip>']];
+  for (const [input, want] of masked) assert.equal(mask(`see ${input} ok`), `see ${want} ok`, input);
+  const userinfo = mask(`go ${['http://user:pw@host', 'corp/x'].join('.')}`);
+  assert.ok(!userinfo.includes('host.corp') && !userinfo.includes(':pw@'), userinfo);
+  // a 200-character label cannot be a host: the rule is bounded to 63, and what is left is still a masked long blob
+  assert.ok(!mask(`x ${'a'.repeat(200)}.com y`).includes('a'.repeat(100)), 'a 200-character host does not survive whole');
+  // the contract check does not call a reserved host a leak, and still flags a real one
+  const rec = (m) => assertRunObservability({ ...realRecord, rows: [{ ...realRecord.rows[0], message: m }, ...realRecord.rows.slice(1)] });
+  assert.deepEqual(rec('client https://client.example/x.json and host.invalid'), []);
+  assert.ok(rec('client example.com/x.json').some((p) => /hostname/.test(p)));
+  assert.ok(rec('x.example.evil.net').some((p) => /hostname/.test(p)));
 });
