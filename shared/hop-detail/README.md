@@ -23,7 +23,7 @@ A hop is one arrow in the chain. The engine already fills the **raw** fields; `e
   kind: 'token-exchange',             // catalog key
   label: 'Token exchange (RFC 8693) ...', // engine's own sentence, may carry cast names
   from: 'bff', to: 'idp',             // actor ids (see Actors)
-  verdict: 'ok',                      // ok | deny | held | obligation | skip
+  verdict: 'ok',                      // ok | deny | held | obligation | skip | error
   note: 'optional engine note',
   mock: true,
   traceparent: '00-...-...-01',

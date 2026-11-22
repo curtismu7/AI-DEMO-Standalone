@@ -5,7 +5,7 @@ import SequenceView from "./SequenceView";
 import MovieReel from "./MovieReel";
 import StepDetailPanel from "./StepDetailPanel";
 import ActorCard from "./ActorCard";
-import { actorOf, actorsIn } from "./lanes";
+import { actorOf, actorsIn, verdictWord, verdictState } from "./lanes";
 import { TOKENS, UC1_DENY_RUN, UC1_RUN } from "./fixtures";
 
 // The parent composes the screens (Step 1 does it in App.jsx); this harness does the same so a click can be followed
@@ -432,5 +432,23 @@ describe("Rule 24b: tokens in a step's request/response are decoded under the pa
     expect(decoded.textContent).toMatch(/RS256/);
     expect(decoded.textContent).toMatch(/travel-assistant/);
     expect(decoded.textContent).toMatch(/accounts:read/);
+  });
+});
+
+describe("verdict words: a failure is not a refusal", () => {
+  test("an error hop reads 'failed' (bad), a deny hop still reads 'denied' (bad)", () => {
+    expect(verdictWord("error")).toBe("failed");
+    expect(verdictState("error")).toBe("bad");
+    expect(verdictWord("deny")).toBe("denied");
+    expect(verdictWord("error")).not.toBe(verdictWord("deny"));
+  });
+  test("the other verdicts keep their words and states", () => {
+    expect(verdictWord("ok")).toBe("done");
+    expect(verdictWord(undefined)).toBe("done");
+    expect(verdictWord("held")).toBe("held");
+    expect(verdictWord("obligation")).toBe("needs approval");
+    expect(verdictWord("skip")).toBe("not in this path");
+    expect(verdictState("held")).toBe("warn");
+    expect(verdictState("skip")).toBe("info");
   });
 });

@@ -9,7 +9,7 @@ const WRITE_ONLY = new Set(['client_secret', 'password', 'secret', 'api_key', 'x
 // A JWT's header always starts with base64url "{" ("eyJ"), which keeps dotted hostnames out of the match.
 const JWT = /^eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*$/;
 const JWT_IN_TEXT = /eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g;
-const VERDICTS = new Set(['ok', 'deny', 'held', 'obligation', 'skip']);
+const VERDICTS = new Set(['ok', 'deny', 'held', 'obligation', 'skip', 'error']);
 const STAGE_RESULTS = new Set(['pass', 'fail', 'skip']);
 const MAX_DEPTH = 40;
 const own = (o, k) => o != null && typeof o === 'object' && Object.hasOwn(o, k);
@@ -89,6 +89,7 @@ export function factFor(hop, entry) {
   }
   if (d && d.changed.includes('act') && d.after.act?.sub) return `act +${d.after.act.sub}`;
   if (hop.verdict === 'deny') return 'denied';
+  if (hop.verdict === 'error') return 'failed'; // the hop could not complete (502, no answer): not a policy decision, so never "denied"
   if (hop.verdict === 'held') return 'held';
   if (hop.verdict === 'obligation') return 'needs approval';
   if (hop.verdict === 'skip') return 'not in this path'; // a hop that did not run never claims the catalog's "what happened" fact
@@ -123,7 +124,7 @@ export function validateHop(h, catalog, opts = {}) {
   const p = [];
   if (!Number.isInteger(h?.n) || h.n < 1) p.push('n must be a positive integer');
   for (const f of ['kind', 'from', 'to', 'title', 'narrative', 'fact']) if (typeof h?.[f] !== 'string' || !h[f]) p.push(`${f} is required`);
-  if (h && !VERDICTS.has(h.verdict ?? 'ok')) p.push(`verdict ${h.verdict} is not ok|deny|held|obligation|skip`);
+  if (h && !VERDICTS.has(h.verdict ?? 'ok')) p.push(`verdict ${h.verdict} is not ok|deny|held|obligation|skip|error`);
   if (catalog && h?.kind && !own(catalog.kinds, h.kind)) p.push(`kind ${h.kind} has no catalog entry`);
   const s = h?.spec;
   if (!s) p.push('spec is required');
