@@ -1075,3 +1075,13 @@ test('hostnames: a reserved .example / .invalid host (RFC 2606) stays readable, 
   assert.ok(rec('client example.com/x.json').some((p) => /hostname/.test(p)));
   assert.ok(rec('x.example.evil.net').some((p) => /hostname/.test(p)));
 });
+
+test('no vendored file names another project, a person or a local path (the files are copied into public lab repos)', () => {
+  const vendored = ['RunObservability.jsx', 'run-observability.css', 'run-observability.test.jsx', 'fixtures.js', 'runObservability.js', 'runObservabilityReaders.js', 'checkPin.mjs'];
+  const banned = ['ai-demo2', 'ai-demo-standalone', 'observability-lab', 'gateway-claims', 'gclab', 'privilege-logging', 'ping-devops', 'ping-log-collector', 'curtis', 'cmuir', '/users/', '~/',
+    'united airlines', 'mileageplus', 'datapower', 'optum', 'unitedhealth', 'uhg', 'member benefit'];
+  for (const f of vendored) {
+    const text = fs.readFileSync(path.join(HERE, f), 'utf8').toLowerCase();
+    for (const word of banned) assert.ok(!text.includes(word), `${f} contains "${word}": move the citation to the README Evidence section`);
+  }
+});
