@@ -148,3 +148,20 @@ test('privilege-gateway-client kinds: each has a catalog entry, a teaching spec,
     assert.ok(h.fact, `${k} has a fact`);
   }
 });
+
+test('error verdict: a hop that could not complete is valid, says "failed" and never "denied"', async () => {
+  const h = enrichHop({ n: 3, kind: 'api-call', label: 'API call', from: 'gateway', to: 'api', verdict: 'error', note: 'upstream 502', traceparent: '00-a-b-01' }, catalog);
+  assert.deepEqual(validateHop(h, catalog), []);
+  assert.equal(h.fact, 'failed');
+  assert.notEqual(h.fact, 'denied', 'a failure is not a policy decision');
+  const bad = enrichHop({ n: 4, kind: 'api-call', label: 'API call', from: 'gateway', to: 'api', verdict: 'nope', traceparent: '00-a-b-01' }, catalog);
+  assert.ok(validateHop(bad, catalog).some((m) => /not ok\|deny\|held\|obligation\|skip\|error/.test(m)), 'an unknown verdict is still refused and the message lists error');
+  // evidence/lanes.js imports without a file extension (bundler resolution), so Node cannot load it here: read the tables as text.
+  // The behavioural test of verdictWord/verdictState is in shared/evidence/evidence.test.jsx (vitest).
+  const lanes = fs.readFileSync(path.join(here, '..', 'evidence', 'lanes.js'), 'utf8');
+  assert.match(lanes, /VERDICT_WORD = \{[^}]*\berror: "failed"/, 'the reel says "failed" for an error hop');
+  assert.match(lanes, /VERDICT_STATE = \{[^}]*\berror: "bad"/, 'an error hop shows as a bad state');
+  assert.match(lanes, /VERDICT_WORD = \{[^}]*\bdeny: "denied"/, 'deny keeps its own word');
+  const readme = fs.readFileSync(path.join(here, 'README.md'), 'utf8');
+  assert.match(readme, /ok \| deny \| held \| obligation \| skip \| error/, 'README lists the error verdict');
+});
