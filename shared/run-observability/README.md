@@ -195,6 +195,21 @@ entry and starts at the beginning with the product's own prefix (PingGateway's l
 **Correlation.** A line is `matchedBy: "id"` when it contains, as a WHOLE token, an id from `correlation` (sub, actor client id, trace id, request ids) of 6 or more characters (shorter ones are ignored for matching, so a sub of `user` marks nothing); any other line in the window is `matchedBy: "window"`.
 Lines with no ids in them (the gateway's "Proxying to" line) can only ever be window-matched, so **two runs that overlap in time can interleave** their window-matched rows. Keep a lab's runs apart in time, or read only the `id` rows as evidence of this run.
 
+## Evidence
+
+The vendored files are copied into other repositories, so their comments say only "measured on a real run on <date>", "relayed, never read directly" or "see the shared README, Evidence section", and never name another project. This section is the full list. Every source was read-only.
+
+| Shape | Status words in the code | Where it was measured or relayed from |
+|---|---|---|
+| PingFederate `audit.log` columns, `server.log` and admin lines on container stdout | MEASURED 2026-11-08 | observability-LAB `README.md` and `server/src/logData.js` (the `audit-stdout`, `server-stdout`, `admin-api-stdout` entries), read from the running PingFederate container of the AI-DEMO2 stack |
+| `[P1AZ] DECISION`, `INDETERMINATE - HITL challenge`, access audit JSON, MCP topic audit JSON, the PingGateway router-error line (the logback prefix) | MEASURED 2026-11-08 | observability-LAB `server/src/logData.js` (`p1az-decision`, `access-audit`, `router-error` entries), read from the running PingGateway container of the AI-DEMO2 stack |
+| Privilege agent gateway logfmt lines (`Access token found`, `policy denied`, `Proxying to`, `MCP call detected`, the authorization pair, `aiguard: blocked`) | MEASURED 2026-11-07/08 | observability-LAB `docs/privilege-logging-test-plan.md` sections 8a and 8c; AI-DEMO2 `privilege/GATEWAY-LOGGING-WITH-ELASTICSEARCH.md` |
+| Privilege gateway JSON documents (`MCP policy denied`, `A2A policy denied`, `AIGuard`) | field names MEASURED 2026-11-08 | the same two documents (the `gateway-events` index shapes) |
+| Privilege SIEM index `ping-siem-events-v2` (`policy-decision-log`, `aiguard-log`) | relayed 2026-11-08, never read directly | observability-LAB `README.md` (the Privilege SIEM section); `agent-approval-log` has never been seen: UNVERIFIED |
+| Prompt-Guard sidecar verdict lines | MEASURED 2026-11-08 | observability-LAB `server/src/logData.js` (`verdict-allow`, `verdict-flagged`) |
+| MCP server `[time] LEVEL: message` header lines | MEASURED 2026-11-08 | observability-LAB `server/src/logData.js` (`record-header`, `record-context`); refused and served wording is UNVERIFIED |
+| Index and field names (`ping-logs-*`, `demo-logs-*`, `@timestamp`, `ping_product`, `demo_service`, `request_id`) and the masking intent | | `shared/ping-log-collector` (`README.md`, `vector.yaml`) |
+
 ## Lab matchers (your own decision line)
 
 A lab that writes its own timestamped decision line adds a matcher; nothing in the shared file changes. Matchers run after the built-ins, only on text lines a reader really returned, and cannot create a row without one or choose its origin (it is always `logged`).
