@@ -1015,3 +1015,45 @@ test('the core never names a reader, the socket or the network, even in a commen
   for (const word of ['readersFromEnv', 'DockerLogReader', 'ElasticsearchReader', 'socketPath', 'fetch(', 'node:']) assert.ok(!core.includes(word), `the core mentions ${word}`);
   assert.ok(!/^\s*import\s/m.test(core));
 });
+
+test('truncated is set only by a REAL cut: shortening a declared id or masking a secret is not a cut', async () => {
+  const SUB = 'declared-subject-1234567890abcdef';
+  const mock = (detail, message = 'm') => createRunObservability().collectRun({ runId: 't', startedAt: T0, endedAt: T1, source: 'mock', correlation: { sub: SUB, actClientId: 'agent-client-0987654321' }, layers: [{ layer: 'person', simulated: [{ at: T0 + 1000, outcome: 'info', message, detail }] }] });
+  // a declared id in detail is shortened and is not a cut
+  const a = await mock({ sub: SUB, actor: 'agent-client-0987654321', list: [SUB] });
+  assert.equal(a.rows[0].detail.sub, 'decl…ef'); assert.equal(a.truncated, false); assert.deepEqual(assertRunObservability(a), []);
+  // so are a masked secret-looking value, an undeclared id and a long string under the cap
+  const b = await mock({ note: 'password=hunter2 and 123e4567-e89b-12d3-a456-426614174000', long: 'w '.repeat(900) });
+  assert.equal(b.truncated, false);
+  // a string over the size cap IS a cut
+  const c = await mock({ big: 'x'.repeat(2500) });
+  assert.equal(c.truncated, true);
+  // a declared id shortened AND a real cut: still a cut
+  const d = await mock({ sub: SUB, big: 'y'.repeat(3000) });
+  assert.equal(d.rows[0].detail.sub, 'decl…ef'); assert.equal(d.truncated, true);
+  // the 8 KB budget running out is a cut; staying inside it is not
+  assert.equal((await mock(Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`k${i}`, 'z '.repeat(900)])))).truncated, true);
+  assert.equal((await mock(Object.fromEntries(Array.from({ length: 4 }, (_, i) => [`k${i}`, 'z '.repeat(900)])))).truncated, false);
+  // the row message and product with a declared id are not a cut either
+  assert.equal((await mock({ ok: 1 }, `signed in as ${SUB}`)).truncated, false);
+  // the masker itself reports a cut only for a real one
+  const { maskDeep } = createMasker();
+  const keep = keepPattern({ sub: SUB });
+  const fresh = () => ({ left: LIMITS.maxDetail, cut: false });
+  let bud = fresh(); maskDeep({ sub: SUB }, keep, bud); assert.equal(bud.cut, false);
+  bud = fresh(); maskDeep({ sub: SUB, big: 'x'.repeat(2001) }, keep, bud); assert.equal(bud.cut, true);
+  bud = fresh(); maskDeep({ s: 'x'.repeat(2000) }, keep, bud); assert.equal(bud.cut, false, 'exactly the cap is not a cut');
+});
+
+test('truncated and partial for real rows: a declared id in a logged line sets neither; a line really over the cap does', async () => {
+  const SUB = 'declared-subject-1234567890abcdef';
+  const line = (m, at = T0 + 1000) => stub('pinggateway', m, at);
+  const decision = `${PRE}[P1AZ] DECISION: PERMIT | backend=real | sub=${SUB} | tool=whoami | method=tools/call`;
+  const rec = await collectWith([lineReader([line(decision)])], { layers: ['authorize'], correlation: { sub: SUB } });
+  const row = rec.rows.find((r) => r.origin === 'logged');
+  assert.equal(row.detail.sub, 'decl…ef'); assert.equal(row.matchedBy, 'id');
+  assert.equal(rec.truncated, false); assert.deepEqual(rec.partial, {});
+  assert.deepEqual(assertRunObservability(rec), []);
+  const unfiltered = { name: 'r', canRead: () => true, readLines: async () => ({ lines: [line(`${decision} ${'p'.repeat(5000)}`)], truncated: false }) };
+  assert.equal((await collectWith([unfiltered], { layers: ['authorize'], correlation: { sub: SUB } })).truncated, true);
+});
