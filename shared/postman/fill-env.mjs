@@ -61,7 +61,7 @@ if (missing.length) {
 }
 
 const values = wanted
-  .map((k) => ({ key: k, value: lookup(k) ?? (spec.envOptional || []).includes(k) ? spec.env[k] : undefined, enabled: true, type: 'secret' }))
+  .map((k) => ({ key: k, value: lookup(k) ?? ((spec.envOptional || []).includes(k) ? '' : undefined), enabled: true, type: 'secret' }))
   .filter((v) => v.value !== undefined);
 const out = { name: `${spec.name} — Live (filled ${new Date().toISOString().slice(0, 10)})`, values };
 const outPath = join(outDir, `${slug}.live.environment.json`);

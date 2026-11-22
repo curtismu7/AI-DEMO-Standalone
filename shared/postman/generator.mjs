@@ -44,7 +44,7 @@ const envExample = {
 };
 
 // --- collection -------------------------------------------------------------
-function requestItem(req) {
+function requestItem(req, folderPrerequest = []) {
   let body;
   if (req.urlencoded) {
     body = {
@@ -55,17 +55,19 @@ function requestItem(req) {
     body = { mode: 'raw', raw: JSON.stringify(req.body, null, 2), options: { raw: { language: 'json' } } };
   }
   const query = (req.query || []).map((q) => ({ key: q.key, value: q.value ?? '' }));
+  const prerequest = [...folderPrerequest, ...(req.prerequest || [])];
+  const events = [];
+  if (prerequest.length) events.push({ listen: 'prerequest', script: { type: 'text/javascript', exec: ['/* Pre-request */', ...prerequest] } });
+  events.push({
+    listen: 'test',
+    script: {
+      type: 'text/javascript',
+      exec: ['/* Assertions for this request */', ...(req.tests || [])],
+    },
+  });
   return {
     name: req.name,
-    event: [
-      {
-        listen: 'test',
-        script: {
-          type: 'text/javascript',
-          exec: ['/* Assertions for this request */', ...(req.tests || [])],
-        },
-      },
-    ],
+    event: events,
     request: {
       method: req.method || 'GET',
       header: Object.entries(req.headers || {}).map(([k, v]) => ({ key: k, value: v })),
@@ -90,7 +92,7 @@ function folderItem(folder) {
   return {
     name,
     description,
-    item: (folder.requests || []).map(requestItem),
+    item: (folder.requests || []).map((r) => requestItem(r, folder.prerequest || [])),
   };
 }
 
