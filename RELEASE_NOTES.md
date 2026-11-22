@@ -24,7 +24,7 @@ whenever you bump VERSION; never edit an old entry.
 
 **New labs**
 
-- ciba-approval-sequence-LAB (Demo, port 7834): the agent booking that policy holds for out-of-band CIBA approval, as a clickable 71-message sequence diagram — ten lifelines, three phases (search, a held booking write, replay and polling). Click any message for its request, response, decoded tokens and the RFC/spec standards behind it, or Simulate to walk all 71. Mock/Real toggle, talk track, studio overview. Ported from the AI-DEMO2 banking demo's CIBA approval sequence page.
+- ciba-approval-sequence-LAB (Demo, port 7834): the agent booking that policy holds for out-of-band CIBA approval, as a clickable 71-message sequence diagram — ten lifelines, three phases (search, a held booking write, replay and polling). Click any message for its request, response, decoded tokens and the RFC/spec standards behind it, or Simulate to walk all 71. Mock/Real toggle, talk track. Ported from the AI-DEMO2 banking demo's CIBA approval sequence page.
 
 
 ## 3.9 (2026-11-21)
