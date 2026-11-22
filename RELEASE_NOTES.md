@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.11 (2026-11-22)
+
+**New labs**
+
+- privilege-gateway-client-LAB (Demo, D144, port 7833): a verdict-first client for a PingOne Privilege MCP gateway. Pick one of three standing doors (every tool, seven read-only tools, no policy), run a tool, and read the verdict first with the identity the gateway evaluated. Evidence opens in pop-out panels: movie reel, token sequence, sequence view, a call-path diagram and the gateway trace. Mock is fully offline; Real uses your own gateway with an agent key per door and a pi.flow page login. Stories, personas, presenter mode and a talk track.
+
 ## 3.10 (2026-11-21)
 
 **New labs**
