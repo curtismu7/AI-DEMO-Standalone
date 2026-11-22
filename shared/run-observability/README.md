@@ -4,6 +4,8 @@ For ONE run of a demo, the log lines (and decisions) each of six layers left beh
 an outcome, a short message and an honest origin tag. One component and one collector, so every lab shows the same thing the same way.
 It is an **excerpt**: ids, tokens, addresses and hostnames are masked, and the panel says so.
 
+**Adding it to a lab, or re-vendoring in a sweep: follow `ADDING-TO-A-LAB.md`** (the procedure, the reference labs to copy, the review and merge steps, and the mistakes already made). This README is the contract.
+
 ## Files
 
 | File | Vendor to | Who vendors it | What |
