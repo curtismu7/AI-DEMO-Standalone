@@ -51,6 +51,8 @@ function requestItem(req, folderPrerequest = []) {
       mode: 'urlencoded',
       urlencoded: req.urlencoded.map((p) => ({ key: p.key, value: p.value })),
     };
+  } else if (req.rawBody !== undefined) {
+    body = { mode: 'raw', raw: req.rawBody, options: { raw: { language: 'json' } } };
   } else if (req.body) {
     body = { mode: 'raw', raw: JSON.stringify(req.body, null, 2), options: { raw: { language: 'json' } } };
   }
