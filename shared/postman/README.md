@@ -40,8 +40,9 @@ npx newman run postman/<slug>.postman_collection.json -e postman/<slug>.live.env
   "name": "CIMD LAB",
   "slug": "cimd-lab",
   "description": "...",
-  "baseUrl": "http://localhost:4721",
-  "env": { "PF_URL": "PingFederate base URL", "PF_CLIENT_ID": "..." },
+  "baseUrl": "http://localhost:5250",
+  "env": { "PF_URL": "pf base", "PF_CLIENT_ID": "..." },
+  "envAliases": { "PF_BASE_URL": "PF_URL" },
   "folders": [
     { "name": "Direction 1 — Real PingFederate", "requests": [
       { "name": "Probe", "method": "POST", "path": "/api/pf/probe",
@@ -53,6 +54,7 @@ npx newman run postman/<slug>.postman_collection.json -e postman/<slug>.live.env
 ```
 
 - `env` values are human descriptions of each key (used by `fill-env.mjs` error messages); keys map to the shared env file.
+- Optional `envAliases`: `{ "envAliases": { "PF_BASE_URL": "PF_URL" } }` — when a key is absent from the shared env file, its alias is tried before failing.
 - `mockOnly: true` folders get a `(MOCK ONLY)` suffix and an honest description — the lane has no live form; requests target the lab's in-process simulation.
 - `tests` are raw Postman test-script lines.
 

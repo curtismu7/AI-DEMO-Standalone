@@ -42,14 +42,25 @@ for (const line of readFileSync(envFile, 'utf8').split('\n')) {
 }
 
 const wanted = Object.keys(spec.env || {});
-const missing = wanted.filter((k) => shared[k] === undefined || shared[k] === '');
+
+// Optional alias map in the spec: { "envAliases": { "PF_BASE_URL": "PF_URL" } }.
+// A key missing from the shared env file falls back to its alias before failing.
+const aliases = spec.envAliases || {};
+function lookup(key) {
+  if (shared[key] !== undefined && shared[key] !== '') return shared[key];
+  const alias = aliases[key];
+  if (alias && shared[alias] !== undefined && shared[alias] !== '') return shared[alias];
+  return undefined;
+}
+
+const missing = wanted.filter((k) => lookup(k) === undefined);
 if (missing.length) {
   console.error('Missing values in the shared env file for keys:');
   for (const k of missing) console.error(`  ${k} (lab expects: ${JSON.stringify(spec.env[k])})`);
   process.exit(2);
 }
 
-const values = wanted.map((k) => ({ key: k, value: shared[k], enabled: true, type: 'secret' }));
+const values = wanted.map((k) => ({ key: k, value: lookup(k), enabled: true, type: 'secret' }));
 const out = { name: `${spec.name} — Live (filled ${new Date().toISOString().slice(0, 10)})`, values };
 const outPath = join(outDir, `${slug}.live.environment.json`);
 writeFileSync(outPath, JSON.stringify(out, null, 2) + '\n');
