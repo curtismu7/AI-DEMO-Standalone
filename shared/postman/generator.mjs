@@ -103,7 +103,7 @@ const collection = {
     name: spec.name,
     description: spec.description || '',
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
-    _postman_id: crypto.randomUUID(),
+    _postman_id: `postman-${slug}`,
   },
   item: (spec.folders || []).map(folderItem),
   variable: [
