@@ -17,6 +17,7 @@ export default function TalkTrackDialog({ isOpen, onClose, talk, title = "Talk t
       placement="right"
       storageKey={storageKey}
       singletonKey="talk-track"
+      noBackdrop
       testId="talk-track-dialog"
     >
       {steps.length === 0 ? (
