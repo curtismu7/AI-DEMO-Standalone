@@ -820,6 +820,87 @@
         "why": "The back-end application reads its own data store to answer the call. Only the back end talks to the database; no token reaches it.",
         "failure": "Letting the tool or the agent query the database directly. Every access rule enforced in the API is then bypassed."
       }
+    },
+    "door-picked": {
+      "title": "Door picked",
+      "fact": "door picked, no key in the page",
+      "spec": {
+        "none": true,
+        "why": "The page names a door and asks the lab's own server to act. The agent key for that door stays on the server; the page never holds it, so nothing on the page can replay it.",
+        "failure": "Putting the agent key in page code or browser storage. Anything that runs on the page can then use it against every door it unlocks."
+      }
+    },
+    "discover": {
+      "title": "Open session",
+      "fact": "session started",
+      "spec": {
+        "refs": [
+          {
+            "label": "MCP 2025-11-25",
+            "title": "Lifecycle: initialize",
+            "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle"
+          },
+          {
+            "label": "RFC 6750 §2.1",
+            "title": "Bearer header",
+            "url": "https://www.rfc-editor.org/rfc/rfc6750#section-2.1"
+          }
+        ],
+        "mandate": "An MCP session starts with initialize and the notifications/initialized notification. Over HTTP the server may return an mcp-session-id that the client sends on every later request, and the agent key travels as a bearer credential on each one.",
+        "why": "The session is the first request the gateway can judge. A gateway that refuses a caller can do it here, before any tool is listed.",
+        "failure": "Reading a 200 on initialize as permission to use the tools. Opening a session proves the key was accepted, not what it may do."
+      }
+    },
+    "policy-check": {
+      "title": "Policy decision",
+      "fact": "policy decided",
+      "spec": {
+        "refs": [
+          {
+            "label": "XACML 3.0",
+            "title": "Decision point and enforcement point vocabulary",
+            "url": "https://docs.oasis-open.org/xacml/3.0/xacml-3.0-core-spec-os-en.html"
+          },
+          {
+            "label": "RFC 6750 §3.1",
+            "title": "invalid_token and insufficient_scope",
+            "url": "https://www.rfc-editor.org/rfc/rfc6750#section-3.1"
+          }
+        ],
+        "mandate": "Before a tool is listed or run, the gateway decides from the caller's identity and the door's policy whether to allow it, refuse it (403) or hold it. The decision is made inside the gateway; a client sees only the status and the body.",
+        "why": "A client that reads the status can say what it observed and what it concludes from it. A simulation can say what it checked, because it computed the decision itself.",
+        "failure": "Presenting a conclusion drawn from a status as if the gateway had reported each check. A real gateway reports no per-check detail."
+      }
+    },
+    "tool-call": {
+      "title": "tools/call",
+      "fact": "tool call answered",
+      "spec": {
+        "refs": [
+          {
+            "label": "MCP 2025-11-25",
+            "title": "Tools: calling tools",
+            "url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools"
+          },
+          {
+            "label": "MCP 2025-11-25",
+            "title": "Authorization",
+            "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization"
+          }
+        ],
+        "mandate": "tools/call sends the tool name and its arguments over JSON-RPC in the session the client opened. A refusal comes back as an HTTP status or a JSON-RPC error; a tool that ran reports its own failure with isError.",
+        "why": "The same call can end in three different places: refused at the gateway, failed on the way, or run and answered. The status and the body say which.",
+        "failure": "Treating any non-200 as an outage. A 403 on a tool call is usually the policy working as designed."
+      }
+    },
+    "verdict": {
+      "title": "Verdict",
+      "fact": "one word shown",
+      "spec": {
+        "none": true,
+        "why": "The lab turns what it saw into one word and one plain sentence. In a real run the sentence says \"observed\" for what was read from the answer and \"inferred\" for what was concluded from it.",
+        "failure": "Showing a conclusion without saying it is one. A reader then takes a guess about the policy for something the gateway reported."
+      }
     }
   }
 }

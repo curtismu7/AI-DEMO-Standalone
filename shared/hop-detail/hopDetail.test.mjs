@@ -138,3 +138,13 @@ test('a skip hop (listed, did not run) validates with no request or response and
   assert.deepEqual(validateHop(bare, catalog), []);
   assert.deepEqual(bare.request, {}); assert.deepEqual(bare.response, {});
 });
+
+test('privilege-gateway-client kinds: each has a catalog entry, a teaching spec, and validates when enriched', () => {
+  for (const k of ['door-picked', 'discover', 'policy-check', 'tool-call', 'verdict']) {
+    assert.ok(Object.hasOwn(catalog.kinds, k), `${k} is in the catalog`);
+    assert.ok(catalog.kinds[k].spec, `${k} carries a spec`);
+    const h = enrichHop({ n: 1, kind: k, label: k, from: 'browser', to: 'privilege', verdict: 'ok', traceparent: '00-a-b-01' }, catalog);
+    assert.deepEqual(validateHop(h, catalog), [], k);
+    assert.ok(h.fact, `${k} has a fact`);
+  }
+});
