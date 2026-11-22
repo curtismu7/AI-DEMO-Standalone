@@ -96,6 +96,7 @@ const collection = {
   item: (spec.folders || []).map(folderItem),
   variable: [
     { key: 'LAB_BASE', value: spec.baseUrl || 'http://localhost:4720' },
+    ...Object.entries(spec.variables || {}).map(([key, value]) => ({ key, value })),
   ],
 };
 
