@@ -189,6 +189,7 @@ These need the owner's tenants and are not set up by a colleague.
 - `jev-lab-LAB`: a decision-model API: `OPENROUTER_API_KEY`, or `JEV_ENDPOINT` + `JEV_MODEL` for a local model.
 - `hostile-mcp-LAB`: optional `LLM_URL` and `LLM_MODEL` (a local model). `.env.example`.
 - `mcp-skills-LAB`: `SKILLS_DIR`, a folder of skills mounted read-only.
+- `salesforce-privilege-LAB`: your own Salesforce Developer org with an External Client App: `SF_LOGIN_URL`, `SF_CLIENT_ID`, `SF_USERNAME`, `SF_PRIVATE_KEY_PATH` (a key file under the lab's `secrets/`), in the lab's own `.env`. Mock is the default and makes no outbound call; Real is owner-run, read-only (lists permission sets and users) and contacts only that one origin. Unset keeps Real refused with the missing names listed. `.env.example`.
 - `field-notes-LAB`: `FIELD_NOTES_DIR`, a folder of `.md` pages outside the repo.
 - `env-map-LAB`: `ENV_MAP_SNAPSHOT`, written by `scripts/collect.sh` (read-only `docker ps` and `kubectl get`).
 - `mcp-discovery-LAB`: `MCP_DISCOVERY_LIVE=1` scans this machine (read-only, opt-in).

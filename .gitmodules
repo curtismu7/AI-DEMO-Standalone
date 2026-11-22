@@ -323,3 +323,7 @@
 	path = standalone/privilege-gateway-client-LAB
 	url = https://github.com/curtismu7/privilege-gateway-client-LAB.git
 	branch = main
+[submodule "standalone/salesforce-privilege-LAB"]
+	path = standalone/salesforce-privilege-LAB
+	url = https://github.com/curtismu7/salesforce-privilege-LAB.git
+	branch = main
