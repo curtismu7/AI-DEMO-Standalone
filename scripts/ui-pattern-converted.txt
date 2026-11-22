@@ -339,3 +339,8 @@ privilege-k8-kits-LAB/index
 # ported AI-DEMO2 sequence renderer with the §8f controls, vendored JsonPane/TopMenu, and the standard shell.
 ciba-approval-sequence-LAB/flow
 ciba-approval-sequence-LAB/talk
+
+# 2026-11-22: privilege-gateway-client-LAB: the lab's two checked pages are the Ready screen and the panel dock. Standard shell,
+# vendored JsonPane/TopMenu/FloatingDialog; the P9 primary-button escapes are the lab's documented `ui-pattern: allow P9` comments.
+privilege-gateway-client-LAB/ready
+privilege-gateway-client-LAB/panel-dock
