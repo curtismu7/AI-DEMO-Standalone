@@ -45,7 +45,15 @@ const envExample = {
 
 // --- collection -------------------------------------------------------------
 function requestItem(req) {
-  const body = req.body ? { mode: 'raw', raw: JSON.stringify(req.body, null, 2), options: { raw: { language: 'json' } } } : undefined;
+  let body;
+  if (req.urlencoded) {
+    body = {
+      mode: 'urlencoded',
+      urlencoded: req.urlencoded.map((p) => ({ key: p.key, value: p.value })),
+    };
+  } else if (req.body) {
+    body = { mode: 'raw', raw: JSON.stringify(req.body, null, 2), options: { raw: { language: 'json' } } };
+  }
   const query = (req.query || []).map((q) => ({ key: q.key, value: q.value ?? '' }));
   return {
     name: req.name,
