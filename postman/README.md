@@ -12,6 +12,10 @@ postman/
 
 21 labs: ciba-approval-sequence, ciba-hitl, cimd, delegation, gateway-claims, id-jag-standalone, intent-par-inspector, mcp-gateway-lab, mcp-resource-server, mock-authorize, obo, p1-third-party-exchange, pf-array-claims, privilege-api-explorer, saas-access, session, stolen-token, token-workbench, trusted-issuers, wimse, workload-identity.
 
+## One big import: all 21 labs in a single file
+
+`postman/all-labs.postman_collection.json` + `postman/all-labs.live.environment.example.json` merge every lab into one collection — one top-level folder per lab, each described **use-case-first** ("USE CASE: ...") so the sidebar explains what each lab proves without opening anything. Import the pair, select the merged environment, done. Regenerate with `node shared/postman/merge-all.mjs` (`--check` for CI).
+
 ## Import into Postman
 
 1. Import `collections/<lab>/<slug>.postman_collection.json`.
