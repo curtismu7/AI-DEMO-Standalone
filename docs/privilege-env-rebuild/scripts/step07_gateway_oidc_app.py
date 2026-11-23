@@ -17,7 +17,6 @@ GATEWAY_HOSTS = [
     "mcpgw-pingid3.ai-demo.ping-devops.com",  # curtismuir agentless-mcpgw-pingid (pingid-3)
     "mcpgw2.ai-demo.ping-devops.com",         # cmuir agentless-mcpgw2
     "mcpgw.ai-demo.ping-devops.com",          # HAProxy mcpgw-lb public host
-    "pingid-gw.local.ping-devops.com",        # local Docker pingid-mcpgw
 ]
 SRC_APP = "33bb98ce-c805-43fa-9b01-1a7dc746ce53"  # pingid's PingOne Privilege app
 BACKUPS = os.path.expanduser("~/.config/demo-kit/backups")

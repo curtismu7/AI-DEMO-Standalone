@@ -124,7 +124,7 @@ Owner, per gateway: in the **new** tenant's Privilege console, Cloud → Nodes �
 | `cmuir-pingid2` | `agentless-mcpgw-pingid2.ping-devops-cmuir.svc.cluster.local` | `mcpgw-pingid2.ai-demo…` (pingid-2) |
 | `curtismuir-pingid3` | `agentless-mcpgw-pingid.ping-devops-curtismuir.svc.cluster.local` | `mcpgw-pingid3.ai-demo…` (pingid-3) |
 | `cmuir-mcpgw2` | `agentless-mcpgw.ping-devops-cmuir.svc.cluster.local` | `mcpgw2.ai-demo…` |
-| `local` | `pingid-gw.local.ping-devops.com` | local Docker |
+| `local` | `pingid-gw.local.ping-devops.com` | local Docker (dropped 2026-11-23, not used; see the local Docker guide) |
 
 Order per gateway: `check` → `upgrade <tag>` → `identity <tag>` (prints the in-pod command; the **owner** runs it because the harness blocks file moves in pods; old files are moved to a subfolder, not deleted) → `restart <tag>` → `verify <tag>`. Do the three HAProxy backends back to back so the pool never mixes tenants. Rollback: restore the backed-up Secret and `ssl` tar, restart.
 

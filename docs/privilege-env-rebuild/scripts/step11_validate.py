@@ -103,7 +103,7 @@ check(bool(pr), "PingOne Privilege app exists")
 if pr:
     check((pr.get("accessControl") or {}).get("group", {}).get("groups", [{}])[0].get("id") == pa, "Privilege app restricted to PrivilegeAdmins")
     uris = pr.get("redirectUris") or []
-    miss = [h for h in ("mcpgw-pingid", "mcpgw-pingid2", "mcpgw-pingid3", "mcpgw2", "mcpgw", "pingid-gw.local") if not any(f"://{h}." in u for u in uris)]
+    miss = [h for h in ("mcpgw-pingid", "mcpgw-pingid2", "mcpgw-pingid3", "mcpgw2", "mcpgw") if not any(f"://{h}." in u for u in uris)]
     check(not miss, "Privilege app has gateway callbacks", ",".join(miss))
     c, g = api(dt, f"/environments/{D}/applications/{pr['id']}/grants")
     check(bool(g.get("_embedded", {}).get("grants")), "Privilege app has the openid resource grant")

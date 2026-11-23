@@ -1,5 +1,7 @@
 # Local Docker AI gateway: what PingOne needs, then the install
 
+> **Optional, and not used in our setup.** On 2026-11-23 we dropped the local Docker gateway and use only the hosted shared gateways (`mcpgw-cm-pool1`, `mcpgw-ct-pool2`). What we learned: it enrolled and authorised keyed calls fine, but a door whose backend is a cluster-internal address cannot be reached from Docker (500, see "Problems we hit"), and whether a separate Cluster ID changes that was never tested (the second token was not generated). Use this guide only if you need a gateway on your own machine, for doors whose backend that machine can reach.
+
 For: a colleague who wants a PingOne Privilege AI gateway running on their own Mac (Docker Desktop or OrbStack) or Linux box. It builds on Ping's "Configuring a Local AI Gateway with Docker" (`~/Downloads/docker-local-ai-gateway.md`), adds the PingOne side that guide assumes, and records what went wrong when we did it. The cluster gateways and the whole environment rebuild are in `SETUP-Privilege-gateway-GUIDE.md`.
 
 ## Part 1: what PingOne must have first

@@ -16,7 +16,7 @@ Kubernetes labels `ping.demo/gateway`, `ping.demo/where`, `ping.demo/role` and a
 | `mcpgw-ct-pool2` | ct | pool | Takes traffic; used by `spiffe-issuer-LAB` | `agentless-mcpgw-pingid` | `mcpgw-pingid3.ai-demo…` | `gateway-pingid-3` | v1.261112-NYL |
 | `mcpgw-cm-spare1` | cm | spare | Parked out of the pool, kept for migration; no lab uses its host | `agentless-mcpgw-pingid2` | `mcpgw-pingid2.ai-demo…` | `gateway-pingid-2` (maintenance) | v1.261120 |
 | `mcpgw-cm-nyl` | cm | dev | NYL demo build, outside the pool | `agentless-mcpgw2` / deploy `agentless-mcpgw` | `mcpgw2.ai-demo…` | none | v1.261112-NYLb |
-| `mcpgw-local-dev` | local | dev | Local Docker gateway for HITL tests | compose in `~/Development/pingid-gateway` | `pingid-gw.local.ping-devops.com:8723` | none | digest of v1.261112-NYL |
+| `mcpgw-local-dev` | local | dev | **Dropped 2026-11-23.** Local Docker gateway; the hosted shared gateways are used instead. Its node was removed (volumes and backups kept) | compose in `~/Development/pingid-gateway` (stack stopped) | `pingid-gw.local.ping-devops.com:8723` (redirect removed from the shared OIDC app) | none | digest of v1.261120 when stopped |
 | `mcpgw-ct-retired1` | ct | retired | Old-tenant gateway 1, scaled to 0. Do not scale or restart | `agentless-mcpgw` | `mcpgw.ai-demo…` ingress (old) | `gateway-old-1` (disabled) | v1.261112-NYLb |
 | `mcpgw-ct-retired2` | ct | retired | Old-tenant gateway 3, scaled to 0, enrolment kept | `agentless-mcpgw3` | none | none | v1.261112-NYLb |
 
