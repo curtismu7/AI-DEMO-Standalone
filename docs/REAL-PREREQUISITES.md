@@ -13,6 +13,7 @@ touched; the line for each lab says what its README says today.
 What each lab needs for Real (Mock needs nothing):
   A  Nothing. Most labs are Mock only, or their "Live" is a local simulation.
   B  Your own PingOne environment: scripts/pingone-setup.sh makes a sandbox and a worker; each lab's .env.example names its settings.
+     To run PingOne Privilege in that same environment too, see docs/PRIVILEGE-ONE-ENV.md.
   C  A PingFederate: a local one from ping-shared (your own licence, you type YES) or an SE PingFederate URL.
   D  A gateway: ping-shared's minimal PingGateway (offered above when configured), or your own Privilege Agent Gateway.
   E  Owner only: customer-agent-LAB full Real (owner's PingOne environment and its "Demo PingGateway MCP" resource,
