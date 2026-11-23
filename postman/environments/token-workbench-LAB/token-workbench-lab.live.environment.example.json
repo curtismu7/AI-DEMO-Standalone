@@ -1,0 +1,29 @@
+{
+  "name": "Token Workbench LAB — Live (example)",
+  "values": [
+    {
+      "key": "PINGONE_ENVIRONMENT_ID",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "PINGONE_CLIENT_ID",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "PINGONE_CLIENT_SECRET",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "PINGONE_REGION",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    }
+  ]
+}

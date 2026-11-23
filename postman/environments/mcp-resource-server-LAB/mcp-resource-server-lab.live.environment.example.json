@@ -1,0 +1,23 @@
+{
+  "name": "MCP Resource Server LAB — Live (example)",
+  "values": [
+    {
+      "key": "PINGONE_ENVIRONMENT_ID",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "PINGONE_REGION",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "MCP_RESOURCE_SERVER_RESOURCE_URI",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    }
+  ]
+}

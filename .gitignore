@@ -9,3 +9,7 @@ standalone/demo-shelf-LAB/
 # another session's in-flight sweep artifacts (not mine to commit or delete)
 standalone/DIAGRAM-KIT-CONVERSION-RECIPE.md
 standalone/old-files/
+
+# Filled live environments hold real settings: never commit them anywhere.
+postman/**/*live.environment.json
+postman/dist/

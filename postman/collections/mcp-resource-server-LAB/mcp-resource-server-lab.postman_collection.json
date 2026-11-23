@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "MCP Resource Server LAB",
+    "description": "API collection for MCP Resource Server LAB: the RFC 9728 protected-resource metadata, the MCP JSON-RPC surface over POST /mcp (initialize, tools/list, tools/call) with a bearer token, and the auth negatives (no token, insufficient scope). With STRICT_AUTH=false (default) any well-formed JWT with the right aud and scope works; with STRICT_AUTH=true the token must verify against the configured PingOne issuer.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "postman-mcp-resource-server-lab"
+  },
+  "item": [
+    {
+      "name": "Discovery and health",
+      "description": "Public endpoints, no token.",
+      "item": [
+        {
+          "name": "Health (demo-health/1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.response.to.have.status(200);",
+                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{LAB_BASE}}/api/health",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Service health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.response.to.have.status(200);",
+                  "pm.expect(pm.response.json()).to.have.property('resourceUri');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{LAB_BASE}}/health",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Protected-resource metadata (RFC 9728)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.response.to.have.status(200);",
+                  "const b = pm.response.json(); pm.expect(b).to.have.property('resource'); pm.expect(b.scopes_supported).to.include('banking:read');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{LAB_BASE}}/.well-known/oauth-protected-resource",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                ".well-known",
+                "oauth-protected-resource"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "MCP over HTTP (bearer required)",
+      "description": "JSON-RPC over POST /mcp. Set the SAMPLE_TOKEN collection variable (or the TOKEN environment value) to a JWT whose aud is the resource URI and whose scope covers the tool. RFC 6750: insufficient scope answers 403.",
+      "item": [
+        {
+          "name": "initialize",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Pre-request */",
+                  "const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');",
+                  "const aud = pm.environment.get('MCP_RESOURCE_SERVER_RESOURCE_URI') || 'mcp-invest.ping.demo';",
+                  "const tok = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:read',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('SAMPLE_TOKEN', tok);",
+                  "const low = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:none',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('INSUFFICIENT_TOKEN', low);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.response.to.have.status(200);",
+                  "pm.expect(pm.response.json().result.serverInfo).to.have.property('name');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{SAMPLE_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-06-18\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"postman\",\n      \"version\": \"1.0.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{LAB_BASE}}/mcp",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "mcp"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "tools/list",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Pre-request */",
+                  "const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');",
+                  "const aud = pm.environment.get('MCP_RESOURCE_SERVER_RESOURCE_URI') || 'mcp-invest.ping.demo';",
+                  "const tok = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:read',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('SAMPLE_TOKEN', tok);",
+                  "const low = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:none',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('INSUFFICIENT_TOKEN', low);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.response.to.have.status(200);",
+                  "pm.expect(pm.response.json().result.tools.length).to.be.above(0);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{SAMPLE_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{LAB_BASE}}/mcp",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "mcp"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "No token (negative, 401 + WWW-Authenticate)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Pre-request */",
+                  "const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');",
+                  "const aud = pm.environment.get('MCP_RESOURCE_SERVER_RESOURCE_URI') || 'mcp-invest.ping.demo';",
+                  "const tok = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:read',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('SAMPLE_TOKEN', tok);",
+                  "const low = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:none',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('INSUFFICIENT_TOKEN', low);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.expect(pm.response.code).to.eql(401);",
+                  "pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/list\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{LAB_BASE}}/mcp",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "mcp"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Insufficient scope (negative, 403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Pre-request */",
+                  "const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');",
+                  "const aud = pm.environment.get('MCP_RESOURCE_SERVER_RESOURCE_URI') || 'mcp-invest.ping.demo';",
+                  "const tok = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:read',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('SAMPLE_TOKEN', tok);",
+                  "const low = b64({alg:'none',typ:'JWT'}) + '.' + b64({sub:'postman-test',scope:'banking:none',aud:aud,exp:Math.floor(Date.now()/1000)+3600}) + '.';",
+                  "pm.collectionVariables.set('INSUFFICIENT_TOKEN', low);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* Assertions for this request */",
+                  "pm.expect(pm.response.code).to.be.oneOf([403, 401]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{INSUFFICIENT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"list_accounts\",\n    \"arguments\": {}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{LAB_BASE}}/mcp",
+              "host": [
+                "{{LAB_BASE}}"
+              ],
+              "path": [
+                "mcp"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "LAB_BASE",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "SAMPLE_TOKEN",
+      "value": ""
+    }
+  ]
+}
