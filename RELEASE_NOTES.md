@@ -20,6 +20,16 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.14 (2026-11-23)
+
+**Improved**
+
+- salesforce-privilege-LAB (Demo, D145, port 7835): reworked around a support engineer. The first page, **Support P1**, follows an engineer with no access to Salesforce Cases who asks Privilege for time-boxed Case access with a note and an end time, works the case, then loses access. A receipt remains. Three panels show the engineer's Salesforce view, Privilege, and "the old way" (narrative only).
+- Only behaviour seen in the one real Privilege and Salesforce run is shown. Observed and lab-inferred labels, drift, expiry and unverified sign-in outcomes were removed.
+- Real is ready to switch on: run `scripts/setup-real.sh` in a terminal to make the key and certificate and write the lab's own `.env` (mode 600). Real stays read-only.
+- demo-shelf-LAB: the Salesforce tile describes the Support P1 story.
+- Not yet tested: whether the end time ends access by itself. Privilege stores no note in our run; the lab shows the note as its own step.
+
 ## 3.13 (2026-11-22)
 
 **Postman collections and MCP servers across the fleet**
