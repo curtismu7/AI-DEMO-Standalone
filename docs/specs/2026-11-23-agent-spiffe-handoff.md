@@ -1,6 +1,6 @@
 # Agent SPIFFE identity handoff spec
 
-**Status:** draft   **Owner:** curtismu7 (decides open questions Q1 to Q4 before any spike runs)
+**Status:** draft (Q1, Q3, Q4 answered 2026-11-23; Q2 on hold, so S4 is blocked; no spike runs until the owner says go)   **Owner:** curtismu7
 **Tier:** 1 (research spikes, owner only). Becomes Tier 2 the moment a lab ships to colleagues or a spike changes a shared tenant.
 
 ## Goal
@@ -8,17 +8,17 @@ Find out, with evidence, whether an agent running on GKE, Cloud Run or Agent Run
 
 Already verified (do not redo): a real SPIRE 1.7.2 JWT-SVID gets 200 / 401 from a Privilege door via a Federated Identity set to fetch keys by URL (2026-11-19); our own minted tokens got 200 / 401 / 401 (2026-11-22). Source: `standalone/spiffe-issuer-LAB/README.md`.
 
-## Open questions (owner answers first; a spike that depends on one does not start)
-- **Q1. Who exchanges?** The paste says the gateway acts as the RFC 8693 client per request. Is that a real Privilege gateway feature, or the design we want? Not confirmed anywhere in the repo or in the research.
-- **Q2. What is the blueprint binding?** (A) PF issuance criteria compare the actor SVID's SPIFFE ID to a registered blueprint ID, and the handoff token carries a `blueprint_id` claim; or (B) an Entra-issued token (`xms_par_app_azp` = blueprint) is the subject or actor. Research found no Ping source for either; both are inference.
-- **Q3. Cloud access:** is there a GCP project (GKE, Cloud Run, Agent Runtime) and an Entra tenant with Agent ID we may use, and may spikes touch the shared PF and Privilege tenant?
-- **Q4. Which PingFederate:** the 13.1.3 box used for the existing guide?
+## Decisions and open questions
+- **Q1. Who exchanges? ANSWERED (owner, 2026-11-23): yes, on-behalf-of (OBO), and only one token.** The gateway is the RFC 8693 client per request. One exchange per request returns one token that names the user (`sub`) and the agent (`act.sub`). No second hop and no nested `act.act` chain (unlike `pingfederate-LAB`, which does two). Whether Privilege already does this natively is still unconfirmed; S3 and S5 are written for the one-token shape.
+- **Q2. Blueprint binding: ON HOLD (owner).** Candidates stay (A) PF issuance criteria compare the actor's SPIFFE ID to a registered blueprint ID, with a `blueprint_id` claim in the handoff token, or (B) an Entra-issued token (`xms_par_app_azp` = blueprint) is in the chain. S4 does not start until this is decided. Research found no Ping source for either.
+- **Q3. Cloud access: YES, BUT NOT YET (owner).** GCP project and Entra tenant with Agent ID are available; no spike touches them until the owner says go.
+- **Q4. PingFederate: ANSWERED (owner): yes**, the 13.1.3 box used for the existing guide.
 
 ## Acceptance criteria (each one a runnable check, recorded with date and evidence)
 1. **S1 runtime credentials.** For each of GKE, Cloud Run, Agent Runtime, a table row: credential types obtainable (X.509-SVID, JWT, other), and for a JWT: `iss`, `kid`, `alg`, `aud` (can the workload choose it?), lifetime, public JWKS or discovery URL (yes/no). Check: a real token decoded per runtime, values redacted, `curl` of the JWKS URL.
 2. **S2 Privilege direct.** Each runtime JWT that has a public JWKS is registered as a Federated Identity (fetch by URL) and presented to a door. Check: valid 200 with tool list; another subject 401; wrong audience 401; tampered 401; no token 401. A runtime with only X.509 is recorded as "not testable: gateway takes JWT" unless Ping confirms mTLS.
-3. **S3 PF actor token.** PF 13.x policy with "Actor Token Required" and a JWT Token Processor 2.0 for the SVID as `actor_token`. Check: exchange returns a token whose `act.sub` is the SPIFFE ID. Record exactly which of `iss` / `kid` PF requires and what error it returns when each is missing.
-4. **S4 blueprint binding** (after Q2). Issuance criteria let the exchange through only when the actor maps to the expected blueprint. Check: matching blueprint issues; a different blueprint, an unmapped SPIFFE ID and a missing blueprint are each refused by PF, with the error recorded.
+3. **S3 PF actor token.** PF 13.x policy with "Actor Token Required" and a JWT Token Processor 2.0 for the SVID as `actor_token`. Check: one exchange returns exactly one token, whose `sub` is the user and `act.sub` is the SPIFFE ID, with no nested `act.act`. Record exactly which of `iss` / `kid` PF requires and what error it returns when each is missing.
+4. **S4 blueprint binding** (BLOCKED until Q2 is decided). Issuance criteria let the exchange through only when the actor maps to the expected blueprint. Check: matching blueprint issues; a different blueprint, an unmapped SPIFFE ID and a missing blueprint are each refused by PF, with the error recorded.
 5. **S5 gateway protection.** A written threat table for the gateway as the exchange client: where its client credential lives, its scopes, what a stolen credential can mint, audit trail per exchange, rate limit. Check: each row names the control and how we would test it; at least one row is demonstrated against a real gateway.
 6. **Decision.** One page: extend `spiffe-issuer-LAB` (new mode) or new lab, with the evidence rows that justify it.
 
@@ -43,6 +43,6 @@ Building or shipping a lab, a Docker standalone, rollout to colleagues, the SE c
 
 ## Verification plan
 - Evidence file per spike under `docs/specs/evidence/` (redacted decoded claims, status codes, dates); the findings table lives in this spec.
-- Live runs only against the owner's own tenants and cloud accounts, after Q3 is answered and the owner says go in the conversation.
+- Live runs only against the owner's own tenants and cloud accounts, and only after the owner says go in the conversation (Q3 is approved in principle, not yet).
 - Heavy or repeated scripted checks go through `air-test`; anything needing live credentials runs locally and says so.
-- Review: `/code-review` on the branch, handing the reviewer the diff, before merge. Spec is marked `agreed` after Q1 to Q4, `verified` after criteria 1 to 6 each have evidence pasted beside them.
+- Review: `/code-review` on the branch, handing the reviewer the diff, before merge. Spec is marked `agreed` once Q2 is decided (S1 to S3 and S5 can follow on the owner's go before that), `verified` after criteria 1 to 6 each have evidence pasted beside them.
