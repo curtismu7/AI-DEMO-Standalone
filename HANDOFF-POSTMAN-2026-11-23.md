@@ -74,8 +74,28 @@ Five labs ship stdio servers (`<lab>/mcp/server.mjs`): cimd, id-jag, mock-author
 - #493 generator/fill-env/README · #520–522 ci-check.sh + port derivation + quoting fix · #517, #523 pin bumps · #524 release notes 3.13 · #525 master bundle · #526 all-labs one-big import
 - Lab PRs: 21 collections + 21 CI wirings + shape fixes (cimd #32/#33, token-workbench #31/#32, privilege-api-explorer #20/#21, id-jag #37/#38, mcp-resource-server #8/#9)
 
-## Optional next steps (not started)
+## Optional next steps (status 2026-11-23, later session)
 
-1. Add postman/MCP mentions to each lab's `docs/shelf-entry.json`
-2. `postman:generate` npm target in family scaffolding
-3. Sweep the pre-existing non-postman CI reds (one-line allowlist fixes for hygiene scans)
+1. ~~Shelf-entry postman mentions~~ DONE — all 20 labs with a spec got a `postman` block
+   in `docs/shelf-entry.json` (collection + env paths), committed and pushed to each lab's
+   main. Meta-repo submodule pins for these are NOT yet bumped (a follow-up pin PR).
+2. ~~`postman:generate` npm target~~ DONE — `shared/postman/generate-all.mjs`:
+   `node shared/postman/generate-all.mjs [--check | <lab>…]` regenerates all labs with a
+   spec, re-bundles, re-merges.
+3. **NOT done** — the pre-existing non-postman CI reds (stolen-token/wimse hygiene tests
+   reject `local.ping-devops.com` in docker-compose.yml, which is the owner-blessed family
+   lab-proxy domain; fix = extend the allowlist regex in each lab's `scripts/repo.test.mjs`).
+
+## Bugs found by running the collections (2026-11-23, fixed in PR #529)
+
+1. **{{LAB_BASE}} undefined in `postman/all-labs.postman_collection.json`** — merge-all
+   dropped each lab's collection variables. Newman also does not cascade folder-level
+   variables into nested folders. Fix: namescope per-lab variables at the merged-collection
+   level (`LAB_BASE_<SLUG>`) and rewrite `{{LAB_BASE}}` inside the folder.
+2. **Silent zero assertions** — generator wrote bare assertions at script top level;
+   Newman 6 registers nothing outside `pm.test()`. Fix: generator wraps all of a request's
+   tests in one `pm.test(<request name>, …)`. All 21 labs regenerated.
+3. Verified after the fix (Newman, JUnit): CIMD 14/14 per-lab and in the merged import,
+   stolen-token 9/9, session 12/12 — against the locally running Docker labs.
+4. Distribution: the 21 lab collections are also mirrored into
+   `curtismu7/ping-postman-packages` under `labs/<lab>/` (the central SE-facing repo).

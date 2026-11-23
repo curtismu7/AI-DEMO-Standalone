@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('ready');",
+                  "});"
                 ]
               }
             }
@@ -50,9 +51,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().mode).to.eql('mock');"
+                  "pm.test(\"Info (mode is mock by design)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().mode).to.eql('mock');",
+                  "});"
                 ]
               }
             }
@@ -82,9 +84,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().scenarios.length).to.be.above(0);"
+                  "pm.test(\"Scenario catalog\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().scenarios.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -114,9 +117,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().ok).to.eql(true);"
+                  "pm.test(\"Safety scan\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ok).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -152,9 +156,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().id).to.eql('S01');"
+                  "pm.test(\"Run S01 (bearer replay)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().id).to.eql('S01');",
+                  "});"
                 ]
               }
             }
@@ -193,8 +198,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);"
+                  "pm.test(\"Run an unknown scenario (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
                 ]
               }
             }
@@ -233,8 +239,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Run all scenarios\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -273,9 +280,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('blockedBy');"
+                  "pm.test(\"Mutate S01 (replay)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('blockedBy');",
+                  "});"
                 ]
               }
             }
@@ -314,8 +322,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Reset\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }

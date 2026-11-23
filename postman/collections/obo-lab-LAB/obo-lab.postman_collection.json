@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('ready');",
+                  "});"
                 ]
               }
             }
@@ -50,8 +51,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Info\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -81,9 +83,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('persona');"
+                  "pm.test(\"Scenario catalog\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('persona');",
+                  "});"
                 ]
               }
             }
@@ -119,10 +122,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().ok).to.eql(true);",
-                  "pm.expect(pm.response.json()).to.have.property('delegated');"
+                  "pm.test(\"Run the exchange\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ok).to.eql(true);",
+                  "  pm.expect(pm.response.json()).to.have.property('delegated');",
+                  "});"
                 ]
               }
             }
@@ -161,8 +165,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);"
+                  "pm.test(\"Decode a non-JWT (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
                 ]
               }
             }
@@ -201,8 +206,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Revoke / clear state\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }

@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('ready');",
+                  "});"
                 ]
               }
             }
@@ -50,8 +51,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Info\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -81,9 +83,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().scenarios.map(x=>x.id)).to.include('allowed');"
+                  "pm.test(\"Scenario catalog\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().scenarios.map(x=>x.id)).to.include('allowed');",
+                  "});"
                 ]
               }
             }
@@ -113,9 +116,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('gateways');"
+                  "pm.test(\"Posture (shape only, UNVERIFIED)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('gateways');",
+                  "});"
                 ]
               }
             }
@@ -145,8 +149,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Scope-gate notes (measured 2026-10-27)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -176,8 +181,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Newer releases (not measured)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -213,9 +219,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().decision).to.eql('allow');"
+                  "pm.test(\"Evaluate: allowed (control)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().decision).to.eql('allow');",
+                  "});"
                 ]
               }
             }
@@ -254,9 +261,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().decision).to.eql('deny');"
+                  "pm.test(\"Evaluate: wrong act.sub (deny)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().decision).to.eql('deny');",
+                  "});"
                 ]
               }
             }
@@ -295,9 +303,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().decision).to.eql('deny');"
+                  "pm.test(\"Evaluate: no act (deny)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().decision).to.eql('deny');",
+                  "});"
                 ]
               }
             }
@@ -336,8 +345,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);"
+                  "pm.test(\"Evaluate: unknown scenario (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
                 ]
               }
             }
@@ -376,8 +386,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);"
+                  "pm.test(\"Evaluate with a bad token (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "});"
                 ]
               }
             }
@@ -416,9 +427,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().runs).to.be.an('array');"
+                  "pm.test(\"Run history\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().runs).to.be.an('array');",
+                  "});"
                 ]
               }
             }

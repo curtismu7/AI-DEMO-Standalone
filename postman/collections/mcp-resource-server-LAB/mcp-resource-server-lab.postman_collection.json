@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.test(\"Health (demo-health/1)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('ready');",
+                  "});"
                 ]
               }
             }
@@ -50,9 +51,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('resourceUri');"
+                  "pm.test(\"Service health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('resourceUri');",
+                  "});"
                 ]
               }
             }
@@ -81,9 +83,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "const b = pm.response.json(); pm.expect(b).to.have.property('resource'); pm.expect(b.scopes_supported).to.include('banking:read');"
+                  "pm.test(\"Protected-resource metadata (RFC 9728)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const b = pm.response.json(); pm.expect(b).to.have.property('resource'); pm.expect(b.scopes_supported).to.include('banking:read');",
+                  "});"
                 ]
               }
             }
@@ -134,9 +137,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().result.serverInfo).to.have.property('name');"
+                  "pm.test(\"initialize\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().result.serverInfo).to.have.property('name');",
+                  "});"
                 ]
               }
             }
@@ -194,9 +198,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().result.tools.length).to.be.above(0);"
+                  "pm.test(\"tools/list\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().result.tools.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -254,9 +259,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(401);",
-                  "pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer');"
+                  "pm.test(\"No token (negative, 401 + WWW-Authenticate)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(401);",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer');",
+                  "});"
                 ]
               }
             }
@@ -314,8 +320,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.be.oneOf([403, 401]);"
+                  "pm.test(\"Insufficient scope (negative, 403)\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 401]);",
+                  "});"
                 ]
               }
             }
