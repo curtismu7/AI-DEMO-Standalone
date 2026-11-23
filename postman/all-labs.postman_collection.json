@@ -4592,6 +4592,38 @@
           "description": "One run produces the whole story: inbound token, actor, delegated token, downstream call, the claim delta and the leak analysis. Decode inspects a pasted token; revoke clears state.",
           "item": [
             {
+              "name": "Reset state (re-runnable)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Reset state (re-runnable)\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{LAB_BASE_OBO_LAB_LAB}}/api/reset",
+                  "host": [
+                    "{{LAB_BASE_OBO_LAB_LAB}}"
+                  ],
+                  "path": [
+                    "api",
+                    "reset"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
               "name": "Run the exchange",
               "event": [
                 {
