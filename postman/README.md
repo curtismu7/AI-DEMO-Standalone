@@ -25,9 +25,18 @@ postman/
 
 Variable chaining is built in — sign-in cookies, minted tokens (`MINTED_TOKEN`, `WORKER_TOKEN`, `IDP_TOKEN`, `CIBA_IDENTIFIER`) flow into the next request automatically.
 
+## Start every lab at once
+
+```bash
+bash postman/start-all-labs.sh          # docker compose up for compose labs, npm start for the rest
+bash postman/start-all-labs.sh --check  # report only (exit 1 if any lab is down)
+bash postman/start-all-labs.sh --stop   # stop the docker labs
+```
+Then run the whole collection (Runner, or `newman run postman/all-labs.postman_collection.json`).
+
 ## Real runs — which collections hit real Ping products
 
-See **[REAL-RUNS.md](REAL-RUNS.md)**: the per-lab table (env keys, where each secret
+See **[REAL-RUNS.md](REAL-RUNS.md)** (per-lab table) and **[REAL-CIBA-RUN.md](REAL-CIBA-RUN.md)** (a fully proven real-CIBA walkthrough): the per-lab table (env keys, where each secret
 lives, how to flip the lab's mode), the labs that are mock-only by design, and the
 real-only collections in `ping-postman-packages` that skip the lab entirely.
 
