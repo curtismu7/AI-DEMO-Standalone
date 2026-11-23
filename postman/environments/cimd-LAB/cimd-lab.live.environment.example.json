@@ -1,0 +1,23 @@
+{
+  "name": "CIMD LAB — Live (example)",
+  "values": [
+    {
+      "key": "PF_BASE_URL",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "CIMD_CLIENT_ID_URL",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "CIMD_REDIRECT_URI",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Privilege API Explorer LAB — Live (example)",
+  "values": [
+    {
+      "key": "PRIVILEGE_EXPLORER_MODE",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    }
+  ]
+}
