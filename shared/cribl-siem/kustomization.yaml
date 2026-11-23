@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ping-devops-curtismuir
+resources:
+  - k8s/deployment.yaml
+  - k8s/service.yaml
+configMapGenerator:
+  - name: cribl-siem-config
+    files:
+      - render-config.sh
+      - config/cribl.yml
+      - config/route.yml
+      - config/siem_mask.conf.yml
+      - config/inputs.yml.tpl
+      - config/outputs.yml.tpl
