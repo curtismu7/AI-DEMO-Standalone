@@ -324,7 +324,6 @@ ai-policies-LAB/live
 ai-policies-LAB/live-gateway-hop
 federated-identity-LAB/verify
 federated-identity-LAB/diagram
-federated-identity-LAB/live-privilege-check
 
 # 2026-11-16: muse-LAB shell-bar frame (muse-LAB #35 React page, #36 static pages); its pin is bumped in the same PR.
 # Only the React page is enforced. cimd, clients and how-agent-connect-works are hand-written static pages with no
