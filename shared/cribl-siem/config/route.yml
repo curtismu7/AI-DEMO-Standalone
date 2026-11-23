@@ -1,0 +1,21 @@
+groups: {}
+comments: []
+routes:
+  - id: siem
+    name: privilege-siem
+    final: true
+    disabled: false
+    pipeline: siem_mask
+    filter: __inputId=='elastic:in_elastic'
+    output: es_siem
+    enableOutputExpression: false
+    description: Privilege SIEM audit feed, secrets masked, to Elasticsearch
+  - id: default
+    name: default
+    final: true
+    disabled: false
+    pipeline: main
+    filter: "true"
+    output: devnull
+    enableOutputExpression: false
+    description: Anything else is dropped

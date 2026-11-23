@@ -1,0 +1,31 @@
+# Only the Elasticsearch API port (9200) is exposed. Cribl's admin UI (9000) has no Service on purpose:
+# open it with kubectl port-forward and change the default admin password at first sign-in.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cribl-siem
+  labels: {app: cribl-siem}
+spec:
+  selector: {app: cribl-siem}
+  ports:
+    - {name: es, port: 9200, targetPort: es}
+---
+# Same pattern as the existing elasticsearch-siem-https ingress: public host, HTTPS only.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cribl-siem-https
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 20m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx-public
+  rules:
+    - host: cmuir-cribl.ping-devops.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: cribl-siem, port: {number: 9200}}
