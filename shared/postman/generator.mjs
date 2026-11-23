@@ -39,7 +39,10 @@ function envEntry(name, value) {
 const envExample = {
   name: `${spec.name} — Live (example)`,
   values: Object.entries(spec.env || {}).map(([k, v]) =>
-    envEntry(k, typeof v === 'string' ? v : '')
+    // Placeholder value is empty: description text in the value would leak into
+    // the lab as a real setting (e.g. an audience). Descriptions live in the
+    // spec; fill-env.mjs uses them for its missing-key error messages.
+    envEntry(k, '')
   ),
 };
 
