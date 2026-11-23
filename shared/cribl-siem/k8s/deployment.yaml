@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cribl-siem
+  labels: {app: cribl-siem}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: cribl-siem}
+  template:
+    metadata:
+      labels: {app: cribl-siem}
+    spec:
+      initContainers:
+        # Renders Cribl's config into the emptyDir. The credentials come from the existing Secret that holds the
+        # Privilege ingestion user; they are never written to git or to a ConfigMap.
+        - name: render-config
+          image: cribl/cribl:4.13.0
+          command: ["sh", "/cfg/render-config.sh"]
+          env:
+            - {name: CFG, value: /cfg}
+            - {name: CRIBL_LOCAL, value: /opt/cribl/local}
+            - {name: ES_URL, value: "http://elasticsearch-siem:9200/_bulk"}
+            - name: IN_USER
+              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: username}}
+            - name: IN_PASS
+              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: password}}
+            - name: OUT_USER
+              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: username}}
+            - name: OUT_PASS
+              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: password}}
+          volumeMounts:
+            - {name: cfg, mountPath: /cfg, readOnly: true}
+            - {name: local, mountPath: /opt/cribl/local}
+      containers:
+        - name: cribl
+          image: cribl/cribl:4.13.0
+          ports:
+            - {name: es, containerPort: 9200}
+          volumeMounts:
+            - {name: local, mountPath: /opt/cribl/local}
+          readinessProbe:
+            tcpSocket: {port: 9200}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 250m, memory: 1Gi}
+            limits: {memory: 3Gi}
+      volumes:
+        - name: cfg
+          configMap: {name: cribl-siem-config}
+        - name: local
+          emptyDir: {}

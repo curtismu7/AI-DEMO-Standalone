@@ -1,0 +1,5 @@
+# Cribl Stream, single instance. Two workers is plenty for the SIEM audit feed (about 12 events a day).
+workers:
+  count: 2
+  minimum: 2
+  memory: 1024
