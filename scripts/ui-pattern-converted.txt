@@ -340,7 +340,7 @@ privilege-k8-kits-LAB/index
 ciba-approval-sequence-LAB/flow
 ciba-approval-sequence-LAB/talk
 
-# 2026-11-22: privilege-gateway-client-LAB: the lab's two checked pages are the Ready screen and the panel dock. Standard shell,
+# 2026-11-22: privilege-gateway-client-LAB: the lab's two checked pages are the Ready screen and the panel dock (2026-11-23: the evidence tab row replaced the dock; the page is now evidence-tabs). Standard shell,
 # vendored JsonPane/TopMenu/FloatingDialog; the P9 primary-button escapes are the lab's documented `ui-pattern: allow P9` comments.
 privilege-gateway-client-LAB/ready
-privilege-gateway-client-LAB/panel-dock
+privilege-gateway-client-LAB/evidence-tabs
