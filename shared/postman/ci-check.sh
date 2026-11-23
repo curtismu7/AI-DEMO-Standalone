@@ -26,7 +26,13 @@ COLLECTION="postman/${SLUG}.postman_collection.json"
 ENV_FILE="postman/${SLUG}.live.environment.example.json"
 [ -f "$COLLECTION" ] || { echo "missing $COLLECTION (generate it with shared/postman/generator.mjs)" >&2; exit 1; }
 
-PORT="${CI_CHECK_PORT:-5910}"
+# Port: the collection spec's baseUrl knows the lab's real port (the runner is
+# fresh, so it is free). CI_CHECK_PORT overrides.
+PORT="${CI_CHECK_PORT:-$(node -e "
+const fs = require('fs');
+try { console.log(new URL(JSON.parse(fs.readFileSync('postman/spec.json','utf8')).baseUrl).port || 80); }
+catch { console.log(5910); }
+")"}"
 export PORT
 # Some labs honour their own port variable instead of PORT (e.g. token-workbench's
 # TW_PORT); setting both is harmless where PORT already works.
