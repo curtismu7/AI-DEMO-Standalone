@@ -27,6 +27,7 @@ whenever you bump VERSION; never edit an old entry.
 - Every flow-driven lab now ships a Postman collection (`postman/<slug>.postman_collection.json`), generated from a per-lab spec by the new `shared/postman/generator.mjs` (spec → Postman v2.1; mock-only lanes labelled `(MOCK ONLY)`). The owner fills the git-ignored live environment from the shared env file with `shared/postman/fill-env.mjs` — real settings never enter a repo.
 - Five labs also ship companion stdio MCP servers (`mcp/server.mjs`) that proxy a running lab as tools: cimd-LAB (6 tools), id-jag-standalone-LAB (8), mock-authorize-LAB (9), token-workbench-LAB (9), mcp-gateway-lab-LAB (8).
 - Covered labs: cimd, id-jag-standalone, token-workbench, mock-authorize, mcp-resource-server, mcp-gateway-lab, stolen-token, trusted-issuers, p1-third-party-exchange, obo-lab, delegation-lab, ciba-approval-sequence, ciba-hitl, intent-par-inspector, session, gateway-claims, pf-array-claims, privilege-api-explorer, saas-access, wimse-lab, workload-identity.
+- Every lab's CI now runs its collection against the lab's own server (`shared/postman/ci-check.sh`, checked out from this repo) — a route change that breaks a collection fails the build.
 - Every collection verified green with `newman` against its running lab; every MCP server smoke-tested over stdio. `mock-authorize` also gained urlencoded-body and other generator capabilities; see `shared/postman/README.md` for the conventions.
 
 ## 3.12 (2026-11-22)
