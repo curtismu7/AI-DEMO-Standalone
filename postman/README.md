@@ -25,6 +25,12 @@ postman/
 
 Variable chaining is built in — sign-in cookies, minted tokens (`MINTED_TOKEN`, `WORKER_TOKEN`, `IDP_TOKEN`, `CIBA_IDENTIFIER`) flow into the next request automatically.
 
+## Real runs — which collections hit real Ping products
+
+See **[REAL-RUNS.md](REAL-RUNS.md)**: the per-lab table (env keys, where each secret
+lives, how to flip the lab's mode), the labs that are mock-only by design, and the
+real-only collections in `ping-postman-packages` that skip the lab entirely.
+
 ## Live values (owner machine)
 
 The committed environments are placeholders only. On the owner machine, fill real settings from the shared env file:
