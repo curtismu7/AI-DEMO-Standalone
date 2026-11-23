@@ -30,7 +30,10 @@ A colleague who downloads the demos gets **one** PingOne environment that also r
 - Re-run after a partial failure: every step skips what exists (group, policy, app restriction, memberships).
 - A user to add is not in the environment: reported as MISSING, not created, exit 1 at the end.
 - PingOne allows one assignment of a role per app whatever its scope (found in the real run): extras are removed first, then missing kept roles are added, then everything is read back; a kept role that is not held at the end fails the step.
-- API 429 or 5xx: three tries with a short back-off, then a clear error. No token or secret is ever printed.
+- Lockout: the app is restricted to the group only after the group has a member; no members means FAIL and the app is untouched. An existing `ALL_GROUPS` type is kept. An unreadable app is a FAIL.
+- Wrong target: `ensure-worker-roles` refuses any principal that is not a WORKER app named "Standalone Labs Worker" in the given environment; a role refused as "unique" but not actually held is reported.
+- A shell `PINGONE_ACCESS_TOKEN` / `PINGONE_ENVIRONMENT_ID` is ignored by `privilege-prepare`: the settings file's worker is used.
+- API 429: retried; 5xx or network error: GET retried, writes not (they may have applied). 30 s timeout. No token or secret is ever printed.
 - The Privilege app already has `accessControl` for other groups: the new group is added, existing ones are kept.
 
 ## Out of scope

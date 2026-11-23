@@ -386,7 +386,7 @@ SCRIPT_DIR_ADMIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if command -v node >/dev/null 2>&1; then
   PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
     node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" ensure-worker-roles --env "$new_env" --app "$app_id" \
-    || warn "could not trim the worker's roles — see the message above; the worker is usable but holds more access than it needs"
+    || fatal "the worker's roles could not be set (see above). The environment $new_env exists; fix the cause and run this script again (it reuses the environment and is safe to repeat)."
   if [[ -n "$ADMIN_USER" ]]; then
     PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
       node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" grant-admin --env "$new_env" --admin-env "$PINGONE_ADMIN_ENV_ID" --user "$ADMIN_USER" || true

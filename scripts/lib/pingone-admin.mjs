@@ -8,6 +8,7 @@ import path from 'node:path';
 export const KEEP_WORKER_ROLES = ['Identity Data Admin', 'Environment Admin'];
 export const ADMIN_USER_ROLES = ['Identity Data Admin', 'Environment Admin'];
 export const PRIVILEGE_APP = 'PingOne Privilege';
+export const WORKER_APP_NAME = 'Standalone Labs Worker';
 export const DEFAULT_GROUP = 'PrivilegeAdmins';
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,6 +20,7 @@ export function makeApi({ base, token, fetchImpl = fetch, sleep = sleepMs }) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const r = await fetchImpl(url, {
+          signal: AbortSignal.timeout(30000),
           method,
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', accept: 'application/json' },
           body: body === undefined ? undefined : JSON.stringify(body),
@@ -27,9 +29,11 @@ export function makeApi({ base, token, fetchImpl = fetch, sleep = sleepMs }) {
         let parsed = {};
         try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = { raw: text.slice(0, 300) }; }
         last = { status: r.status, body: parsed };
-        if (r.status !== 429 && r.status < 500) return last;
+        // A write is retried only when the server said it did not run it (429); a 5xx or a dropped connection may have applied it.
+        if (r.status !== 429 && (r.status < 500 || method !== 'GET')) return last;
       } catch (e) {
         last = { status: 0, body: { error: String(e.message || e).slice(0, 200) } };
+        if (method !== 'GET') return last;
       }
       await sleep(400 * (attempt + 1));
     }
@@ -57,6 +61,7 @@ export async function listAll(api, p, key) {
     if (status !== 200) throw new Error(`GET ${p} failed: HTTP ${status} ${msg(body)}`);
     out.push(...(body._embedded?.[key] || []));
     next = body._links?.next?.href || null;
+    if (next && !next.startsWith('https://api.pingone.')) throw new Error('refusing to follow a paging link to another host');
   }
   return out;
 }
@@ -76,10 +81,15 @@ async function roleIds(api) {
 // app whatever its scope, so an inherited "Environment Admin" at organization scope blocks adding it on this environment:
 // extras are removed FIRST, then the missing kept roles are added, then everything is read back. Failing to ADD a kept role
 // is fatal (ok=false); failing to REMOVE an extra is reported in `leftover` and does not stop the setup.
-export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_ROLES }) {
+export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_ROLES, expectName = WORKER_APP_NAME }) {
   const { byName, byId } = await roleIds(api);
   const base = `/environments/${envId}/applications/${appId}/roleAssignments`;
   const res = { ok: true, added: [], removed: [], errors: [], leftover: [] };
+  // Never trim the wrong principal: it must be a worker app with the name setup gives it.
+  const app = await api('GET', `/environments/${envId}/applications/${appId}`);
+  if (app.status !== 200 || app.body.type !== 'WORKER' || app.body.name !== expectName) {
+    return { ...res, ok: false, errors: [`refusing to trim ${appId}: expected a WORKER app named "${expectName}" in ${envId} (HTTP ${app.status}, found "${app.body?.name}" type ${app.body?.type})`] };
+  }
   const isKept = (a) => keep.includes(byId[a.role?.id]) && a.scope?.id === envId && a.scope?.type === 'ENVIRONMENT';
   const label = (a) => `${byId[a.role?.id] || a.role?.id}@${a.scope?.type}:${a.scope?.id}`;
   for (const a of (await listAll(api, base, 'roleAssignments')).filter((x) => !isKept(x))) {
@@ -130,6 +140,11 @@ export async function grantAdminRoles(api, { adminEnvId, envId, login, roles = A
     if (r.status === 200 || r.status === 201 || isUnique(r)) granted.push(name);
     else errors.push(`${name}: HTTP ${r.status} ${msg(r.body)}`);
   }
+  // A "unique" answer is only success if the role really is held: read it back.
+  const after = await listAll(api, base, 'roleAssignments');
+  for (const name of roles) {
+    if (!after.some((a) => byId[a.role?.id] === name && (a.scope?.id === envId || a.scope?.type === 'ORGANIZATION'))) errors.push(`${name}: not held on the environment after the grant (a conflicting assignment may exist: check the user's roles in the console)`);
+  }
   return { ok: !errors.length, granted, errors, warning: errors.length ? `could not grant ${errors.join('; ')}` : undefined };
 }
 
@@ -140,13 +155,14 @@ export async function preparePrivilege(api, { envId, logins = [], group = DEFAUL
   const add = (name, status, detail = '') => checks.push({ name, status, detail });
   const wr = async (verb, name, fn) => { if (dryRun) { add(name, 'WOULD', verb); return null; } return fn(); };
 
+  try { safeLiteral(group); } catch (e) { return { checks: [{ name: 'group name', status: 'FAIL', detail: e.message }], exitCode: 1 }; }
   const apps = await listAll(api, `/environments/${envId}/applications`, 'applications');
   const app = apps.find((a) => a.name === PRIVILEGE_APP);
   if (!app) return { checks: [{ name: 'Privilege app', status: 'FAIL', detail: `no "${PRIVILEGE_APP}" app: add Privilege to this environment in the console first (Add Services > PingOne Privilege > No Endpoint Controller)` }], exitCode: 2 };
   add('Privilege app', 'PASS', app.id);
 
   // group
-  let grp = (await listAll(api, `/environments/${envId}/groups?filter=${q(`name eq "${safeLiteral(group)}"`)}`, 'groups'))[0];
+  let grp = (await listAll(api, `/environments/${envId}/groups?filter=${q(`name eq "${group}"`)}`, 'groups'))[0];
   if (grp) add(`group ${group}`, 'PASS', 'exists');
   else {
     const r = await wr('create', `group ${group}`, () => api('POST', `/environments/${envId}/groups`, { name: group, description: 'Admins allowed into PingOne Privilege' }));
@@ -169,31 +185,10 @@ export async function preparePrivilege(api, { envId, logins = [], group = DEFAUL
     if (r) add('default sign-on policy', r.status < 300 ? 'PASS' : 'FAIL', r.status < 300 ? 'Single_Factor created and default' : `HTTP ${r.status} ${msg(r.body)}`);
   }
 
-  // restrict the Privilege app to the group (GET, back up, change one field, PUT the whole app)
-  if (grp?.id) {
-    const full = (await api('GET', `/environments/${envId}/applications/${app.id}`)).body;
-    const cur = full.accessControl?.group?.groups || [];
-    if (cur.some((g) => g.id === grp.id)) add('Privilege app restricted to group', 'PASS', 'already');
-    else {
-      const r = await wr('restrict', 'Privilege app restricted to group', async () => {
-        fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
-        const bk = path.join(backupDir, `privilege-app-${app.id.slice(0, 8)}-${now().toISOString().replace(/[:.]/g, '')}.json`);
-        fs.writeFileSync(bk, JSON.stringify(full, null, 1), { mode: 0o600 });
-        const body = Object.fromEntries(Object.entries(full).filter(([k]) => !['_links', 'id', 'environment', 'createdAt', 'updatedAt'].includes(k)));
-        body.accessControl = { ...(full.accessControl || {}), group: { type: 'ANY_GROUP', groups: [...cur.map((g) => ({ id: g.id })), { id: grp.id }] } };
-        const put = await api('PUT', `/environments/${envId}/applications/${app.id}`, body);
-        put.backup = bk; return put;
-      });
-      if (r) {
-        const back = (await api('GET', `/environments/${envId}/applications/${app.id}`)).body.accessControl?.group?.groups || [];
-        add('Privilege app restricted to group', r.status < 300 && back.some((g) => g.id === grp.id) ? 'PASS' : 'FAIL', r.status < 300 ? `done, backup ${r.backup}` : `HTTP ${r.status} ${msg(r.body)}`);
-      }
-    }
-  }
-
-  // memberships
+  // memberships first: the app is restricted only once the group has a member, so a restriction can never lock everyone out
   for (const login of logins) {
-    const users = await findUser(api, envId, login);
+    let users;
+    try { users = await findUser(api, envId, login); } catch (e) { add(`member ${login}`, 'FAIL', e.message); continue; }
     if (users.length !== 1) { add(`member ${login}`, 'FAIL', users.length ? `${users.length} users match` : 'MISSING: not in this environment'); continue; }
     if (!grp?.id) { add(`member ${login}`, dryRun ? 'WOULD' : 'FAIL', 'group not available'); continue; }
     const base = `/environments/${envId}/users/${users[0].id}/memberOfGroups`;
@@ -201,6 +196,40 @@ export async function preparePrivilege(api, { envId, logins = [], group = DEFAUL
     if (groups.some((g) => g.id === grp.id)) { add(`member ${login}`, 'PASS', 'already'); continue; }
     const r = await wr('add to group', `member ${login}`, () => api('POST', base, { id: grp.id }));
     if (r) add(`member ${login}`, r.status < 300 || isUnique(r) ? 'PASS' : 'FAIL', r.status < 300 ? 'added' : `HTTP ${r.status} ${msg(r.body)}`);
+  }
+
+  // restrict the Privilege app to the group (GET, back up, change one field, PUT the whole app)
+  const name = 'Privilege app restricted to group';
+  if (!grp?.id) add(name, dryRun ? 'WOULD' : 'FAIL', 'group not available');
+  else {
+    const got = await api('GET', `/environments/${envId}/applications/${app.id}`);
+    const full = got.body;
+    const cur = full.accessControl?.group?.groups || [];
+    if (got.status !== 200) add(name, 'FAIL', `could not read the app: HTTP ${got.status} ${msg(full)}`);
+    else if (cur.some((g) => g.id === grp.id)) add(name, 'PASS', 'already');
+    else {
+      const members = await api('GET', `/environments/${envId}/users?limit=1&filter=${q(`memberOfGroups[id eq "${grp.id}"]`)}`);
+      const planned = dryRun && checks.some((c) => c.name.startsWith('member ') && c.status === 'WOULD');
+      if (planned) add(name, 'WOULD', 'restrict, after the members above are added');
+      else if (members.status !== 200 || !(members.body._embedded?.users || []).length) {
+        add(name, 'FAIL', `refusing to restrict the app to a group with no members: that would lock everyone out. Pass --users with at least one login that exists in this environment.`);
+      } else {
+        const r = await wr('restrict', name, async () => {
+          fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+          const bk = path.join(backupDir, `privilege-app-${app.id.slice(0, 8)}-${now().toISOString().replace(/[:.]/g, '')}.json`);
+          fs.writeFileSync(bk, JSON.stringify(full, null, 1), { mode: 0o600 });
+          const body = Object.fromEntries(Object.entries(full).filter(([k]) => !['_links', 'id', 'environment', 'createdAt', 'updatedAt'].includes(k)));
+          // keep the existing type (ANY_GROUP or ALL_GROUPS) and groups; add ours
+          body.accessControl = { ...(full.accessControl || {}), group: { type: full.accessControl?.group?.type || 'ANY_GROUP', groups: [...cur.map((g) => ({ id: g.id })), { id: grp.id }] } };
+          const put = await api('PUT', `/environments/${envId}/applications/${app.id}`, body);
+          put.backup = bk; return put;
+        });
+        if (r) {
+          const back = (await api('GET', `/environments/${envId}/applications/${app.id}`)).body.accessControl?.group?.groups || [];
+          add(name, r.status < 300 && back.some((g) => g.id === grp.id) ? 'PASS' : 'FAIL', r.status < 300 ? `done, backup ${r.backup}` : `HTTP ${r.status} ${msg(r.body)}`);
+        }
+      }
+    }
   }
   return { checks, exitCode: checks.some((c) => c.status === 'FAIL') ? 1 : 0 };
 }

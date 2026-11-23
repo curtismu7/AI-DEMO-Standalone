@@ -13,7 +13,7 @@ function fakePingOne(opts = {}) {
   let n = 100;
   const id = (p) => `${p}-${++n}`;
   const st = {
-    calls: [],
+    calls: [], puts: [], workerApp: opts.workerApp ?? { id: WORKER, type: 'WORKER', name: 'Standalone Labs Worker' }, appGetStatus: opts.appGetStatus || 200, userRoleConflict: opts.userRoleConflict || false,
     workerAssignments: opts.workerAssignments || [],
     adminUsers: opts.adminUsers ?? [{ id: 'u-curtis', username: 'curtis@example.com', email: 'curtis@example.com' }],
     userRoles: [],
@@ -26,6 +26,7 @@ function fakePingOne(opts = {}) {
     st.calls.push([method, p, body]);
     let m;
     if (p === '/roles') return embed('roles', ROLES.map(([i, name]) => ({ id: i, name })));
+    if (p === `/environments/${ENV}/applications/${WORKER}`) return { status: 200, body: st.workerApp };
     if ((m = p.match(new RegExp(`^/environments/${ENV}/applications/${WORKER}/roleAssignments(?:/(.+))?$`)))) {
       if (method === 'GET') return embed('roleAssignments', st.workerAssignments);
       if (method === 'POST') {
@@ -46,13 +47,14 @@ function fakePingOne(opts = {}) {
     }
     if ((m = p.match(new RegExp(`^/environments/${ADMIN}/users/([^/]+)/roleAssignments$`)))) {
       if (method === 'GET') return embed('roleAssignments', st.userRoles.filter((r) => r.user === m[1]));
+      if (st.userRoleConflict) return { status: 400, body: { code: 'UNIQUENESS_VIOLATION' } };
       const a = { id: id('ura'), user: m[1], role: { id: body.role.id }, scope: body.scope }; st.userRoles.push(a); return { status: 201, body: a };
     }
     if (p === `/environments/${ENV}/applications`) return embed('applications', st.apps);
     if (p.startsWith(`/environments/${ENV}/applications/app-priv`)) {
       const app = st.apps.find((a) => a.id === 'app-priv');
-      if (method === 'GET') return { status: 200, body: app };
-      if (method === 'PUT') { Object.assign(app, body); return { status: 200, body: app }; }
+      if (method === 'GET') return st.appGetStatus === 200 ? { status: 200, body: app } : { status: st.appGetStatus, body: { message: 'nope' } };
+      if (method === 'PUT') { st.puts.push(body); Object.assign(app, body); return { status: 200, body: app }; }
     }
     if (p.startsWith(`/environments/${ENV}/groups?filter=`)) { const name = decodeURIComponent(p).match(/name eq "([^"]*)"/)[1]; return embed('groups', st.groups.filter((g) => g.name === name)); }
     if (p === `/environments/${ENV}/groups` && method === 'POST') { const g = { id: id('g'), name: body.name }; st.groups.push(g); return { status: 201, body: g }; }
@@ -65,7 +67,8 @@ function fakePingOne(opts = {}) {
       if (m[2]) { if (method === 'GET') return embed('actions', st.actions[m[1]] || []); st.actions[m[1]] = [...(st.actions[m[1]] || []), body]; return { status: 201, body }; }
       if (method === 'PUT') { Object.assign(pol, body); return { status: 200, body: pol }; }
     }
-    if (p.startsWith(`/environments/${ENV}/users?filter=`)) { const login = decodeURIComponent(p).match(/username eq "([^"]*)"/)[1]; return embed('users', st.users.filter((u) => u.username === login)); }
+    if (p.startsWith(`/environments/${ENV}/users?limit=1&filter=`)) { const gid = decodeURIComponent(p).match(/id eq "([^"]*)"/)[1]; return embed('users', st.users.filter((u) => (st.members[u.id] || []).includes(gid)).slice(0, 1)); }
+    if (p.startsWith(`/environments/${ENV}/users?filter=`)) { const login = decodeURIComponent(p).match(/username eq "([^"]*)"/)[1]; return embed('users', st.users.filter((u) => u.username === login || u.email === login)); }
     if ((m = p.match(new RegExp(`^/environments/${ENV}/users/([^/]+)/memberOfGroups$`)))) {
       if (method === 'GET') return embed('groupMemberships', (st.members[m[1]] || []).map((gid) => ({ id: gid })));
       (st.members[m[1]] = st.members[m[1]] || []).push(body.id); return { status: 201, body: {} };
@@ -229,4 +232,96 @@ test('pingone-setup.sh: PingOne MFA is only requested behind --with-pingone-mfa'
   const mfaLines = sh.split('\n').filter((l) => l.includes('PING_ONE_MFA'));
   assert.equal(mfaLines.length, 1);
   assert.match(sh, /if \[\[ "\$WITH_MFA" == "1" \]\]; then\n\s+bom_products=.*PING_ONE_MFA/);
+});
+
+const cacheApp = (st) => st.apps[0];
+
+test('preparePrivilege sends the WHOLE app on the restriction PUT (no _links/id/createdAt) and keeps its other fields', async () => {
+  const { st, api } = fakePingOne();
+  await preparePrivilege(api, { envId: ENV, logins: ['demouser'], backupDir: tmp() });
+  const body = st.puts[0];
+  assert.equal(body.enabled, true);
+  assert.equal(body.name, 'PingOne Privilege');
+  for (const k of ['_links', 'id', 'createdAt', 'environment']) assert.ok(!(k in body), `${k} must not be sent`);
+});
+
+test('preparePrivilege keeps an existing ALL_GROUPS type instead of widening it', async () => {
+  const { st, api } = fakePingOne({ apps: [{ id: 'app-priv', name: 'PingOne Privilege', enabled: true, accessControl: { group: { type: 'ALL_GROUPS', groups: [{ id: 'g-other' }] } } }] });
+  await preparePrivilege(api, { envId: ENV, logins: ['demouser'], backupDir: tmp() });
+  assert.equal(cacheApp(st).accessControl.group.type, 'ALL_GROUPS');
+});
+
+test('preparePrivilege refuses to restrict the app to an empty group (no lockout), with no users or only missing ones', async () => {
+  for (const logins of [[], ['ghost']]) {
+    const { st, api } = fakePingOne();
+    const r = await preparePrivilege(api, { envId: ENV, logins, backupDir: tmp() });
+    assert.equal(r.exitCode, 1);
+    assert.equal(st.puts.length, 0, 'the app must not be touched');
+    assert.match(r.checks.find((c) => c.name === 'Privilege app restricted to group').detail, /no members/);
+  }
+});
+
+test('preparePrivilege: an unreadable app is a FAIL and nothing is written to it', async () => {
+  const { st, api } = fakePingOne({ appGetStatus: 500 });
+  const r = await preparePrivilege(api, { envId: ENV, logins: ['demouser'], backupDir: tmp() });
+  assert.equal(st.puts.length, 0);
+  assert.match(r.checks.find((c) => c.name === 'Privilege app restricted to group').detail, /could not read the app/);
+});
+
+test('preparePrivilege: a login with quotes is a per-login FAIL, the table still prints, and a bad group name fails before any write', async () => {
+  const { st, api } = fakePingOne();
+  const r = await preparePrivilege(api, { envId: ENV, logins: ['bad"login', 'demouser'], backupDir: tmp() });
+  assert.match(r.checks.find((c) => c.name === 'member bad"login').detail, /odd characters/);
+  assert.equal(r.checks.find((c) => c.name === 'member demouser').status, 'PASS');
+  const bad = fakePingOne();
+  const g = await preparePrivilege(bad.api, { envId: ENV, logins: [], group: 'a"b', backupDir: tmp() });
+  assert.equal(g.exitCode, 1);
+  assert.equal(bad.st.calls.filter((c) => c[0] !== 'GET').length, 0);
+});
+
+test('preparePrivilege --dry-run plans the group, the members and the restriction, and writes nothing', async () => {
+  const { st, api } = fakePingOne();
+  const r = await preparePrivilege(api, { envId: ENV, logins: ['demouser'], backupDir: tmp(), dryRun: true });
+  assert.equal(st.calls.filter((c) => c[0] !== 'GET').length, 0);
+  const plan = r.checks.filter((c) => c.status === 'WOULD').map((c) => c.name);
+  assert.ok(plan.includes('group PrivilegeAdmins') && plan.includes('member demouser') && plan.includes('Privilege app restricted to group'), plan.join(' | '));
+});
+
+test('user lookup by email works too', async () => {
+  const { api } = fakePingOne({ users: [{ id: 'u-1', username: 'jane', email: 'jane@example.com' }] });
+  const r = await preparePrivilege(api, { envId: ENV, logins: ['jane@example.com'], backupDir: tmp() });
+  assert.equal(r.checks.find((c) => c.name === 'member jane@example.com').status, 'PASS');
+});
+
+test('grantAdminRoles: a "unique" refusal that leaves the role unheld is reported, not counted as granted', async () => {
+  const f = fakePingOne({ userRoleConflict: true });
+  const r = await grantAdminRoles(f.api, { adminEnvId: ADMIN, envId: ENV, login: 'curtis@example.com' });
+  assert.equal(r.ok, false);
+  assert.match(r.warning, /not held on the environment/);
+});
+
+test('ensureWorkerRoles refuses a principal that is not the setup worker (e.g. the org admin worker)', async () => {
+  const { st, api } = fakePingOne({ workerApp: { id: WORKER, type: 'WORKER', name: 'Org admin worker' }, workerAssignments: [ra('r-org', 'ORGANIZATION', 'org-1', 1)] });
+  const r = await ensureWorkerRoles(api, { envId: ENV, appId: WORKER });
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /refusing to trim/);
+  assert.equal(st.workerAssignments.length, 1);
+  assert.equal(st.calls.filter((c) => c[0] !== 'GET').length, 0);
+});
+
+test('ensureWorkerRoles: a denied removal of the org-scope Environment Admin leaves the worker without it on the environment: fatal', async () => {
+  const { api } = fakePingOne({ failDelete: true, workerAssignments: [ra('r-ida', 'ENVIRONMENT', ENV, 1), ra('r-env', 'ORGANIZATION', 'org-1', 2)] });
+  const r = await ensureWorkerRoles(api, { envId: ENV, appId: WORKER });
+  assert.equal(r.ok, false);
+});
+
+test('listAll follows _links.next and refuses a link to another host; writes are not retried on 5xx', async () => {
+  const pages = { '/x': { _embedded: { items: [1] }, _links: { next: { href: 'https://api.pingone.com/v1/x2' } } }, 'https://api.pingone.com/v1/x2': { _embedded: { items: [2] } } };
+  const api = async (m, p) => ({ status: 200, body: pages[p] });
+  assert.deepEqual(await listAll(api, '/x', 'items'), [1, 2]);
+  await assert.rejects(() => listAll(async () => ({ status: 200, body: { _links: { next: { href: 'https://evil.example/steal' } } } }), '/y', 'items'), /another host/);
+  let n = 0;
+  const w = makeApi({ base: 'https://x', token: 't', fetchImpl: async () => { n++; return { status: 503, text: async () => '{}' }; }, sleep: async () => {} });
+  await w('POST', '/roles', {});
+  assert.equal(n, 1);
 });

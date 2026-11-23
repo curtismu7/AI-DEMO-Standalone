@@ -23,7 +23,7 @@ Spec: [docs/specs/2026-11-23-privilege-one-env-setup.md](specs/2026-11-23-privil
    ```
    node scripts/pingone-admin.mjs privilege-prepare --users <your username>,demouser,demoAdmin
    ```
-   Add `--dry-run` first to see what would change. It creates the group `PrivilegeAdmins`, a default `Single_Factor` sign-on policy if the environment has none (an API-made environment has none, and every app sign-in then fails with "unexpected error"), restricts the *PingOne Privilege* app to the group (keeping any group already there; a backup of the app is saved in `~/.config/demo-kit/backups`), and puts the users in the group. Every item is read back as PASS or FAIL. It is safe to run again.
+   Add `--dry-run` first to see what would change. It creates the group `PrivilegeAdmins`, a default `Single_Factor` sign-on policy if the environment has none (an API-made environment has none, and every app sign-in then fails with "unexpected error"), restricts the *PingOne Privilege* app to the group (keeping any group already there; a backup of the app is saved in `~/.config/demo-kit/backups`), and puts the users in the group. It adds the users first and restricts the app only once the group has a member, so it cannot lock everyone out (with no valid `--users` it refuses and says so). Every item is read back as PASS or FAIL. It is safe to run again.
 
 4. **Add PingID** (console, you): Environment > Add Services > PingID, with your own PingID admin login. A script cannot do this.
 

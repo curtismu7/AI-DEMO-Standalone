@@ -24,7 +24,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') o.dryRun = true;
-    else if (a.startsWith('--')) o[a.slice(2)] = argv[++i];
+    else if (a.startsWith('--')) o[a.slice(2)] = argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? '' : argv[++i];
     else o._.push(a);
   }
   return o;
@@ -34,7 +34,10 @@ async function main() {
   const o = parseArgs(process.argv.slice(2));
   const cmd = o._[0];
   const file = process.env.STANDALONE_ENV || path.join(os.homedir(), 'Development/.env');
-  const cfg = { ...readEnvFile(file), ...process.env };
+  // privilege-prepare acts as the environment's own worker: the settings file wins and a stray token or environment id
+  // in the shell is ignored. The other two commands take an explicit org token and region from the caller.
+  const prepare = cmd === 'privilege-prepare';
+  const cfg = prepare ? { ...process.env, ...readEnvFile(file), PINGONE_ACCESS_TOKEN: '' } : { ...readEnvFile(file), ...process.env };
   const region = cfg.PINGONE_REGION || 'com';
   const base = `https://api.pingone.${region}/v1`;
   const need = (v, name) => { if (!v) { console.error(`missing ${name}`); process.exit(64); } return v; };
@@ -54,7 +57,7 @@ async function main() {
     process.exit(0); // an unknown login is a warning, never a failure
   } else if (cmd === 'privilege-prepare') {
     const envId = need(cfg.PINGONE_ENVIRONMENT_ID, 'PINGONE_ENVIRONMENT_ID (in the settings file)');
-    const token = cfg.PINGONE_ACCESS_TOKEN || await mintToken({ region, envId, clientId: need(cfg.PINGONE_WORKER_CLIENT_ID, 'PINGONE_WORKER_CLIENT_ID'), clientSecret: need(cfg.PINGONE_WORKER_CLIENT_SECRET, 'PINGONE_WORKER_CLIENT_SECRET') });
+    const token = await mintToken({ region, envId, clientId: need(cfg.PINGONE_WORKER_CLIENT_ID, 'PINGONE_WORKER_CLIENT_ID'), clientSecret: need(cfg.PINGONE_WORKER_CLIENT_SECRET, 'PINGONE_WORKER_CLIENT_SECRET') });
     const api = makeApi({ base, token });
     const logins = (o.users || '').split(',').map((s) => s.trim()).filter(Boolean);
     const r = await preparePrivilege(api, { envId, logins, group: o.group || undefined, dryRun: !!o.dryRun });
