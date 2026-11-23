@@ -13,3 +13,5 @@ standalone/old-files/
 # Filled live environments hold real settings: never commit them anywhere.
 postman/**/*live.environment.json
 postman/dist/
+
+postman/globals/
