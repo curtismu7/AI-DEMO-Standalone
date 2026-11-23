@@ -2,12 +2,13 @@
 // CLI for the Privilege-in-one-environment setup. See docs/PRIVILEGE-ONE-ENV.md.
 //   pingone-admin.mjs ensure-worker-roles --env <id> --app <workerAppId>      (token: PINGONE_ACCESS_TOKEN, an org admin token)
 //   pingone-admin.mjs grant-admin --env <id> --admin-env <id> --user <login>  (token: PINGONE_ACCESS_TOKEN, an org admin token)
-//   pingone-admin.mjs privilege-prepare --users a,b [--dry-run] [--group G]   (the env's own worker, read from the settings file)
+//   pingone-admin.mjs privilege-prepare --users a,b [--create-admin LOGIN] [--password-file F] [--dry-run] [--group G]   (the env's own worker, read from the settings file)
+//   pingone-admin.mjs set-privilege-mode --env <id> --mode agent|agentless   (token: PINGONE_ACCESS_TOKEN, an org admin token)
 // Region (TLD) comes from PINGONE_REGION (default com). Tokens and secrets are never printed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ensureWorkerRoles, grantAdminRoles, makeApi, mintToken, preparePrivilege } from './lib/pingone-admin.mjs';
+import { ensureWorkerRoles, generatePassword, grantAdminRoles, makeApi, mintToken, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 function readEnvFile(file) {
   const out = {};
@@ -60,13 +61,30 @@ async function main() {
     const token = await mintToken({ region, envId, clientId: need(cfg.PINGONE_WORKER_CLIENT_ID, 'PINGONE_WORKER_CLIENT_ID'), clientSecret: need(cfg.PINGONE_WORKER_CLIENT_SECRET, 'PINGONE_WORKER_CLIENT_SECRET') });
     const api = makeApi({ base, token });
     const logins = (o.users || '').split(',').map((s) => s.trim()).filter(Boolean);
-    const r = await preparePrivilege(api, { envId, logins, group: o.group || undefined, dryRun: !!o.dryRun });
+    let createAdmin;
+    let pwFile;
+    if (o['create-admin'] && !o.dryRun) {
+      // The password goes to a mode-600 file, never to the screen. Written first so a crash cannot lose it.
+      pwFile = o['password-file'] || path.join(os.homedir(), '.config/demo-kit', `privilege-admin-${o['create-admin'].replace(/[^A-Za-z0-9._-]/g, '_')}.password`);
+      createAdmin = { login: o['create-admin'], password: generatePassword() };
+      fs.mkdirSync(path.dirname(pwFile), { recursive: true });
+      fs.writeFileSync(pwFile, `${createAdmin.password}\n`, { mode: 0o600 });
+    } else if (o['create-admin']) createAdmin = { login: o['create-admin'], password: '' };
+    const r = await preparePrivilege(api, { envId, logins, createAdmin, group: o.group || undefined, dryRun: !!o.dryRun });
+    if (pwFile && !r.adminCreated) fs.rmSync(pwFile, { force: true }); // the user already existed or was not created: the file would mislead
     console.log(`Privilege prepare for ${envId}${o.dryRun ? ' (dry run, nothing written)' : ''}`);
     show(r.checks.map((c) => [c.status, c.name, c.detail]));
+    if (pwFile && r.adminCreated) console.log(`  The new admin's password is in ${pwFile} (mode 600). It is not shown here.`);
+    if (r.exitCode === 0 && !o.dryRun) console.log('  Console step left (an API cannot do it): grant "PingOne Privilege Administrator" to your admin user, as the login that added Privilege: Environment > Users > the user > Roles.');
     console.log(r.exitCode === 0 ? 'All checks passed.' : r.exitCode === 2 ? 'Privilege is not in this environment yet.' : 'Some checks failed (see FAIL above).');
     process.exit(r.exitCode);
+  } else if (cmd === 'set-privilege-mode') {
+    const api = makeApi({ base, token: need(cfg.PINGONE_ACCESS_TOKEN, 'PINGONE_ACCESS_TOKEN') });
+    const r = await setPrivilegeMode(api, { envId: need(o.env, '--env'), mode: o.mode });
+    console.log(`privilege mode: ${r.detail}${r.backup ? ` (bill of materials backed up to ${r.backup})` : ''}`);
+    process.exit(r.ok ? 0 : 1);
   } else {
-    console.error('usage: pingone-admin.mjs ensure-worker-roles|grant-admin|privilege-prepare (see the header of this file)');
+    console.error('usage: pingone-admin.mjs ensure-worker-roles|grant-admin|privilege-prepare|set-privilege-mode (see the header of this file)');
     process.exit(64);
   }
 }

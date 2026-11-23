@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { ensureWorkerRoles, grantAdminRoles, listAll, makeApi, preparePrivilege } from './lib/pingone-admin.mjs';
+import { ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 const ENV = 'env-new', OTHER = 'env-other', ADMIN = 'env-admin', WORKER = 'app-worker';
 const ROLES = [['r-ida', 'Identity Data Admin'], ['r-env', 'Environment Admin'], ['r-org', 'Organization Admin'], ['r-pa', 'PingOne Privilege Administrator']];
@@ -13,7 +13,7 @@ function fakePingOne(opts = {}) {
   let n = 100;
   const id = (p) => `${p}-${++n}`;
   const st = {
-    calls: [], puts: [], workerApp: opts.workerApp ?? { id: WORKER, type: 'WORKER', name: 'Standalone Labs Worker' }, appGetStatus: opts.appGetStatus || 200, userRoleConflict: opts.userRoleConflict || false,
+    calls: [], puts: [], passwords: [], bom: opts.bom ?? { products: [{ type: 'PING_ONE_BASE' }, { type: 'PING_ONE_PAM', tags: ['AUTHENTICATION_MODE_AGENTLESS'] }], _links: {}, id: 'b1' }, bomPutStatus: opts.bomPutStatus || 200, createUserStatus: opts.createUserStatus || 201, passwordStatus: opts.passwordStatus || 200, workerApp: opts.workerApp ?? { id: WORKER, type: 'WORKER', name: 'Standalone Labs Worker' }, appGetStatus: opts.appGetStatus || 200, userRoleConflict: opts.userRoleConflict || false,
     workerAssignments: opts.workerAssignments || [],
     adminUsers: opts.adminUsers ?? [{ id: 'u-curtis', username: 'curtis@example.com', email: 'curtis@example.com' }],
     userRoles: [],
@@ -22,7 +22,7 @@ function fakePingOne(opts = {}) {
     failDelete: opts.failDelete || false, failAddRole: opts.failAddRole || false,
   };
   const embed = (key, arr) => ({ status: 200, body: { _embedded: { [key]: arr } } });
-  const api = async (method, p, body) => {
+  const api = async function (method, p, body) {
     st.calls.push([method, p, body]);
     let m;
     if (p === '/roles') return embed('roles', ROLES.map(([i, name]) => ({ id: i, name })));
@@ -45,7 +45,18 @@ function fakePingOne(opts = {}) {
       const f = decodeURIComponent(m[1]); const login = f.match(/username eq "([^"]*)"/)[1];
       return embed('users', st.adminUsers.filter((u) => u.username === login || u.email === login));
     }
-    if ((m = p.match(new RegExp(`^/environments/${ADMIN}/users/([^/]+)/roleAssignments$`)))) {
+    if (p === `/environments/${ENV}/billOfMaterials`) {
+      if (method === 'GET') return { status: 200, body: JSON.parse(JSON.stringify(st.bom)) };
+      st.bomPuts = [...(st.bomPuts || []), body]; if (st.bomPutStatus === 200) st.bom = { ...st.bom, products: body.products }; return { status: st.bomPutStatus, body: {} };
+    }
+    if (p === `/environments/${ENV}/populations`) return embed('populations', [{ id: 'pop-x', default: false }, { id: 'pop-1', default: true }]);
+    if (p === `/environments/${ENV}/users` && method === 'POST') {
+      if (st.createUserStatus !== 201) return { status: st.createUserStatus, body: { message: 'no' } };
+      const u = { id: id('u'), username: body.username, email: body.email, population: body.population }; st.users.push(u); st.createdUsers = [...(st.createdUsers || []), body]; return { status: 201, body: u };
+    }
+    if ((m = p.match(new RegExp(`^/environments/${ENV}/users/([^/]+)/password$`)))) { st.passwords.push({ user: m[1], body, contentType: arguments[3] }); return { status: st.passwordStatus, body: {} }; }
+    if ((m = p.match(new RegExp(`^/environments/(${ADMIN}|${ENV})/users/([^/]+)/roleAssignments$`)))) {
+      m = [m[0], m[2]];
       if (method === 'GET') return embed('roleAssignments', st.userRoles.filter((r) => r.user === m[1]));
       if (st.userRoleConflict) return { status: 400, body: { code: 'UNIQUENESS_VIOLATION' } };
       const a = { id: id('ura'), user: m[1], role: { id: body.role.id }, scope: body.scope }; st.userRoles.push(a); return { status: 201, body: a };
@@ -324,4 +335,92 @@ test('listAll follows _links.next and refuses a link to another host; writes are
   const w = makeApi({ base: 'https://x', token: 't', fetchImpl: async () => { n++; return { status: 503, text: async () => '{}' }; }, sleep: async () => {} });
   await w('POST', '/roles', {});
   assert.equal(n, 1);
+});
+
+test('generatePassword: long enough, mixed classes, different each time', () => {
+  const a = generatePassword(); const b = generatePassword();
+  assert.ok(a.length >= 16 && /[a-z]/.test(a) && /[A-Z]/.test(a) && /[0-9]/.test(a) && /[^A-Za-z0-9]/.test(a), 'complexity');
+  assert.notEqual(a, b);
+});
+
+test('ensureAdminUser creates the user in the environment with a password (right content type) and the two admin roles', async () => {
+  const { st, api } = fakePingOne({ users: [] });
+  const r = await ensureAdminUser(api, { envId: ENV, login: 'me@example.com', password: 'Pw-123' });
+  assert.equal(r.ok, true, r.detail);
+  assert.equal(r.created, true);
+  assert.equal(st.createdUsers[0].population.id, 'pop-1', 'default population');
+  assert.equal(st.createdUsers[0].username, 'me@example.com');
+  assert.deepEqual(st.passwords[0].body, { value: 'Pw-123', forceChange: false });
+  assert.equal(st.passwords[0].contentType, 'application/vnd.pingidentity.password.set+json');
+  assert.equal(st.userRoles.length, 2);
+});
+
+test('ensureAdminUser leaves an existing user alone: no create, no password change', async () => {
+  const { st, api } = fakePingOne({ users: [{ id: 'u-me', username: 'me@example.com', email: 'me@example.com' }] });
+  const r = await ensureAdminUser(api, { envId: ENV, login: 'me@example.com', password: 'x' });
+  assert.equal(r.created, false);
+  assert.equal(st.passwords.length, 0);
+  assert.equal(st.createdUsers, undefined);
+});
+
+test('ensureAdminUser reports a failed create and a failed password, without throwing', async () => {
+  const a = await ensureAdminUser(fakePingOne({ users: [], createUserStatus: 403 }).api, { envId: ENV, login: 'me@example.com', password: 'x' });
+  assert.equal(a.ok, false); assert.match(a.detail, /could not create the user/);
+  const b = await ensureAdminUser(fakePingOne({ users: [], passwordStatus: 400 }).api, { envId: ENV, login: 'me@example.com', password: 'x' });
+  assert.equal(b.ok, false); assert.equal(b.created, true); assert.match(b.detail, /password could not be set/);
+});
+
+test('preparePrivilege --create-admin: creates the user, puts it in the group, restricts the app; the second run changes nothing', async () => {
+  const { st, api } = fakePingOne({ users: [] });
+  const r = await preparePrivilege(api, { envId: ENV, createAdmin: { login: 'me@example.com', password: 'Pw-123' }, backupDir: tmp() });
+  assert.equal(r.exitCode, 0, JSON.stringify(r.checks));
+  assert.equal(r.adminCreated, true);
+  assert.equal(st.members[st.users[0].id].length, 1);
+  assert.equal(st.apps[0].accessControl.group.groups.length, 2);
+  const writes = st.calls.filter((c) => c[0] !== 'GET').length;
+  const again = await preparePrivilege(api, { envId: ENV, createAdmin: { login: 'me@example.com', password: 'other' }, backupDir: tmp() });
+  assert.equal(again.adminCreated, false);
+  assert.equal(st.calls.filter((c) => c[0] !== 'GET').length, writes);
+  assert.equal(st.passwords.length, 1);
+});
+
+test('preparePrivilege --create-admin with Privilege missing creates nothing; with --dry-run writes nothing', async () => {
+  const none = fakePingOne({ apps: [], users: [] });
+  const r = await preparePrivilege(none.api, { envId: ENV, createAdmin: { login: 'me@example.com', password: 'x' }, backupDir: tmp() });
+  assert.equal(r.exitCode, 2); assert.equal(none.st.users.length, 0);
+  const dry = fakePingOne({ users: [] });
+  const d = await preparePrivilege(dry.api, { envId: ENV, createAdmin: { login: 'me@example.com', password: '' }, backupDir: tmp(), dryRun: true });
+  assert.equal(dry.st.calls.filter((c) => c[0] !== 'GET').length, 0);
+  assert.ok(d.checks.some((c) => c.name === 'admin user me@example.com' && c.status === 'WOULD'));
+  assert.ok(d.checks.some((c) => c.name === 'member me@example.com' && c.status === 'WOULD'), 'planned admin is not reported MISSING');
+  assert.equal(d.exitCode, 0);
+});
+
+test('preparePrivilege --create-admin: a failed user create is a FAIL and the app is not restricted', async () => {
+  const f = fakePingOne({ users: [], createUserStatus: 403 });
+  const r = await preparePrivilege(f.api, { envId: ENV, createAdmin: { login: 'me@example.com', password: 'x' }, backupDir: tmp() });
+  assert.equal(r.exitCode, 1);
+  assert.equal(f.st.puts.length, 0);
+});
+
+test('setPrivilegeMode flips only the Privilege tag, backs the bill of materials up (mode 600), reads back, and is idempotent', async () => {
+  const { st, api } = fakePingOne();
+  const dir = tmp();
+  const r = await setPrivilegeMode(api, { envId: ENV, mode: 'agent', backupDir: dir });
+  assert.equal(r.ok, true, r.detail);
+  assert.deepEqual(st.bomPuts[0].products, [{ type: 'PING_ONE_BASE' }, { type: 'PING_ONE_PAM', tags: ['AUTHENTICATION_MODE_AGENT'] }]);
+  const bk = fs.readdirSync(dir)[0];
+  assert.equal(fs.statSync(path.join(dir, bk)).mode & 0o777, 0o600);
+  assert.match(fs.readFileSync(path.join(dir, bk), 'utf8'), /AGENTLESS/);
+  const again = await setPrivilegeMode(api, { envId: ENV, mode: 'agent', backupDir: dir });
+  assert.equal(again.changed, false);
+  assert.equal(st.bomPuts.length, 1);
+});
+
+test('setPrivilegeMode refuses a bad mode and an environment without Privilege, and reports a rejected PUT', async () => {
+  assert.equal((await setPrivilegeMode(fakePingOne().api, { envId: ENV, mode: 'both', backupDir: tmp() })).ok, false);
+  const none = await setPrivilegeMode(fakePingOne({ bom: { products: [{ type: 'PING_ONE_BASE' }] } }).api, { envId: ENV, mode: 'agent', backupDir: tmp() });
+  assert.equal(none.ok, false); assert.match(none.detail, /not in this environment/);
+  const bad = await setPrivilegeMode(fakePingOne({ bomPutStatus: 400 }).api, { envId: ENV, mode: 'agent', backupDir: tmp() });
+  assert.equal(bad.ok, false);
 });

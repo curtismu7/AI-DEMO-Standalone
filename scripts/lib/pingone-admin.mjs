@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 export const KEEP_WORKER_ROLES = ['Identity Data Admin', 'Environment Admin'];
 export const ADMIN_USER_ROLES = ['Identity Data Admin', 'Environment Admin'];
@@ -14,7 +15,7 @@ const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // api client over fetch: three tries on 429 / 5xx / network errors, then the last answer is returned.
 export function makeApi({ base, token, fetchImpl = fetch, sleep = sleepMs }) {
-  return async function api(method, p, body) {
+  return async function api(method, p, body, contentType = 'application/json') {
     const url = p.startsWith('http') ? p : `${base}${p}`;
     let last;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -22,7 +23,7 @@ export function makeApi({ base, token, fetchImpl = fetch, sleep = sleepMs }) {
         const r = await fetchImpl(url, {
           signal: AbortSignal.timeout(30000),
           method,
-          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', accept: 'application/json' },
+          headers: { authorization: `Bearer ${token}`, 'content-type': contentType, accept: 'application/json' },
           body: body === undefined ? undefined : JSON.stringify(body),
         });
         const text = await r.text();
@@ -112,6 +113,53 @@ export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_
   return res;
 }
 
+// A password that meets PingOne's default policy. Never logged: the caller writes it to a mode-600 file.
+export function generatePassword() {
+  const pick = (chars, n) => Array.from(crypto.randomBytes(n), (b) => chars[b % chars.length]).join('');
+  const all = `${pick('abcdefghijkmnopqrstuvwxyz', 6)}${pick('ABCDEFGHJKLMNPQRSTUVWXYZ', 5)}${pick('23456789', 4)}${pick('!#%+=?', 3)}`;
+  return all.split('').sort(() => crypto.randomInt(3) - 1).join('');
+}
+
+// Makes sure `login` exists as a user INSIDE the environment (the Privilege console needs a user record here, not only in the
+// Administrators environment), with Identity Data Admin + Environment Admin on it. An existing user is left alone (no password change).
+export async function ensureAdminUser(api, { envId, login, password }) {
+  const existing = await findUser(api, envId, login);
+  if (existing.length > 1) return { ok: false, created: false, detail: `${existing.length} users match "${login}"` };
+  let created = false;
+  if (!existing.length) {
+    const pops = await listAll(api, `/environments/${envId}/populations`, 'populations');
+    const pop = pops.find((x) => x.default) || pops[0];
+    if (!pop) return { ok: false, created: false, detail: 'the environment has no population to put the user in' };
+    const u = await api('POST', `/environments/${envId}/users`, { username: login, email: login.includes('@') ? login : undefined, name: { given: login.split('@')[0], family: 'Admin' }, population: { id: pop.id }, enabled: true });
+    if (u.status !== 201 && u.status !== 200) return { ok: false, created: false, detail: `could not create the user: HTTP ${u.status} ${msg(u.body)}` };
+    created = true;
+    const pw = await api('PUT', `/environments/${envId}/users/${u.body.id}/password`, { value: password, forceChange: false }, 'application/vnd.pingidentity.password.set+json');
+    if (pw.status !== 200) return { ok: false, created, detail: `user created but its password could not be set: HTTP ${pw.status} ${msg(pw.body)}` };
+  }
+  const g = await grantAdminRoles(api, { adminEnvId: envId, envId, login });
+  return { ok: g.ok, created, detail: g.ok ? (created ? 'created' : 'exists') : g.warning };
+}
+
+// Switches the Privilege product tag between agent (Endpoint Controller, local desktop agent) and agentless. Backs the bill of
+// materials up first, changes only that tag and reads it back. Needs an org-admin token.
+export async function setPrivilegeMode(api, { envId, mode, backupDir = path.join(os.homedir(), '.config/demo-kit/backups'), now = () => new Date() }) {
+  const tag = { agent: 'AUTHENTICATION_MODE_AGENT', agentless: 'AUTHENTICATION_MODE_AGENTLESS' }[mode];
+  if (!tag) return { ok: false, detail: 'mode must be agent or agentless' };
+  const got = await api('GET', `/environments/${envId}/billOfMaterials`);
+  const pam = got.body.products?.filter((p) => p.type === 'PING_ONE_PAM') || [];
+  if (got.status !== 200 || pam.length !== 1) return { ok: false, detail: got.status !== 200 ? `could not read the bill of materials: HTTP ${got.status}` : 'PingOne Privilege is not in this environment (add it in the console first)' };
+  if ((pam[0].tags || []).length === 1 && pam[0].tags[0] === tag) return { ok: true, changed: false, detail: `already ${mode}` };
+  fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+  const bk = path.join(backupDir, `bom-${envId.slice(0, 8)}-${now().toISOString().replace(/[:.]/g, '')}.json`);
+  fs.writeFileSync(bk, JSON.stringify(got.body, null, 1), { mode: 0o600 });
+  const body = Object.fromEntries(Object.entries(got.body).filter(([k]) => !['_links', 'id', 'createdAt', 'updatedAt', 'environment'].includes(k)));
+  body.products = body.products.map((p) => (p.type === 'PING_ONE_PAM' ? { ...p, tags: [tag] } : p));
+  const put = await api('PUT', `/environments/${envId}/billOfMaterials`, body);
+  const back = (await api('GET', `/environments/${envId}/billOfMaterials`)).body.products?.find((p) => p.type === 'PING_ONE_PAM');
+  const ok = put.status === 200 && back?.tags?.[0] === tag;
+  return { ok, changed: true, backup: bk, detail: ok ? `now ${mode}` : `HTTP ${put.status} ${msg(put.body)}` };
+}
+
 // Finds people by username or email, in any environment (the Administrators environment for console logins).
 export async function findUser(api, envId, login) {
   const l = safeLiteral(login);
@@ -150,7 +198,7 @@ export async function grantAdminRoles(api, { adminEnvId, envId, login, roles = A
 
 // Idempotent finish of the console-added Privilege: group, default sign-on policy, app restriction, memberships.
 // Returns { checks: [{name, status: PASS|FAIL|WOULD, detail}], exitCode } (0 ok, 1 a check failed, 2 Privilege not added yet).
-export async function preparePrivilege(api, { envId, logins = [], group = DEFAULT_GROUP, dryRun = false, backupDir = path.join(os.homedir(), '.config/demo-kit/backups'), now = () => new Date() }) {
+export async function preparePrivilege(api, { envId, logins = [], createAdmin, group = DEFAULT_GROUP, dryRun = false, backupDir = path.join(os.homedir(), '.config/demo-kit/backups'), now = () => new Date() }) {
   const checks = [];
   const add = (name, status, detail = '') => checks.push({ name, status, detail });
   const wr = async (verb, name, fn) => { if (dryRun) { add(name, 'WOULD', verb); return null; } return fn(); };
@@ -185,10 +233,22 @@ export async function preparePrivilege(api, { envId, logins = [], group = DEFAUL
     if (r) add('default sign-on policy', r.status < 300 ? 'PASS' : 'FAIL', r.status < 300 ? 'Single_Factor created and default' : `HTTP ${r.status} ${msg(r.body)}`);
   }
 
+  // the admin must exist as a user in this environment before it can be put in the group
+  let adminCreated = false;
+  if (createAdmin) {
+    if (dryRun) add(`admin user ${createAdmin.login}`, 'WOULD', 'create inside this environment if missing');
+    else {
+      try { const a = await ensureAdminUser(api, { envId, login: createAdmin.login, password: createAdmin.password }); adminCreated = a.created; add(`admin user ${createAdmin.login}`, a.ok ? 'PASS' : 'FAIL', a.detail); }
+      catch (e) { add(`admin user ${createAdmin.login}`, 'FAIL', e.message); }
+    }
+    if (!logins.includes(createAdmin.login)) logins = [...logins, createAdmin.login];
+  }
+
   // memberships first: the app is restricted only once the group has a member, so a restriction can never lock everyone out
   for (const login of logins) {
     let users;
     try { users = await findUser(api, envId, login); } catch (e) { add(`member ${login}`, 'FAIL', e.message); continue; }
+    if (!users.length && dryRun && createAdmin?.login === login) { add(`member ${login}`, 'WOULD', 'add to group once the user is created'); continue; }
     if (users.length !== 1) { add(`member ${login}`, 'FAIL', users.length ? `${users.length} users match` : 'MISSING: not in this environment'); continue; }
     if (!grp?.id) { add(`member ${login}`, dryRun ? 'WOULD' : 'FAIL', 'group not available'); continue; }
     const base = `/environments/${envId}/users/${users[0].id}/memberOfGroups`;
@@ -231,5 +291,5 @@ export async function preparePrivilege(api, { envId, logins = [], group = DEFAUL
       }
     }
   }
-  return { checks, exitCode: checks.some((c) => c.status === 'FAIL') ? 1 : 0 };
+  return { checks, exitCode: checks.some((c) => c.status === 'FAIL') ? 1 : 0, adminCreated };
 }
