@@ -1920,11 +1920,59 @@ function ruleP7(u) {
   return chips.length || chipRules.length ? PASS(R) : mk(R, 'INFO', 'no chips on this page');
 }
 
+// ---- P9 view-state gates
+// A use site (or a prop) can depend on the view state: `SET.includes(V)` with SET a const list of view ids in the same
+// file, and V the variable the page's own view is switched on (`V === "<page id>"` in that file). Such a gate holds on
+// the pages whose id is in SET. A primary counts only on the pages where its use site renders.
+const SET_TEST = String.raw`([A-Za-z_$][\w$]*)\.includes\(\s*([A-Za-z_$][\w$]*)\s*\)`;
+/** The literals of `const NAME = [..]` (or `new Set([..])`) in src, or null. */
+function setLiterals(src, name) {
+  const m = new RegExp(String.raw`\b(?:const|let|var)\s+${name.replace(/\$/g, '\\$')}\s*=\s*(?:new\s+Set\(\s*)?\[([^\]]*)\]`).exec(src);
+  return m ? [...m[1].matchAll(/(["'])((?:(?!\1).)*)\1/g)].map((x) => x[2]) : null;
+}
+/** Whether `SET.includes(V)` holds on this page: true/false, or null when the source does not say so. */
+function setTestOn(src, setName, varName, page) {
+  const members = setLiterals(src, setName);
+  if (!members) return null;
+  const switched = [...src.matchAll(new RegExp(String.raw`\b${varName.replace(/\$/g, '\\$')}\s*===?\s*(["'])([^"'\n]+)\1`, 'g'))].map((m) => normId(m[2]));
+  if (!switched.includes(page.id)) return null;
+  return members.map(normId).includes(page.id);
+}
+/** `{SET.includes(V) ? <Card .../> : <Card primaryRetry/>}` written before this use site: { set, v, elseArm }, or null. */
+function useSiteGate(host) {
+  const o = origOf(host);
+  if (o._gate !== undefined) return o._gate;
+  o._gate = null;
+  const seg = o.src.slice(Math.max(0, o.index - 400), o.index).split(';').pop();
+  const m = new RegExp(String.raw`${SET_TEST}\s*\?\s*\(?\s*(<[\s\S]*?\/>\s*:\s*\(?\s*)?$`).exec(seg);
+  if (m) o._gate = { set: m[1], v: m[2], elseArm: Boolean(m[3]) };
+  return o._gate;
+}
+/** True when the use site is gated out on this page (its ternary arm is not the one taken here). */
+function gatedOut(el, page) {
+  for (let c = el; c; c = c.parent) {
+    if (!c.componentUse) continue;
+    const g = useSiteGate(c.componentUse);
+    if (!g) continue;
+    const on = setTestOn(origOf(c.componentUse).src, g.set, g.v, page);
+    if (on !== null && (g.elseArm ? on : !on)) return true;
+  }
+  return false;
+}
+/** A prop whose value is `SET.includes(V)` or `!SET.includes(V)` is false on this page. */
+function exprGateOff(text, host, page) {
+  const m = new RegExp(String.raw`^\s*(!)?\s*${SET_TEST}\s*$`).exec(text);
+  if (!m) return false;
+  const on = setTestOn(origOf(host).src, m[2], m[3], page);
+  if (on === null) return false;
+  return m[1] ? on : !on;
+}
+
 // ---- P9
 /** A primary element that sits in the primary arm of `{prop ? (this) : (that)}` never renders primary when the
  *  component use site does not pass the prop (a bool prop absent at the use site is false). Returns the element
  *  itself when it is pruned, else null. Read on the ORIGINAL markup (the gap before the arm names the prop). */
-function primaryArmPruned(el) {
+function primaryArmPruned(el, page = null) {
   const o = origOf(el);
   const p = o.parent;
   if (!p) return null;
@@ -1948,6 +1996,7 @@ function primaryArmPruned(el) {
   if (!a && host.attrs && !host.attrs.has(prop)) return el; // prop not passed -> falsy -> the primary arm never renders
   if (a && (a.type === 'bool') && a.text === 'false') return el;
   if (a && a.type === 'str' && a.text === 'false') return el;
+  if (a && a.type === 'expr' && page && exprGateOff(a.text, host, page)) return el;
   return null;
 }
 // Judged on the render forest (component use sites expanded, attribute JSX at its host, view at the layout slot).
@@ -1960,7 +2009,7 @@ function ruleP9(u) {
   const forest = forestOf(u);
   const own = (forest ? forest.all : u.els).filter((e) => !e.vendored && !e.isContainer && e.name !== '#frag');
   const excl = forest ? (a, b) => exclusiveTree(a, b, true) : exclusiveFlat;
-  const prim = own.filter(isPrimaryEl).filter((e) => !primaryArmPruned(e));
+  const prim = own.filter(isPrimaryEl).filter((e) => !primaryArmPruned(e, u.page) && !gatedOut(e, u.page));
   const looped = prim.filter((e) => !isConditionalClass(e) && inLoop(e));
   if (looped.length) return mk(R, 'DRIFT', `a primary button is rendered inside a loop (${fmt(loc(looped[0]))}), so it repeats once per item`, uniqLocs(looped.map((e) => loc(e, 'primary in a loop'))));
   const groups = new Map();
