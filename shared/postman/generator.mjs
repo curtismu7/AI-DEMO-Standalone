@@ -67,7 +67,15 @@ function requestItem(req, folderPrerequest = []) {
     listen: 'test',
     script: {
       type: 'text/javascript',
-      exec: ['/* Assertions for this request */', ...(req.tests || [])],
+      // Bare assertions (pm.response.to.have.status etc.) at script top level do NOT
+      // register as assertions in Newman 6 — they must live inside pm.test(). Wrap all
+      // of a request's assertions in one test named after the request, with a catch that
+      // surfaces the failing assertion as a named test failure.
+      exec: [
+        'pm.test(' + JSON.stringify(req.name) + ', function () {',
+        ...(req.tests || []).map((l) => '  ' + l),
+        '});',
+      ],
     },
   });
   return {

@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().ok).to.eql(true);"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ok).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -50,8 +51,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Info\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -81,9 +83,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().issuer).to.include('.invalid');"
+                  "pm.test(\"IdP discovery metadata\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().issuer).to.include('.invalid');",
+                  "});"
                 ]
               }
             }
@@ -114,9 +117,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().keys.length).to.be.above(0);"
+                  "pm.test(\"IdP JWKS\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().keys.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -147,9 +151,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().diagrams.length).to.be.above(0);"
+                  "pm.test(\"Diagram catalog\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().diagrams.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -185,10 +190,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().token).to.include('.');",
-                  "pm.collectionVariables.set('IDP_TOKEN', pm.response.json().token);"
+                  "pm.test(\"Mint a federated token\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().token).to.include('.');",
+                  "  pm.collectionVariables.set('IDP_TOKEN', pm.response.json().token);",
+                  "});"
                 ]
               }
             }
@@ -228,8 +234,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Decode the token\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -269,9 +276,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('undecodable');"
+                  "pm.test(\"Decode garbage (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('undecodable');",
+                  "});"
                 ]
               }
             }
@@ -311,9 +319,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().result.tools.length).to.be.above(0);"
+                  "pm.test(\"MCP call through the gateway\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().result.tools.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -359,9 +368,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().result.tools.length).to.be.above(0);"
+                  "pm.test(\"MCP call direct\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().result.tools.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -407,9 +417,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().runs).to.be.an('array');"
+                  "pm.test(\"Run history\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().runs).to.be.an('array');",
+                  "});"
                 ]
               }
             }
@@ -439,9 +450,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().ok).to.eql(true);"
+                  "pm.test(\"Netguard log (no outbound)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ok).to.eql(true);",
+                  "});"
                 ]
               }
             }

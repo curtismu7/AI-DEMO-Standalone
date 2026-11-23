@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('ready');",
+                  "});"
                 ]
               }
             }
@@ -50,8 +51,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Info\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -81,9 +83,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().scenarios.length).to.be.above(0);"
+                  "pm.test(\"Catalog (scenarios with expected verdicts)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().scenarios.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -113,8 +116,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.be.oneOf([200, 409]);"
+                  "pm.test(\"Real-mode setup guide\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});"
                 ]
               }
             }
@@ -150,10 +154,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().mock).to.eql(true);",
-                  "pm.expect(pm.response.json().claims).to.have.property('isMemberOf');"
+                  "pm.test(\"Mint an array-shaped token\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().mock).to.eql(true);",
+                  "  pm.expect(pm.response.json().claims).to.have.property('isMemberOf');",
+                  "});"
                 ]
               }
             }
@@ -192,9 +197,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().mock).to.eql(true);"
+                  "pm.test(\"Mint a string-shaped token\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().mock).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -233,9 +239,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('bad_shape');"
+                  "pm.test(\"Mint with a bad shape (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('bad_shape');",
+                  "});"
                 ]
               }
             }
@@ -280,9 +287,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('verdict');"
+                  "pm.test(\"Run: array-exact-hit\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('verdict');",
+                  "});"
                 ]
               }
             }
@@ -321,9 +329,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('verdict');"
+                  "pm.test(\"Run: string-contains-miss\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('verdict');",
+                  "});"
                 ]
               }
             }
@@ -362,9 +371,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('unknown_scenario');"
+                  "pm.test(\"Run: unknown scenario (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('unknown_scenario');",
+                  "});"
                 ]
               }
             }
@@ -403,9 +413,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().runs).to.be.an('array');"
+                  "pm.test(\"Run history\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().runs).to.be.an('array');",
+                  "});"
                 ]
               }
             }
@@ -435,9 +446,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().ok).to.eql(true);"
+                  "pm.test(\"Reset\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ok).to.eql(true);",
+                  "});"
                 ]
               }
             }

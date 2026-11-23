@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().status).to.eql('ok');"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});"
                 ]
               }
             }
@@ -50,8 +51,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);"
+                  "pm.test(\"Info\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -87,10 +89,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().token).to.include('.');",
-                  "pm.collectionVariables.set('WIT', pm.response.json().token);"
+                  "pm.test(\"Mint a WIT\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().token).to.include('.');",
+                  "  pm.collectionVariables.set('WIT', pm.response.json().token);",
+                  "});"
                 ]
               }
             }
@@ -130,9 +133,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('invalid_workload_id');"
+                  "pm.test(\"Mint a WIT with a traversal path (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('invalid_workload_id');",
+                  "});"
                 ]
               }
             }
@@ -172,10 +176,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().token).to.include('.');",
-                  "pm.collectionVariables.set('TXN', pm.response.json().token);"
+                  "pm.test(\"Mint a Txn-Token from the WIT\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().token).to.include('.');",
+                  "  pm.collectionVariables.set('TXN', pm.response.json().token);",
+                  "});"
                 ]
               }
             }
@@ -215,9 +220,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().valid).to.eql(true);"
+                  "pm.test(\"Hop validation (tth matches)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().valid).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -256,9 +262,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('missing_wit');"
+                  "pm.test(\"Hop without a WIT (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('missing_wit');",
+                  "});"
                 ]
               }
             }
@@ -303,10 +310,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().valid).to.eql(false);",
-                  "pm.expect(pm.response.json().failures.length).to.be.above(0);"
+                  "pm.test(\"Attack: swap-txn (present someone else's Txn-Token)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().valid).to.eql(false);",
+                  "  pm.expect(pm.response.json().failures.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -345,9 +353,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().valid).to.eql(false);"
+                  "pm.test(\"Attack: expired\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().valid).to.eql(false);",
+                  "});"
                 ]
               }
             }
@@ -386,9 +395,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(400);",
-                  "pm.expect(pm.response.json().error).to.eql('unknown_attack');"
+                  "pm.test(\"Attack: unknown kind (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(400);",
+                  "  pm.expect(pm.response.json().error).to.eql('unknown_attack');",
+                  "});"
                 ]
               }
             }

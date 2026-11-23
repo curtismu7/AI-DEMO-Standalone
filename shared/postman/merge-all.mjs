@@ -69,7 +69,7 @@ const merged = {
     _postman_id: 'postman-all-labs',
   },
   item: [],
-  variable: [{ key: 'LAB_BASE_NOTE', value: 'Each lab folder overrides LAB_BASE to its own port via its requests; the per-lab base is baked in the lab folder items.' }],
+  variable: [{ key: 'LAB_BASE_NOTE', value: 'Each lab folder uses its own namespaced base: {{LAB_BASE_<SLUG>}} (set at collection level below, overridable in the environment).' }],
 };
 
 const envValues = new Map(); // key -> value (first wins; conflicts suffixed)
@@ -96,11 +96,21 @@ for (const labDir of readdirSync(collectionsDir).sort()) {
   const useCase = USE_CASES[labDir];
   if (!useCase) { console.error(`no use-case line for ${labDir} — add one to merge-all.mjs`); process.exit(1); }
   const own = (c.info.description || '').replace(/^API collection for [^:]+: /, '');
+  // Newman (and Postman's runner) do not reliably cascade folder-level variables to
+  // nested folders. So: namescope each lab's variables at the merged-collection level
+  // (LAB_BASE -> LAB_BASE_<SLUG>) and rewrite {{LAB_BASE}} inside this lab's items.
+  const slug = String(labDir).replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
+  const ownVars = (c.variable || []).map((v) => ({
+    key: v.key === 'LAB_BASE' ? `LAB_BASE_${slug}` : `${slug}_${v.key}`,
+    value: v.value,
+  }));
+  const rewritten = JSON.parse(JSON.stringify(c.item).replaceAll('{{LAB_BASE}}', `{{LAB_BASE_${slug}}}`));
   merged.item.push({
     name: c.info.name,
     description: `USE CASE: ${useCase}\n\n${own}`,
-    item: c.item,
+    item: rewritten,
   });
+  merged.variable.push(...ownVars);
   const envDir = join(environmentsDir, labDir);
   if (existsSync(envDir)) {
     const envFile = readdirSync(envDir).find((f) => f.endsWith('.example.json'));
