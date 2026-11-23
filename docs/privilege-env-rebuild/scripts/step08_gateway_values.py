@@ -38,7 +38,7 @@ write(os.path.join(OUT, "oidc-new.values.yaml"),
       f"  userUrl: \"{base}/userinfo\"\n"
       "  scopes: \"openid profile email\"\n")
 
-# Local Docker gateway: same keys as its current pingone.env, values for the new env.
+# OPTIONAL, only if you run a local Docker gateway (we dropped ours on 2026-11-23): same keys as its current pingone.env, values for the new env.
 cur = load_env_file(os.path.expanduser("~/Development/pingid-gateway/procyon/config/pingone.env"))
 cur.update({"PINGONE_ENVIRONMENT_ID": D, "OIDC_CLIENT_ID": APP, "OIDC_CLIENT_SECRET": secret,
             "OIDC_AUTH_URL": f"{base}/authorize", "OIDC_TOKEN_URL": f"{base}/token",
