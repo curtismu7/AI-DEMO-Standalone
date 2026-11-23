@@ -13,8 +13,8 @@
 # What this script then does (no console needed):
 #   1. Mints an org token with those worker creds.
 #   2. Picks an active license with the demo's entitlements.
-#   3. Creates a dedicated SANDBOX environment (SSO, MFA, DaVinci, Authorize).
-#   4. Mints a Worker app (Identity Data Admin) inside the new environment.
+#   3. Creates a dedicated SANDBOX environment (SSO, DaVinci, Authorize; add --with-pingone-mfa for MFA).
+#   4. Mints a Worker app inside the new environment, trimmed to Identity Data Admin + Environment Admin there.
 #   5. Writes ~/Development/.env (mode 600) with the new env id + worker creds.
 #
 # After this: run scripts/bootstrap.sh — every lab reads the same .env.
@@ -61,6 +61,8 @@ ask_secret() { # ask_secret <prompt> <envvar-name>
 }
 
 ENV_FILE="${STANDALONE_ENV:-$HOME/Development/.env}"
+ADMIN_USER=""
+WITH_MFA=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -78,16 +80,24 @@ Options (anything omitted is asked interactively):
   --admin-env-id <Administrators environment ID>
   --client-id <worker client ID>
   --client-secret <worker client secret>
+  --admin-user <login>      your console login in the Administrators environment:
+                            gets Identity Data Admin + Environment Admin on the new
+                            environment (see docs/PRIVILEGE-ONE-ENV.md)
+  --with-pingone-mfa        also add PingOne MFA. Default is without it, because PingID
+                            (used by PingOne Privilege) cannot share an environment with it.
 
-Creates: SANDBOX environment (SSO, MFA, DaVinci, Authorize) + a per-environment
-Identity Data Admin worker. Writes ~/Development/.env (mode 600).
+Creates: SANDBOX environment (SSO, DaVinci, Authorize) + a per-environment worker
+holding Identity Data Admin and Environment Admin on that environment only.
+Writes ~/Development/.env (mode 600).
 USAGE
       exit 0 ;;
     --region) PINGONE_REGION="$2"; shift 2 ;;
     --admin-env-id) PINGONE_ADMIN_ENV_ID="$2"; shift 2 ;;
     --client-id) PINGONE_WORKER_CLIENT_ID="$2"; shift 2 ;;
     --client-secret) PINGONE_WORKER_CLIENT_SECRET="$2"; shift 2 ;;
-    *) err "unknown argument: $1 (usage: pingone-setup.sh [--region R] [--admin-env-id ID] [--client-id ID] [--client-secret SECRET])"; exit 2 ;;
+    --admin-user) ADMIN_USER="$2"; shift 2 ;;
+    --with-pingone-mfa) WITH_MFA=1; shift ;;
+    *) err "unknown argument: $1 (usage: pingone-setup.sh [--region R] [--admin-env-id ID] [--client-id ID] [--client-secret SECRET] [--admin-user LOGIN] [--with-pingone-mfa])"; exit 2 ;;
   esac
 done
 
@@ -274,7 +284,14 @@ if [[ -n "$existing_env" ]]; then
   fi
 fi
 if [[ -z "$new_env" ]]; then
-info "Creating the SANDBOX demo environment (SSO, MFA, DaVinci, Authorize)..."
+# PingID (PingOne Privilege) cannot share an environment with PingOne MFA, so MFA is opt-in.
+bom_products='{"type":"PING_ONE_BASE"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}'
+bom_label="SSO, DaVinci, Authorize"
+if [[ "$WITH_MFA" == "1" ]]; then
+  bom_products='{"type":"PING_ONE_BASE"},{"type":"PING_ONE_MFA"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}'
+  bom_label="SSO, MFA, DaVinci, Authorize"
+fi
+info "Creating the SANDBOX demo environment ($bom_label)..."
 # Constraints measured live: name allows only letters/digits/space/-/_/./';
 # SANDBOX licenses reject PING_ONE_FRAUD (Privilege is not a BOM product).
 env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
@@ -282,7 +299,7 @@ env_json="$(curl -s --max-time 60 -X POST "$api/environments" \
   -d '{"name":"'"$ENV_NAME"'","region":"'"$env_region"'",
        "type":"SANDBOX","description":"Created by AI-DEMO-Standalone pingone-setup.sh",
        "license":{"id":"'"$license_id"'"},
-       "billOfMaterials":{"products":[{"type":"PING_ONE_BASE"},{"type":"PING_ONE_MFA"},{"type":"PING_ONE_DAVINCI"},{"type":"PING_ONE_AUTHORIZE"}]}}')"
+       "billOfMaterials":{"products":['"$bom_products"']}}')"
 new_env="$(printf '%s' "$env_json" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
 if [[ -z "$new_env" ]]; then
   err "Environment creation failed:"
@@ -362,6 +379,21 @@ secret="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications
   | python3 -c 'import sys,json; print(json.load(sys.stdin).get("secret",""))' 2>/dev/null || true)"
 [[ -z "$secret" ]] && { err "secret mint failed:"; exit 1; }
 ok "worker minted in the new environment"
+
+# The API-made worker inherits every role of the worker that created it (Organization Admin, Identity Data
+# Admin on every environment). Trim it to Identity Data Admin + Environment Admin on this environment only.
+SCRIPT_DIR_ADMIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if command -v node >/dev/null 2>&1; then
+  PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
+    node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" ensure-worker-roles --env "$new_env" --app "$app_id" \
+    || fatal "the worker's roles could not be set (see above). The environment $new_env exists; fix the cause and run this script again (it reuses the environment and is safe to repeat)."
+  if [[ -n "$ADMIN_USER" ]]; then
+    PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
+      node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" grant-admin --env "$new_env" --admin-env "$PINGONE_ADMIN_ENV_ID" --user "$ADMIN_USER" || true
+  fi
+else
+  warn "node not found: skipped trimming the worker's roles and granting --admin-user (install Node 26, then see docs/PRIVILEGE-ONE-ENV.md)"
+fi
 
 # ── 4b. per-env NATIVE app (authorization code + PKCE) ───────────────────────
 # The user token path (ping-services-stub-LAB's pi.flow sign-in) needs a user app,
@@ -477,3 +509,12 @@ echo "  the P1AZ policy snapshot once, in the PingOne console:"
 echo "    Console → your new environment → Authorize → Trust Framework → Import →"
 echo "    ${STANDALONE_SNAPSHOT:-$HOME/Development/AI-DEMO-Standalone/policy/ai-demo-p1az.standalone.snapshot.json}"
 echo "  (scripts/bootstrap.sh checks the tenant and prints this path again if the policy is missing.)"
+echo ""
+echo "  To run PingOne Privilege in this same environment (steps only a person can do, in the console):"
+echo "    1. Add Privilege: Environment → Add Services → PingOne Privilege → No Endpoint Controller → Finish."
+echo "       Whoever clicks it becomes PingOne Privilege Administrator — use your own admin login."
+echo "    2. Run:  node scripts/pingone-admin.mjs privilege-prepare --create-admin <your login> --users demouser,demoAdmin"
+echo "       (creates your admin as a user inside this environment, which the Privilege console requires)."
+echo "    3. In the console, as the login that added Privilege: Users → your admin → Roles → PingOne Privilege Administrator."
+echo "    4. Need the local desktop agent? Then set-privilege-mode --mode agent. Add PingID with your own PingID admin login."
+echo "  Full walkthrough and lockout rules: docs/PRIVILEGE-ONE-ENV.md"
