@@ -8991,7 +8991,7 @@
     },
     {
       "key": "LAB_BASE_MCP_RESOURCE_SERVER_LAB",
-      "value": "http://localhost:8081"
+      "value": "http://localhost:7844"
     },
     {
       "key": "MCP_RESOURCE_SERVER_LAB_SAMPLE_TOKEN",

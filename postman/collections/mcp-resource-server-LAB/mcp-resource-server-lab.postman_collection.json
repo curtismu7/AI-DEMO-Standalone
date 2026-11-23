@@ -363,7 +363,7 @@
   "variable": [
     {
       "key": "LAB_BASE",
-      "value": "http://localhost:8081"
+      "value": "http://localhost:7844"
     },
     {
       "key": "SAMPLE_TOKEN",
