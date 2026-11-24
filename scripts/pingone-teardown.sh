@@ -68,8 +68,9 @@ Options:
   --client-secret <secret>
   --yes                         skip the confirmation (ASSUME_YES=1 also works)
   --keep-env-file               do not touch ~/Development/.env
-  --delete-adopted              allow deleting an environment you made in the PingOne console and that pingone-setup.sh only
-                                adopted (--existing-env). Refused otherwise: it holds your PingID account and Privilege Administrator role.
+  --delete-privilege-env        allow deleting an environment that has a PingID deployment or PingOne Privilege (what an environment you
+                                made in the console looks like). Refused otherwise, even with --yes: the PingID account and the
+                                Privilege Administrator role cannot be recreated or granted again.
   --dry-run                     resolve and show the target, delete nothing
 
 Deleting an environment is irreversible: its users, applications, populations,
@@ -84,7 +85,7 @@ USAGE
     --client-secret) PINGONE_ADMIN_CLIENT_SECRET="$2"; shift 2 ;;
     --yes) ASSUME_YES=1; shift ;;
     --keep-env-file) KEEP_ENV_FILE=1; shift ;;
-    --delete-adopted) ALLOW_ADOPTED=1; shift ;;
+    --delete-privilege-env) ALLOW_PRIVILEGE_ENV=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     *) err "unknown argument: $1 (see --help)"; exit 2 ;;
   esac
@@ -107,7 +108,6 @@ PYEOF
   : "${PINGONE_ADMIN_CLIENT_ID:=$(file_value PINGONE_ADMIN_CLIENT_ID)}"
   : "${PINGONE_ADMIN_CLIENT_SECRET:=$(file_value PINGONE_ADMIN_CLIENT_SECRET)}"
   [[ -z "${TARGET_ENV_ID:-}" && -z "${TARGET_NAME:-}" ]] && TARGET_ENV_ID="$(file_value PINGONE_ENVIRONMENT_ID)"
-  ADOPTED_ENV="$(file_value PINGONE_ENV_ADOPTED)"   # written by pingone-setup.sh --existing-env: a console-made environment
 fi
 
 CREDS_FROM_FILE=0
@@ -210,11 +210,31 @@ if [[ -z "$env_name" ]]; then
 fi
 
 # A console-made environment holds the owner's PingID account and the Privilege Administrator role (nobody can grant it again).
-# --yes does not lift this: only --delete-adopted does.
-if [[ -n "${ADOPTED_ENV:-}" && "$ADOPTED_ENV" == "$TARGET_ENV_ID" && -z "${ALLOW_ADOPTED:-}" ]]; then
-  err "$env_name ($TARGET_ENV_ID) was created by you in the PingOne console and only adopted by pingone-setup.sh --existing-env."
-  err "It holds your PingID account and the PingOne Privilege Administrator role, which cannot be granted again. Not deleting it."
-  fatal "delete it in the console yourself, or pass --delete-adopted if you really mean it."
+# The tenant is the source of truth, not a local file: a PingID deployment or the Privilege product means a person set it up.
+# --yes does not lift this: only --delete-privilege-env does. An unreadable bill of materials is refused too (fail closed).
+if [[ -z "${ALLOW_PRIVILEGE_ENV:-}" ]]; then
+  bom_code="$(curl -s --max-time 30 -o /tmp/p1-bom-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")"
+  bom_body="$(cat /tmp/p1-bom-$$ 2>/dev/null || true)"
+  rm -f /tmp/p1-bom-$$
+  bom_verdict="$(printf '%s' "$bom_body" | python3 -c '
+import sys, json
+try:
+    products = json.load(sys.stdin).get("products", [])
+except Exception:
+    print("unreadable"); sys.exit()
+found = []
+for p in products:
+    if p.get("type") == "PING_ONE_PAM": found.append("PingOne Privilege")
+    if p.get("type") == "PING_ONE_ID" and p.get("deployment", {}).get("id"): found.append("a PingID deployment")
+print(", ".join(found) if found else "none")' 2>/dev/null || echo unreadable)"
+  if [[ "$bom_code" != "200" || "$bom_verdict" == "unreadable" ]]; then
+    err "could not read the products of $env_name ($TARGET_ENV_ID): HTTP $bom_code. Not deleting without knowing."
+    fatal "check the org worker's role, or pass --delete-privilege-env if you are sure."
+  elif [[ "$bom_verdict" != "none" ]]; then
+    err "$env_name ($TARGET_ENV_ID) has $bom_verdict. That is what an environment you set up in the console looks like."
+    err "The PingID account and the PingOne Privilege Administrator role cannot be recreated or granted again. Not deleting it."
+    fatal "delete it in the console yourself, or pass --delete-privilege-env if you really mean it."
+  fi
 fi
 
 echo ""
@@ -277,7 +297,7 @@ gone_exact = {
 }
 gone_prefix = ("PINGONE_WORKER_CLIENT_ID=", "PINGONE_WORKER_CLIENT_SECRET=",
                "PINGONE_WORKER_ID=", "PINGONE_WORKER_SECRET=")
-gone_exact.add(f"PINGONE_ENV_ADOPTED={env_id}")
+
 out = []
 dropped = []
 for line in open(path).read().splitlines():

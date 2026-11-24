@@ -186,6 +186,10 @@ export async function checkWorkforceEnv(api, { envId, requirePrivilege = true })
     add('FAIL', 'environment', `HTTP ${env.status}: check the id and that this worker can see it (Organization Admin)`);
     return { checks, exitCode: 1 };
   }
+  if (env.body.type !== 'SANDBOX') {
+    add('FAIL', 'environment type', `${env.body.type}: the labs create apps and users and rewrite worker roles in this environment, so only a SANDBOX is accepted`);
+    return { checks, exitCode: 1 };
+  }
   add('PASS', 'environment', `"${env.body.name}" (${env.body.type}, ${env.body.region})`);
   const bom = await api('GET', `/environments/${envId}/billOfMaterials`);
   if (bom.status !== 200) {

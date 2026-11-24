@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { checkWorkforceEnv, ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, parseArgs, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
@@ -497,7 +498,7 @@ test('pingone-setup.sh: adopting a console-made environment skips the license lo
   assert.match(guarded, /-X POST "\$api\/environments"/);
   assert.doesNotMatch(sh.slice(0, guardOpen) + sh.slice(guardClose), /organizations\/\$org_id\/licenses|-X POST "\$api\/environments"/);
   // the question is only asked with a terminal, no flag and no ASSUME_YES
-  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && "\$\{ASSUME_YES:-\}" != "1" && "\$have_tty" == 1/);
+  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && -z "\$configured_env" && "\$\{ASSUME_YES:-\}" != "1" && "\$\{STANDALONE_NON_INTERACTIVE:-\}" != "1" && "\$have_tty" == 1/);
   // the id is validated before it reaches a URL
   assert.match(sh, /\^\[0-9a-fA-F\]\{8\}\(-\[0-9a-fA-F\]\{4\}\)\{3\}-\[0-9a-fA-F\]\{12\}\$/);
 });
@@ -537,25 +538,74 @@ test('checkWorkforceEnv: an unreadable sign-on policy list is a WARN naming the 
   assert.equal(r.exitCode, 0);
 });
 
-test('adopted environments are protected: setup records them, teardown refuses to delete them unless --delete-adopted, even with --yes', () => {
-  const setup = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
-  const tear = fs.readFileSync(new URL('./pingone-teardown.sh', import.meta.url), 'utf8');
-  assert.match(setup, /echo "PINGONE_ENV_ADOPTED=\$\{ADOPT_ENV:-\}"/);          // empty for an API-made environment, so an old value is overwritten
-  assert.match(tear, /--delete-adopted\) ALLOW_ADOPTED=1/);
-  assert.match(tear, /ADOPTED_ENV="\$\(file_value PINGONE_ENV_ADOPTED\)"/);
-  const guard = tear.indexOf('"$ADOPTED_ENV" == "$TARGET_ENV_ID" && -z "${ALLOW_ADOPTED:-}"');
-  assert.ok(guard > 0, 'guard present');
-  // the refusal comes before the dry-run exit, the confirmation and the DELETE call
-  for (const later of ['${BOLD}Will DELETE:', 'Type the environment id to confirm', '-X DELETE "$api/environments/$TARGET_ENV_ID"']) {
-    assert.ok(tear.indexOf(later) > guard, `${later} must come after the guard`);
-  }
-  assert.match(tear, /gone_exact\.add\(f"PINGONE_ENV_ADOPTED=\{env_id\}"\)/);
+test('checkWorkforceEnv: only a SANDBOX is accepted (the labs create apps and users there)', async () => {
+  const r = await checkWorkforceEnv(envApi({ env: { status: 200, body: { name: 'Prod', type: 'PRODUCTION', region: 'NA' } }, products: CONSOLE_MADE }), { envId: 'e1' });
+  assert.equal(r.exitCode, 1);
+  assert.equal(status(r, 'environment type'), 'FAIL');
 });
 
-test('pingone-setup.sh: --existing-env cannot be combined with --api-create or --with-pingone-mfa, and a readable-but-dead /dev/tty is not a terminal', () => {
+// ---- teardown runs for real against a stubbed curl: an environment with PingID or Privilege is never deleted by accident ----
+function runTeardown({ bom, bomCode = 200, extra = [] }) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'td-'));
+  const stub = path.join(dir, 'curl');
+  fs.writeFileSync(stub, `#!/usr/bin/env python3
+import sys, os, json
+a = sys.argv[1:]; url = next((x for x in a if x.startswith("http")), ""); out = a[a.index("-o") + 1] if "-o" in a else None
+method = a[a.index("-X") + 1] if "-X" in a else "GET"
+def reply(body, code):
+    if out: open(out, "w").write(body); print(code, end="")
+    else: print(body, end="")
+if url.endswith("/as/token"): reply('{"access_token":"tok"}', 200)
+elif url.endswith("/billOfMaterials"): reply(os.environ["STUB_BOM"], os.environ["STUB_BOM_CODE"])
+elif method == "DELETE": open(os.environ["STUB_LOG"], "a").write("DELETE " + url + "\\n"); reply("", 204)
+else: reply('{"name":"Test Env"}', 200)
+`, { mode: 0o755 });
+  const log = path.join(dir, 'calls.log');
+  const r = spawnSync('bash', [new URL('./pingone-teardown.sh', import.meta.url).pathname, '--env-id', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', '--yes', '--keep-env-file', ...extra], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_BOM: JSON.stringify(bom), STUB_BOM_CODE: String(bomCode), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.json'), PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_ADMIN_CLIENT_ID: 'c', PINGONE_ADMIN_CLIENT_SECRET: 's' },
+  });
+  const deleted = fs.existsSync(log) && /DELETE/.test(fs.readFileSync(log, 'utf8'));
+  return { code: r.status, out: `${r.stdout}${r.stderr}`, deleted };
+}
+const BASIC = { products: [{ type: 'PING_ONE_BASE' }, { type: 'PING_ONE_DAVINCI' }, { type: 'PING_ONE_AUTHORIZE' }] };
+
+test('teardown refuses an environment with a PingID deployment or Privilege, even with --yes, and deletes nothing', () => {
+  for (const products of [CONSOLE_MADE, [{ type: 'PING_ONE_BASE' }, { type: 'PING_ONE_PAM', tags: ['AUTHENTICATION_MODE_AGENT'] }], [{ type: 'PING_ONE_ID', subtype: 'WORKFORCE', deployment: { id: 'd' } }]]) {
+    const r = runTeardown({ bom: { products } });
+    assert.notEqual(r.code, 0);
+    assert.match(r.out, /Not deleting it/);
+    assert.equal(r.deleted, false);
+  }
+});
+
+test('teardown: --delete-privilege-env lifts the refusal; a basic environment (PingID listed without a deployment) is still deletable', () => {
+  const forced = runTeardown({ bom: { products: CONSOLE_MADE }, extra: ['--delete-privilege-env'] });
+  assert.equal(forced.code, 0);
+  assert.equal(forced.deleted, true);
+  const basic = runTeardown({ bom: BASIC });
+  assert.equal(basic.code, 0, basic.out);
+  assert.equal(basic.deleted, true);
+  const idNoDeployment = runTeardown({ bom: { products: [...BASIC.products, { type: 'PING_ONE_ID', subtype: 'WORKFORCE' }] } });
+  assert.equal(idNoDeployment.deleted, true);
+});
+
+test('teardown fails closed: an unreadable bill of materials is refused', () => {
+  const r = runTeardown({ bom: { message: 'no' }, bomCode: 403 });
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /Not deleting without knowing/);
+  assert.equal(r.deleted, false);
+  const dry = runTeardown({ bom: { products: CONSOLE_MADE }, extra: ['--dry-run'] });
+  assert.notEqual(dry.code, 0);   // the refusal comes before the dry-run exit, so a rehearsal tells the truth
+});
+
+test('pingone-setup.sh: conflicts are checked before and after the question; a configured machine is not asked; bootstrap --non-interactive never reaches the question', () => {
   const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
-  assert.match(sh, /-n "\$ADOPT_ENV" && \( "\$API_CREATE" == "1" \|\| "\$WITH_MFA" == "1" \) \]\]; then\n\s+fatal/);
-  assert.ok(sh.indexOf('cannot be combined with --api-create') < sh.indexOf('Standalone labs — PingOne environment setup'), 'checked before any prompt or network call');
+  assert.match(sh, /check_adopt_conflict\(\) \{\n\s+if \[\[ -n "\$ADOPT_ENV" && \( "\$API_CREATE" == "1" \|\| "\$WITH_MFA" == "1" \) \]\]; then\n\s+fatal/);
+  assert.equal(sh.split('\ncheck_adopt_conflict\n').length - 1, 1, 'called straight after argument parsing');
+  assert.match(sh, /ADOPT_ENV="\$\(printf '%s' "\$ADOPT_ENV" \| tr -d '\[:space:\]'\)"\n\s+check_adopt_conflict/);
+  assert.ok(sh.indexOf('\ncheck_adopt_conflict\n') < sh.indexOf('Standalone labs — PingOne environment setup'), 'before any prompt or network call');
   assert.match(sh, /: <\/dev\/tty; \} 2>\/dev\/null && have_tty=1/);
-  assert.match(sh, /"\$have_tty" == 1 \]\]; then\n\s+echo ""/);
+  const boot = fs.readFileSync(new URL('./bootstrap.sh', import.meta.url), 'utf8');
+  assert.match(boot, /\[ "\$non_interactive" = 1 \] && export STANDALONE_NON_INTERACTIVE=1\n\s+if "\$root\/scripts\/pingone-setup\.sh"/);
 });

@@ -335,6 +335,8 @@ elif grep -q "^PINGONE_ENVIRONMENT_ID=" "${STANDALONE_ENV:-$HOME/Development/.en
 else
   # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
   # shellcheck disable=SC2086
+  # --non-interactive must never reach the "which environment?" question in pingone-setup.sh.
+  [ "$non_interactive" = 1 ] && export STANDALONE_NON_INTERACTIVE=1
   if "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-}; then
     step_ok "environment ready, ~/Development/.env written"
   else
