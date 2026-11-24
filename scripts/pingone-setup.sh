@@ -187,17 +187,26 @@ if [[ -z "$worker_roles_out" ]]; then
   exit 1
 fi
 org_admin_role_id=""
+worker_role_names=""
 for rid in $worker_roles_out; do
   rname="$(curl -s --max-time 30 "$api/roles/$rid" -H "authorization: Bearer $access" \
     | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
-  if [[ "$rname" == "Organization Admin" ]]; then org_admin_role_id="$rid"; break; fi
-  found_scoped_role="$rname"
+  worker_role_names="${worker_role_names:+$worker_role_names, }${rname:-unknown}"
+  [[ "$rname" == "Organization Admin" ]] && org_admin_role_id="$rid"
 done
-if [[ -z "$org_admin_role_id" ]]; then
-  err "the Worker app's organization-scoped role is \"${found_scoped_role:-unknown}\" — Organization Admin is required."
+# Creating an environment needs Organization Admin. Adopting one a person made in the console (--existing-env) only creates
+# an app in it and assigns that app two roles, which Environment Admin at organization scope can do (measured 2026-11-24 on
+# a console-made environment). So Environment Admin passes here, and a run that has to CREATE an environment stops below.
+needs_org_admin=0
+if [[ -n "$org_admin_role_id" ]]; then
+  ok "worker has Organization Admin (organization scope)"
+elif [[ ", $worker_role_names, " == *", Environment Admin, "* ]]; then
+  needs_org_admin=1
+  warn "the Worker app holds Environment Admin, not Organization Admin (organization scope: $worker_role_names). Enough to adopt an environment you made in the console (--existing-env); not enough to create one."
+else
+  err "the Worker app's organization-scoped roles are \"${worker_role_names:-unknown}\": Organization Admin is required (Environment Admin is enough only with --existing-env)."
   echo "" >&2
-  echo "  Environment Admin scoped to the Organization is NOT enough: it can read" >&2
-  echo "  licenses but cannot create environments or assign roles (ACCESS_FAILED)." >&2
+  echo "  Environment Admin alone cannot create environments (ACCESS_FAILED)." >&2
   echo "" >&2
   echo "  Fix in the PingOne console (Administrators environment):" >&2
   echo "    Applications → your Worker → Roles → replace it with Organization Admin" >&2
@@ -205,7 +214,6 @@ if [[ -z "$org_admin_role_id" ]]; then
   echo "  Then re-run this script with the same credentials." >&2
   exit 1
 fi
-ok "worker has Organization Admin (organization scope)"
 
 # ── 1b. which environment? ────────────────────────────────────────────────────
 # PingID cannot be made to work through the API: PingOne accepts PING_ONE_ID in the bill of materials but never provisions
@@ -253,6 +261,14 @@ if [[ -n "$ADOPT_ENV" ]]; then
   new_env="$ADOPT_ENV"
   reuse_answer="r"   # find the lab worker if an earlier run made one, instead of making a second
   ok "adopting environment $new_env (no license lookup, no environment created). Next: the lab worker is found or created here, and an existing one has its secret re-minted: its old secret stops working."
+fi
+
+# A worker without Organization Admin may only adopt: stop before the license lookup and environment creation.
+if [[ -z "$ADOPT_ENV" && "$needs_org_admin" == 1 ]]; then
+  err "this run would create an environment, which needs Organization Admin; the Worker app holds only Environment Admin."
+  echo "  Either give the Worker Organization Admin (organization scope) in the Administrators environment," >&2
+  echo "  or create the environment in the PingOne console and re-run with --existing-env <its id>." >&2
+  exit 1
 fi
 
 if [[ -z "$ADOPT_ENV" ]]; then

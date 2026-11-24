@@ -620,3 +620,52 @@ test('pingone-setup.sh: a flagless run on a machine whose configured environment
   assert.ok(stop < sh.indexOf('# ── 2. license'), 'before the license lookup and any creation');
   assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && -n "\$configured_env" \]\]; then/);   // no terminal needed
 });
+
+// ---- setup runs for real against a stubbed curl and node: which worker roles may adopt, and which may create ----
+function runSetup({ roles, args }) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'su-'));
+  fs.writeFileSync(path.join(dir, 'curl'), `#!/usr/bin/env python3
+import sys, os, json
+url = next((x for x in sys.argv[1:] if x.startswith("http")), "")
+names = json.loads(os.environ["STUB_ROLES"])
+if url.endswith("/as/token"): print('{"access_token":"tok"}', end="")
+elif url.endswith("/roleAssignments"): print(json.dumps({"_embedded": {"roleAssignments": [{"role": {"id": "r%d" % i}, "scope": {"type": "ORGANIZATION"}} for i in range(len(names))]}}), end="")
+elif "/roles/r" in url: print(json.dumps({"name": names[int(url.rsplit("/r", 1)[1])]}), end="")
+else: print("{}", end="")
+`, { mode: 0o755 });
+  // node stands in for pingone-admin.mjs check-env: it records the call and fails, so the run stops right after the gate
+  fs.writeFileSync(path.join(dir, 'node'), '#!/bin/sh\necho "node $*" >> "$STUB_LOG"\nexit 1\n', { mode: 0o755 });
+  const log = path.join(dir, 'calls.log');
+  const r = spawnSync('bash', [new URL('./pingone-setup.sh', import.meta.url).pathname, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_ROLES: JSON.stringify(roles), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.cred'), ASSUME_YES: '1', PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_WORKER_CLIENT_ID: 'c', PINGONE_WORKER_CLIENT_SECRET: 's' },
+  });
+  return { code: r.status, out: `${r.stdout}${r.stderr}`, checked: fs.existsSync(log) && /check-env/.test(fs.readFileSync(log, 'utf8')) };
+}
+const ENV_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+test('setup: Environment Admin (organization scope) is enough to adopt a console-made environment', () => {
+  const r = runSetup({ roles: ['Environment Admin', 'Custom Roles Admin'], args: ['--existing-env', ENV_ID] });
+  assert.match(r.out, /holds Environment Admin, not Organization Admin/);
+  assert.match(r.out, /Checking the environment you made in the console/);
+  assert.equal(r.checked, true, 'went on to check-env');
+  assert.doesNotMatch(r.out, /Organization Admin is required/);
+});
+
+test('setup: Environment Admin alone stops a run that would CREATE an environment, before any license lookup', () => {
+  const r = runSetup({ roles: ['Environment Admin'], args: ['--api-create'] });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /would create an environment, which needs Organization Admin/);
+  assert.match(r.out, /--existing-env/);
+  assert.doesNotMatch(r.out, /Looking for an active license/);
+});
+
+test('setup: Organization Admin passes as before; a worker with neither role is refused and every role found is listed', () => {
+  const org = runSetup({ roles: ['Organization Admin'], args: ['--existing-env', ENV_ID] });
+  assert.match(org.out, /worker has Organization Admin/);
+  assert.equal(org.checked, true);
+  const none = runSetup({ roles: ['Custom Roles Admin', 'DaVinci Admin'], args: ['--existing-env', ENV_ID] });
+  assert.equal(none.code, 1);
+  assert.match(none.out, /"Custom Roles Admin, DaVinci Admin": Organization Admin is required/);
+  assert.equal(none.checked, false);
+});

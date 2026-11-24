@@ -4,7 +4,7 @@ For: a colleague who wants the demo labs **and** PingOne Privilege (AI gateways,
 Spec: [docs/specs/2026-11-23-privilege-one-env-setup.md](specs/2026-11-23-privilege-one-env-setup.md). Written from the 2026-11-23 rebuild of a locked-out Privilege environment.
 
 ## What you need
-- A PingOne organization with a licence that includes Privilege, and a worker app in the Administrators environment holding **Organization Admin** (the same worker `scripts/pingone-setup.sh` already asks for).
+- A PingOne organization with a licence that includes Privilege, and a worker app in the Administrators environment holding **Organization Admin** (to adopt an environment you made in the console with `--existing-env`, **Environment Admin** at organization scope is enough) (the same worker `scripts/pingone-setup.sh` already asks for).
 - Your own console login in the Administrators environment (the one you sign in with at console.pingone.com).
 - Node 26 (the labs already need it).
 - Permission to create a new PingID account (step 1 asks the console for it: "Create new").
