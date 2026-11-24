@@ -228,11 +228,19 @@ configured_env=""
 if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && -n "$configured_env" ]]; then
   # Never fall through to a basic environment when the configured one has PingID and Privilege: every lab would silently lose them.
   # (Quiet check: exit 0 means PingID Workforce with its deployment, Privilege and a SANDBOX.)
-  if command -v node >/dev/null 2>&1 && [[ "$configured_env" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]] \
-     && PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
-        node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$configured_env" >/dev/null 2>&1; then
-    err "the configured environment $configured_env is a PingID + Privilege environment, and this run would replace it with a basic one."
-    fatal "re-run with --existing-env $configured_env to refresh it (its lab worker secret is re-minted), or --api-create to really switch to a basic environment."
+  # Exit 0 = PingID + Privilege; 1 = read fine, not one (a basic environment); anything else = could not tell, which must not
+  # be treated as "basic" (a 503 here would let the run overwrite the configured environment).
+  if command -v node >/dev/null 2>&1 && [[ "$configured_env" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]]; then
+    guard_rc=0
+    PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
+      node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$configured_env" >/dev/null 2>&1 || guard_rc=$?
+    if [[ "$guard_rc" == 0 ]]; then
+      err "the configured environment $configured_env is a PingID + Privilege environment, and this run would replace it with a basic one."
+      fatal "re-run with --existing-env $configured_env to refresh it (its lab worker secret is re-minted), or --api-create to really switch to a basic environment."
+    elif [[ "$guard_rc" != 1 ]]; then
+      err "could not read the configured environment $configured_env to see whether it has PingID + Privilege (check-env exit $guard_rc), so this run will not risk replacing it."
+      fatal "retry; or re-run with --existing-env $configured_env to refresh it, or --api-create to really switch to a basic environment."
+    fi
   fi
   info "an environment is already configured ($configured_env); pass --existing-env <id> to switch to one you made in the console."
 fi
@@ -467,8 +475,11 @@ ok "worker minted in the new environment"
 # Admin on every environment). Trim it to Identity Data Admin + Environment Admin on this environment only.
 SCRIPT_DIR_ADMIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if command -v node >/dev/null 2>&1; then
+  # A worker with Environment Admin only (it can adopt, not create) passes its organization-wide role on to the worker it makes:
+  # --strict makes a role that could not be removed stop the run, before the secret is written into the settings file.
+  strict_flag=""; if [[ "$needs_org_admin" == 1 ]]; then strict_flag="--strict"; fi
   PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
-    node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" ensure-worker-roles --env "$new_env" --app "$app_id" \
+    node "$SCRIPT_DIR_ADMIN/pingone-admin.mjs" ensure-worker-roles --env "$new_env" --app "$app_id" $strict_flag \
     || fatal "the worker's roles could not be set (see above). The environment $new_env exists; fix the cause and run this script again (it reuses the environment and is safe to repeat)."
   if [[ -n "$ADMIN_USER" ]]; then
     PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \

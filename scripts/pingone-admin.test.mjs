@@ -112,6 +112,15 @@ test('ensureWorkerRoles is idempotent', async () => {
   assert.deepEqual(again.removed, []);
 });
 
+test('ensureWorkerRoles --strict: a role that could not be removed fails the run (the worker would carry an organization-wide role into the settings file)', async () => {
+  const { api } = fakePingOne({ failDelete: true, workerAssignments: [ra('r-ida', 'ENVIRONMENT', ENV, 1), ra('r-env', 'ENVIRONMENT', ENV, 2), ra('r-org', 'ORGANIZATION', 'org-1', 3)] });
+  const r = await ensureWorkerRoles(api, { envId: ENV, appId: WORKER, strict: true });
+  assert.equal(r.ok, false);
+  assert.match(r.errors.join(' '), /still holds Organization Admin@ORGANIZATION:org-1/);
+  const clean = await ensureWorkerRoles(fakePingOne({ workerAssignments: [ra('r-org', 'ORGANIZATION', 'org-1', 1)] }).api, { envId: ENV, appId: WORKER, strict: true });
+  assert.equal(clean.ok, true);   // strict only bites when something is left
+});
+
 test('ensureWorkerRoles: a denied removal is reported in leftover and does not fail the setup', async () => {
   const { api } = fakePingOne({ failDelete: true, workerAssignments: [ra('r-ida', 'ENVIRONMENT', ENV, 1), ra('r-env', 'ENVIRONMENT', ENV, 2), ra('r-org', 'ORGANIZATION', 'org-1', 3)] });
   const r = await ensureWorkerRoles(api, { envId: ENV, appId: WORKER });
@@ -427,10 +436,10 @@ test('setPrivilegeMode refuses a bad mode and an environment without Privilege, 
 });
 
 // ---- check-env: an environment a person made in the console (Workforce, PingID "create new", Privilege) ----
-function envApi({ env = { status: 200, body: { name: 'Demo', type: 'SANDBOX', region: 'NA' } }, products, policies = ['Multi_Factor', 'Single_Factor'] }) {
+function envApi({ env = { status: 200, body: { name: 'Demo', type: 'SANDBOX', region: 'NA' } }, products, policies = ['Multi_Factor', 'Single_Factor'], bomStatus = 200 }) {
   return async (method, p) => {
     if (p === '/environments/e1') return env;
-    if (p === '/environments/e1/billOfMaterials') return { status: 200, body: { products } };
+    if (p === '/environments/e1/billOfMaterials') return { status: bomStatus, body: { products } };
     if (p === '/environments/e1/signOnPolicies') return { status: 200, body: { _embedded: { signOnPolicies: policies.map((name) => ({ name })) } } };
     return { status: 404, body: {} };
   };
@@ -480,8 +489,11 @@ test('checkWorkforceEnv: missing sign-on policies only warn; an unknown environm
   assert.equal(status(r, 'Multi_Factor sign-on policy'), 'WARN');
   assert.equal(status(r, 'Single_Factor sign-on policy'), 'WARN');
   const gone = await checkWorkforceEnv(envApi({ env: { status: 404, body: {} }, products: [] }), { envId: 'e1' });
-  assert.equal(gone.exitCode, 1);
+  assert.equal(gone.exitCode, 2);   // could not read: a caller must not read this as "a basic environment"
   assert.equal(gone.checks.length, 1);
+  assert.match(gone.checks[0].detail, /Environment Admin or Organization Admin/);
+  const noBom = await checkWorkforceEnv(envApi({ products: { message: 'down' }, bomStatus: 503 }), { envId: 'e1' });
+  assert.equal(noBom.exitCode, 2);
 });
 
 test('pingone-setup.sh: adopting a console-made environment skips the license lookup and creation, and never asks without a terminal', () => {
@@ -545,7 +557,7 @@ test('checkWorkforceEnv: only a SANDBOX is accepted (the labs create apps and us
 });
 
 // ---- teardown runs for real against a stubbed curl: an environment with PingID or Privilege is never deleted by accident ----
-function runTeardown({ bom, bomCode = 200, extra = [] }) {
+function runTeardown({ bom, bomCode = 200, extra = [], shellEnv = {} }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'td-'));
   const stub = path.join(dir, 'curl');
   fs.writeFileSync(stub, `#!/usr/bin/env python3
@@ -563,7 +575,7 @@ else: reply('{"name":"Test Env"}', 200)
   const log = path.join(dir, 'calls.log');
   const r = spawnSync('bash', [new URL('./pingone-teardown.sh', import.meta.url).pathname, '--env-id', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', '--yes', '--keep-env-file', ...extra], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_BOM: JSON.stringify(bom), STUB_BOM_CODE: String(bomCode), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.json'), PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_ADMIN_CLIENT_ID: 'c', PINGONE_ADMIN_CLIENT_SECRET: 's' },
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_BOM: JSON.stringify(bom), STUB_BOM_CODE: String(bomCode), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.json'), PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_ADMIN_CLIENT_ID: 'c', PINGONE_ADMIN_CLIENT_SECRET: 's', ...shellEnv },
   });
   const deleted = fs.existsSync(log) && /DELETE/.test(fs.readFileSync(log, 'utf8'));
   return { code: r.status, out: `${r.stdout}${r.stderr}`, deleted };
@@ -590,6 +602,13 @@ test('teardown: --delete-privilege-env lifts the refusal; a basic environment (P
   assert.equal(idNoDeployment.deleted, true);
   const nullDeployment = runTeardown({ bom: { products: [...BASIC.products, { type: 'PING_ONE_ID', subtype: 'WORKFORCE', deployment: null }] } });
   assert.equal(nullDeployment.deleted, true, nullDeployment.out);   // 'deployment: null' is a basic environment, same as the JS check
+});
+
+test('teardown: ALLOW_PRIVILEGE_ENV exported in the caller\'s shell does not lift the refusal; only the flag does', () => {
+  const r = runTeardown({ bom: { products: CONSOLE_MADE }, shellEnv: { ALLOW_PRIVILEGE_ENV: '1' } });
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /Not deleting it/);
+  assert.equal(r.deleted, false);
 });
 
 test('teardown fails closed: an unreadable bill of materials is refused', () => {
@@ -622,7 +641,7 @@ test('pingone-setup.sh: a flagless run on a machine whose configured environment
 });
 
 // ---- setup runs for real against a stubbed curl and node: which worker roles may adopt, and which may create ----
-function runSetup({ roles, args }) {
+function runSetup({ roles, args, configured = '', checkExit = 1 }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'su-'));
   fs.writeFileSync(path.join(dir, 'curl'), `#!/usr/bin/env python3
 import sys, os, json
@@ -634,11 +653,12 @@ elif "/roles/r" in url: print(json.dumps({"name": names[int(url.rsplit("/r", 1)[
 else: print("{}", end="")
 `, { mode: 0o755 });
   // node stands in for pingone-admin.mjs check-env: it records the call and fails, so the run stops right after the gate
-  fs.writeFileSync(path.join(dir, 'node'), '#!/bin/sh\necho "node $*" >> "$STUB_LOG"\nexit 1\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'node'), `#!/bin/sh\necho "node $*" >> "$STUB_LOG"\nexit ${checkExit}\n`, { mode: 0o755 });
+  if (configured) fs.writeFileSync(path.join(dir, 'configured.env'), `PINGONE_ENVIRONMENT_ID=${configured}\n`);
   const log = path.join(dir, 'calls.log');
   const r = spawnSync('bash', [new URL('./pingone-setup.sh', import.meta.url).pathname, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_ROLES: JSON.stringify(roles), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.cred'), ASSUME_YES: '1', PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_WORKER_CLIENT_ID: 'c', PINGONE_WORKER_CLIENT_SECRET: 's' },
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_ROLES: JSON.stringify(roles), STUB_LOG: log, STANDALONE_ENV: path.join(dir, configured ? 'configured.env' : 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.cred'), ASSUME_YES: '1', PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_WORKER_CLIENT_ID: 'c', PINGONE_WORKER_CLIENT_SECRET: 's' },
   });
   return { code: r.status, out: `${r.stdout}${r.stderr}`, checked: fs.existsSync(log) && /check-env/.test(fs.readFileSync(log, 'utf8')) };
 }
@@ -668,4 +688,24 @@ test('setup: Organization Admin passes as before; a worker with neither role is 
   assert.equal(none.code, 1);
   assert.match(none.out, /"Custom Roles Admin, DaVinci Admin": Organization Admin is required/);
   assert.equal(none.checked, false);
+});
+
+test('setup, no flags, an environment already configured: PingID + Privilege stops the run; "could not read" stops it too; a basic environment carries on', () => {
+  const args = [];
+  const yes = runSetup({ roles: ['Organization Admin'], args, configured: ENV_ID, checkExit: 0 });
+  assert.equal(yes.code, 1);
+  assert.match(yes.out, /would replace it with a basic one/);
+  const unknown = runSetup({ roles: ['Organization Admin'], args, configured: ENV_ID, checkExit: 2 });   // a 503 or a network error in check-env
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.out, /could not read the configured environment/);
+  assert.doesNotMatch(unknown.out, /Looking for an active license/);
+  const basic = runSetup({ roles: ['Organization Admin'], args, configured: ENV_ID, checkExit: 1 });   // read fine, no PingID: the old behaviour
+  assert.match(basic.out, /Looking for an active license/);
+  assert.doesNotMatch(basic.out, /would replace it|could not read the configured/);
+});
+
+test('setup: an Environment-Admin-only worker runs ensure-worker-roles with --strict; an Organization Admin worker does not', () => {
+  const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
+  assert.match(sh, /if \[\[ "\$needs_org_admin" == 1 \]\]; then strict_flag="--strict"; fi/);
+  assert.match(sh, /ensure-worker-roles --env "\$new_env" --app "\$app_id" \$strict_flag/);
 });

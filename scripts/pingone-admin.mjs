@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // CLI for the Privilege-in-one-environment setup. See docs/PRIVILEGE-ONE-ENV.md.
-//   pingone-admin.mjs ensure-worker-roles --env <id> --app <workerAppId>      (token: PINGONE_ACCESS_TOKEN, an org admin token)
+//   pingone-admin.mjs ensure-worker-roles --env <id> --app <workerAppId> [--strict]      (--strict: fail if a role could not be removed; token: PINGONE_ACCESS_TOKEN, an org admin token)
 //   pingone-admin.mjs grant-admin --env <id> --admin-env <id> --user <login>  (token: PINGONE_ACCESS_TOKEN, an org admin token)
 //   pingone-admin.mjs privilege-prepare --users a,b [--create-admin LOGIN] [--password-file F] [--dry-run] [--group G]   (the env's own worker, read from the settings file)
 //   pingone-admin.mjs set-privilege-mode --env <id> --mode agent|agentless   (token: PINGONE_ACCESS_TOKEN, an org admin token)
@@ -36,7 +36,7 @@ async function main() {
 
   if (cmd === 'ensure-worker-roles') {
     const api = makeApi({ base, token: need(cfg.PINGONE_ACCESS_TOKEN, 'PINGONE_ACCESS_TOKEN') });
-    const r = await ensureWorkerRoles(api, { envId: need(o.env, '--env'), appId: need(o.app, '--app') });
+    const r = await ensureWorkerRoles(api, { envId: need(o.env, '--env'), appId: need(o.app, '--app'), strict: !!o.strict });
     console.log(`worker roles: added [${r.added.join(', ')}] removed ${r.removed.length} leftover ${r.leftover.length}`);
     r.errors.forEach((e) => console.log(`  WARN ${e}`));
     if (r.leftover.length) console.log(`  The worker still holds ${r.leftover.join(', ')}. Trim them in the console: Environment > Applications > worker > Roles.`);
@@ -76,7 +76,8 @@ async function main() {
   } else if (cmd === 'check-env') {
     const api = makeApi({ base, token: need(cfg.PINGONE_ACCESS_TOKEN, 'PINGONE_ACCESS_TOKEN') });
     const envId = need(o.env, '--env');
-    const r = await checkWorkforceEnv(api, { envId, requirePrivilege: !o['no-privilege'] });
+    let r;
+    try { r = await checkWorkforceEnv(api, { envId, requirePrivilege: !o['no-privilege'] }); } catch (e) { console.error(`error: ${e.message}`); process.exit(2); }   // could not read: not the same as "not ready"
     console.log(`Environment check for ${envId}`);
     show(r.checks.map((c) => [c.status, c.name, c.detail]));
     console.log(r.exitCode === 0 ? 'Environment is ready.' : 'Fix the FAIL lines in the PingOne console, then run this again.');

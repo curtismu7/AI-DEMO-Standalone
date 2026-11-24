@@ -45,6 +45,7 @@ if [[ -f "$CRED_FILE" ]]; then
   set +a
 fi
 
+ALLOW_PRIVILEGE_ENV=""   # only --delete-privilege-env sets it: a value exported in the caller's shell must not switch the protection off
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
@@ -213,9 +214,10 @@ fi
 # The tenant is the source of truth, not a local file: a PingID deployment or the Privilege product means a person set it up.
 # --yes does not lift this: only --delete-privilege-env does. An unreadable bill of materials is refused too (fail closed).
 if [[ -z "${ALLOW_PRIVILEGE_ENV:-}" ]]; then
-  bom_code="$(curl -s --max-time 30 -o /tmp/p1-bom-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")" || bom_code="curl-failed"
-  bom_body="$(cat /tmp/p1-bom-$$ 2>/dev/null || true)"
-  rm -f /tmp/p1-bom-$$
+  bom_file="$(mktemp)"
+  bom_code="$(curl -s --max-time 30 -o "$bom_file" -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")" || bom_code="curl-failed"
+  bom_body="$(cat "$bom_file" 2>/dev/null || true)"
+  rm -f "$bom_file"
   bom_verdict="$(printf '%s' "$bom_body" | python3 -c '
 import sys, json
 try:
