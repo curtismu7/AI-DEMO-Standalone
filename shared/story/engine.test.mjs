@@ -334,3 +334,14 @@ test('numbering: a bubble shows its place among the BUBBLES (the video\'s 1 to N
   await go(r.story.next()); await r.clk.advance(3000);                       // the real-only frame never appears: skipped
   assert.deepEqual([r.story.state().key, r.story.state().kind, r.story.state().n, r.story.state().total], ['closing', 'slide', 2, 2]);
 });
+
+test('the state says what kind of prompt is up: text (press Send) or press (an existing button); none otherwise', async () => {
+  const r = rig({ steps: [
+    { key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input', prompt: { text: 'q' } },
+    { key: 'p_handoff', type: 'bubble', trigger: 'load', target: '#who', prompt: { press: '#who' } },
+    { key: 'closing', type: 'slide', trigger: 'load' }] });
+  await go(r.story.start()); assert.equal(r.story.state().promptKind, 'text');
+  await go(r.story.next()); assert.equal(r.story.state().promptKind, 'press');
+  await go(r.story.next()); assert.equal(r.story.state().promptKind, null);
+});
+

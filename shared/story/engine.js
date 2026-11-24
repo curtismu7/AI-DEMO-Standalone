@@ -45,7 +45,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   const write = (k, v) => { try { if (store) store.setItem(k, v); } catch { /* storage blocked: the choice is kept for this session only */ } };
 
   const st = { active: false, status: 'idle', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false,
-    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, stalledAt: -1 };
+    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, promptKind: null, stalledAt: -1 };
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
   let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let holdSlide = false; let curSecs = 0;
@@ -85,7 +85,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
 
   async function waitFor(s, my, { skipWait }) {
     if (skipWait || s.trigger === 'load' || !s.trigger) return { ok: true };
-    st.status = 'waiting'; st.index = steps.indexOf(s); st.key = s.key; st.isPrompt = false;
+    st.status = 'waiting'; st.index = steps.indexOf(s); st.key = s.key; st.isPrompt = false; st.promptKind = null;
     clearHold(); holdAction = null; holdRemaining = 0;
     overlay.clear();
     if (s.trigger === 'run-done') {
@@ -131,7 +131,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     current = s;
     if (!replay) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
     if (s.prompt && !replay) { marker = safe(() => host.mark(), { runs: 0 }, `"${s.key}": the run counter could not be read`); safe(() => host.prefill(s), undefined, `"${s.key}": the question could not be filled in`); }   // Back never refills a prompt the viewer may have edited
-    st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.stalledAt = -1;
+    st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.promptKind = s.prompt ? (s.prompt.press ? 'press' : 'text') : null; st.stalledAt = -1;
     st.kind = s.type; st.n = shown.slice(0, st.pos + 1).filter((i) => isBubble(steps[i])).length; st.total = shown.filter((i) => isBubble(steps[i])).length + remainingAfter(shown[shown.length - 1]);
     if (s.type === 'slide') {
       overlay.slide({ ...cap, image: cap.image && host.assetUrl ? host.assetUrl(cap.image) : null });
@@ -197,14 +197,14 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
 
   function finish() {
     clearHold(); overlay.clear(); stopPlay();
-    st.status = 'done'; st.message = 'End of the story.'; st.isPrompt = false; emit();
+    st.status = 'done'; st.message = 'End of the story.'; st.isPrompt = false; st.promptKind = null; emit();
   }
 
   // ---- the viewer's controls
   async function start() {
     gen += 1; clearHold(); await leave(); overlay.clear();
     shown = []; marker = null; passed = new Set();
-    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, stalledAt: -1 });
+    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, promptKind: null, stalledAt: -1 });
     emit();
     return advance(0);
   }

@@ -241,6 +241,18 @@ describe("StoryBar", () => {
     act(() => s.set({ paused: true })); fireEvent.click(screen.getByTestId("story-play")); expect(s.calls.at(-1)[0]).toBe("resume");
   });
 
+  test("waiting on the viewer: the message says it is their turn and is marked for the red slow blink; not while a run is in flight or Play is playing", () => {
+    const s = fakeStory({ kind: "bubble", isPrompt: true, promptKind: "text" }); render(<StoryBar story={s} />);
+    const msg = screen.getByTestId("story-msg");
+    expect(msg).toHaveTextContent("Your turn: press Send, then Next"); expect(msg).toHaveAttribute("data-your-turn", "true");
+    act(() => s.set({ promptKind: "press" })); expect(msg).toHaveTextContent("Your turn: press the highlighted button, then Next");
+    act(() => s.set({ playing: true })); expect(msg).not.toHaveAttribute("data-your-turn");               // Play presses Send for them
+    act(() => s.set({ playing: false, status: "waiting", promptKind: null, isPrompt: false })); expect(msg).not.toHaveAttribute("data-your-turn");   // waiting on the run
+    act(() => s.set({ status: "stalled", message: "The run did not finish in time. Press Next to carry on, or Exit." }));
+    expect(msg).toHaveAttribute("data-your-turn", "true"); expect(msg).toHaveTextContent("Press Next to carry on");
+    act(() => s.set({ status: "showing", kind: "bubble", n: 3, total: 9, message: "" })); expect(msg).not.toHaveAttribute("data-your-turn"); expect(msg).toHaveTextContent("3 of 9");
+  });
+
   test("a slide is labelled Slide (it has no number); a bubble shows its number among the bubbles", () => {
     const s = fakeStory({ kind: "slide", n: 2, total: 27 }); render(<StoryBar story={s} />);
     expect(screen.getByTestId("story-msg")).toHaveTextContent("Slide"); expect(screen.getByTestId("story-msg")).not.toHaveTextContent("of 27");
