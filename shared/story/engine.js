@@ -18,7 +18,9 @@
 //     tab, before, after,  // host.switchTab(tab); before(): may open a pop-out (may be async); after(): closes it when the step is left
 //     transform }      // (slide, mode) => slide : a last tweak to a slide's wording
 // host: { mode(), query(selector) -> Element|null, mark(), waitForRun(marker, timeoutMs) -> Promise<{ok, reason?}>, prefill(step), send(step), switchTab(tab), assetUrl(name),
-//         runStarted(marker) -> boolean }   runStarted (optional, recommended): true when a run began since mark(), so Play never sends a question the viewer already sent
+//         runStarted(marker) -> boolean, runInFlight() -> boolean, onRun(cb) -> unsubscribe }   runInFlight/onRun (optional, recommended): let the wait for a run say whose turn it is (
+//         nothing running = the viewer's: press Send) and accept a result the page already shows when the viewer sent the question early
+//           runStarted (optional, recommended): true when a run began since mark(), so Play never sends a question the viewer already sent
 
 import { bubbleHold, slideHold, holdMs, speedFactor, SPEED_NAMES } from './hold.js';
 
@@ -45,7 +47,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   const write = (k, v) => { try { if (store) store.setItem(k, v); } catch { /* storage blocked: the choice is kept for this session only */ } };
 
   const st = { active: false, status: 'idle', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false,
-    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, promptKind: null, stalledAt: -1 };
+    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, promptKind: null, waitingOn: null, stalledAt: -1 };
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
   let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let holdSlide = false; let curSecs = 0;
@@ -89,9 +91,22 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     clearHold(); holdAction = null; holdRemaining = 0;
     overlay.clear();
     if (s.trigger === 'run-done') {
-      st.message = 'Waiting for the run to finish. Press Send if you have not.'; emit();
+      const inFlight = () => safe(() => !!(host.runInFlight && host.runInFlight()), false);
+      const started = () => safe(() => !!(host.runStarted && host.runStarted(marker)), false);
+      // The viewer sent the question before this step (or before a reload) and its result is already on the page, with nothing running: show it, do not wait for another run.
+      if (host.runInFlight && !inFlight() && !started() && targetOf(s)) return { ok: true };
+      // Say who we are waiting on, and keep saying it truthfully as a run starts and ends: nothing running is the VIEWER's turn (press Send); a run in flight is the run's.
+      const say = () => {
+        const viewer = host.runInFlight ? !inFlight() && !started() : false;
+        st.waitingOn = host.runInFlight ? (viewer ? 'viewer' : 'run') : null;
+        st.message = !host.runInFlight ? 'Waiting for the run to finish. Press Send if you have not.' : viewer ? 'Your turn: press Send for the question above; the story carries on when the answer is in.' : 'Waiting for the run to finish.';
+        emit();
+      };
+      say();
+      const off = safe(() => (host.onRun ? host.onRun(() => { if (my === gen && st.status === 'waiting') say(); }) : null), null);
       let r;
       try { r = await host.waitForRun(marker, waitTimeoutMs); } catch { r = { ok: false, reason: 'The run could not be checked. Press Next to carry on, or Exit.' }; }
+      finally { if (typeof off === 'function') safe(off, undefined); st.waitingOn = null; }
       return my === gen ? r : { ok: false, stale: true };
     }
     // 'frame': poll for the target. A target that never appears means the step does not apply to this run: it is skipped, not an error.

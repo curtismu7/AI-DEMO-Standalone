@@ -345,3 +345,36 @@ test('the state says what kind of prompt is up: text (press Send) or press (an e
   await go(r.story.next()); assert.equal(r.story.state().promptKind, null);
 });
 
+
+// ---- the wait for a run says whose turn it is, and accepts a result the page already shows (owner report 2026-11-24: "the run did finish" but Story still waited)
+function withRunState(r) {
+  const subs = new Set();
+  r.host.runInFlight = () => r.host.starts > r.host.runs;
+  r.host.onRun = (cb) => { subs.add(cb); return () => subs.delete(cb); };
+  r.startRun = () => { r.host.starts += 1; subs.forEach((f) => f()); };
+  r.endRun = (ok = true) => { r.host.finishRun(ok); subs.forEach((f) => f()); };
+  return r;
+}
+
+test('nothing running at a wait is the viewer\'s turn (press Send); when their run starts the bar says it is waiting on the run; then the step shows', async () => {
+  const r = withRunState(rig({ present: ['#input'] })); await go(r.story.start()); await go(r.story.next()); await go(r.story.next());   // no handoff on the page yet
+  let s = r.story.state(); assert.equal(s.status, 'waiting'); assert.equal(s.waitingOn, 'viewer'); assert.match(s.message, /Your turn: press Send/);
+  r.startRun(); await tick();
+  s = r.story.state(); assert.equal(s.waitingOn, 'run'); assert.equal(s.message, 'Waiting for the run to finish.');
+  r.here.add('#who'); r.endRun(); await tick(); await tick();   // the run's handoff appears as it ends
+  assert.equal(r.story.state().key, 'p_handoff'); assert.equal(r.story.state().waitingOn, null);
+});
+
+test('regression: a question sent BEFORE the prompt step (or before a reload) whose result is already on the page is shown at once, not waited for again', async () => {
+  const r = withRunState(rig()); await go(r.story.start());
+  r.startRun(); r.endRun();                          // the viewer asked early, on the opening slide; the handoff is on the page
+  await go(r.story.next()); await go(r.story.next()); await tick();
+  assert.equal(r.story.state().key, 'p_handoff', 'no second run is needed');
+});
+
+test('a wait whose result is NOT on the page yet still waits, even with nothing running (the reload case: the page is empty)', async () => {
+  const r = withRunState(rig({ present: ['#input'] })); await go(r.story.start());
+  r.startRun(); r.endRun();
+  await go(r.story.next()); await go(r.story.next()); await tick();
+  assert.equal(r.story.state().status, 'waiting'); assert.equal(r.story.state().waitingOn, 'viewer');
+});

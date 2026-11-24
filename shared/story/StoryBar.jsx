@@ -39,7 +39,7 @@ export default function StoryBar({ story, mock = false, isManual = trusted }) {
   const done = s.status === "done";
   // Waiting on the VIEWER (not on a run): a prompt step that is up and not being played for them, or a run that failed and needs Next. The message turns bright red and
   // blinks slowly (story.css; no blink under reduced motion) so a presenter cannot miss that it is their turn.
-  const yourTurn = s.status === "stalled" || (s.status === "showing" && !!s.promptKind && !s.playing);
+  const yourTurn = s.status === "stalled" || (s.status === "showing" && !!s.promptKind && !s.playing) || (s.status === "waiting" && s.waitingOn === "viewer");
   const turnText = s.promptKind === "press" ? "Your turn: press the highlighted button, then Next" : "Your turn: press Send, then Next";
   return (
     <div className="story-bar" ref={bar} role="region" aria-label="Story controls" data-testid="story-bar" data-status={s.status}>

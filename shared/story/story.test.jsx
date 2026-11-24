@@ -251,6 +251,9 @@ describe("StoryBar", () => {
     act(() => s.set({ status: "stalled", message: "The run did not finish in time. Press Next to carry on, or Exit." }));
     expect(msg).toHaveAttribute("data-your-turn", "true"); expect(msg).toHaveTextContent("Press Next to carry on");
     act(() => s.set({ status: "showing", kind: "bubble", n: 3, total: 9, message: "" })); expect(msg).not.toHaveAttribute("data-your-turn"); expect(msg).toHaveTextContent("3 of 9");
+    act(() => s.set({ status: "waiting", waitingOn: "viewer", promptKind: null, message: "Your turn: press Send for the question above; the story carries on when the answer is in." }));
+    expect(msg).toHaveAttribute("data-your-turn", "true");                                                   // waiting on the viewer: their turn
+    act(() => s.set({ waitingOn: "run", message: "Waiting for the run to finish." })); expect(msg).not.toHaveAttribute("data-your-turn");
   });
 
   test("a slide is labelled Slide (it has no number); a bubble shows its number among the bubbles", () => {
