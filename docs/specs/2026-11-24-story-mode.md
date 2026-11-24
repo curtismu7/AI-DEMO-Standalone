@@ -1,6 +1,6 @@
 # Story mode spec
 
-**Status:** agreed (docs part built)   **Owner:** Curtis Muir (decides)
+**Status:** agreed (docs part built; amended 2026-11-24 for Play for me, speed, live observability and shared code)   **Owner:** Curtis Muir (decides)
 
 ## Goal
 Any Ping demo can offer a **Story** mode: a guided walk-through of the live app with numbered pop-up bubbles and slides, paced by the viewer (Next, Back, Exit). The demo's recorded video uses the same overlay and the same wording, so the two cannot drift apart. This turn delivers the pattern only: a skill, a canonical doc and a memory pointer. No demo code changes.
@@ -8,6 +8,13 @@ Any Ping demo can offer a **Story** mode: a guided walk-through of the live app 
 ## Decisions (answered by the owner, 2026-11-24)
 - **Shared code is a vendored copy**, canonical in `shared/story/` of AI-DEMO-Standalone, copied byte-for-byte into each lab and pinned, the way `shared/gateway-real` is.
 - **Scope now:** skill, doc and memory only. Each demo gets its own PR, after the owner approves that demo.
+
+### Amendments (owner, 2026-11-24, while building the first lab: A2A)
+- **Play for me is in** (not "later"): optional auto-play that sends the pre-filled prompt and advances on holds. Next/Back stays untimed.
+- **Speed: slower / normal / faster, plus Pause.** Normal is an exact match of the video (`max(5.0, words x 0.30 + 2.2)` per bubble, or the step's fixed `secs`; `min(10.0, max(6.0, words x 0.25 + 3.0))` per slide). Slower x1.5, faster x0.67. One shared hold function (`shared/story/hold.js`); a test compares it to the video's formula.
+- **Observability slide = the live Run Observability panel**, not a captured image.
+- **Screenshots: unchanged.** None are committed; slides are text-only unless a local gitignored `assets/` folder is supplied.
+- **The shared code is built first, in `shared/story/`** (overlay, toggle, parser, engine, hold function), then vendored and pinned into the lab. `take.py` switches to it in the lab's last PR.
 
 ## Acceptance criteria (each one a check)
 1. **Skill:** `~/.claude/skills/story-mode/SKILL.md` exists, and the Skill tool lists `story-mode`. Check: `Skill(story-mode)` loads the file. The skill's steps cover both "add to an existing demo" and "new demo".
@@ -28,8 +35,7 @@ Any Ping demo can offer a **Story** mode: a guided walk-through of the live app 
 
 ## Out of scope
 - Applying Story mode to any demo (separate PRs, one per demo, after approval).
-- An auto-play "Play for me" mode (possible later).
-- Changes to any demo's `take.py` or video pipeline.
+- Changes to any demo's `take.py` or video pipeline (a demo's own PR does that, last).
 - A published npm package.
 
 ## Protected / must not break
@@ -53,4 +59,4 @@ Docs part, built 2026-11-24:
 - Criterion 4, memory: `story-mode.md` written, pointer added to `MEMORY.md`. Pass.
 - Criterion 5, public-safe: grep for hostnames, tenant ids, keys and UUIDs finds nothing in the doc or the skill. The only hit is this spec quoting the grep patterns. Pass.
 - Criterion 6, traceable: each rule in the doc maps to the pasted plan or the owner's answers (toggle default, lazy load, storage, Mock/Real independence, one overlay and one parser, parity test, viewer pacing, prompt "press Send", missing-target skip, live values, simulated Mock, public-safe slides, browser check sizes). Added from owner standards, not the plan: the 40-word slide limit and the 10 s hold (video standards), and the tier rule (global rule 12). Nothing else added. Pass.
-Not built yet: the shared code, the toggle, the parser and the parity test. Those are the first implementation PR, after the owner approves.
+Not built yet at this point: the shared code, the toggle, the parser, the parity test, Play for me and the hold function. They are built in the PRs `feat/story-engine` (AI-DEMO-Standalone) and `feat/story-mode` (A2A lab), after the owner approves.
