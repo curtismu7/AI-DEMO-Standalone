@@ -228,6 +228,12 @@ describe("StoryBar", () => {
     act(() => s.set({ paused: true })); fireEvent.click(screen.getByTestId("story-play")); expect(s.calls.at(-1)[0]).toBe("resume");
   });
 
+  test("a slide is labelled Slide (it has no number); a bubble shows its number among the bubbles", () => {
+    const s = fakeStory({ kind: "slide", n: 2, total: 27 }); render(<StoryBar story={s} />);
+    expect(screen.getByTestId("story-msg")).toHaveTextContent("Slide"); expect(screen.getByTestId("story-msg")).not.toHaveTextContent("of 27");
+    act(() => s.set({ kind: "bubble", n: 3 })); expect(screen.getByTestId("story-msg")).toHaveTextContent("3 of 27");
+  });
+
   test("Next is disabled while a run is in flight and Back at the first step", () => {
     const s = fakeStory({ status: "waiting", canNext: false, canBack: false }); render(<StoryBar story={s} />);
     expect(screen.getByTestId("story-next")).toBeDisabled(); expect(screen.getByTestId("story-back")).toBeDisabled();
