@@ -5,7 +5,7 @@ This puts Cribl Stream at that URL. Cribl masks secrets in the events, then alwa
 in the same Elasticsearch (`elasticsearch-siem`, namespace `ping-devops-curtismuir`, context `us`).
 
 ```text
-Privilege cloud --HTTPS, basic auth--> cmuir-cribl.ping-devops.com --> Cribl (in_elastic -> siem_mask -> es_siem) --> elasticsearch-siem:9200
+Privilege cloud --HTTPS (Basic or ApiKey)--> cmuir-cribl.ping-devops.com --> nginx (checks the credential) --> Cribl on 127.0.0.1:9201 (in_elastic -> siem_mask -> es_siem) --> elasticsearch-siem:9200
 ```
 
 ## Credentials
@@ -15,6 +15,7 @@ Two separate logins, each in its own Secret in `ping-devops-curtismuir` (created
 | Secret | Used for | Keys |
 |---|---|---|
 | `cribl-siem-privilege-login` | What the **Privilege SIEM form** signs in to Cribl with (Username and password) | `username` (`privilege`), `password` (random) |
+| `cribl-siem-privilege-apikey` | What the Privilege SIEM form sends when Authentication is **API key** (`Authorization: ApiKey <value>`; paste the value into the form's API Key field) | `username` (`apikey`), `password` (the key, base64-style like an Elastic "encoded" key) |
 | `cribl-siem-admin` | Cribl's admin **UI** login (port-forward only; applied by the `set-admin-password` sidecar) | `username` (`admin`), `password` (random) |
 | `cribl-siem-es-writer` | What **Cribl** signs in to Elasticsearch with: user `cribl_siem`, role `privilege_siem_writer` (write on `ping-siem-events*`, cluster `monitor`, no read) | `username`, `password` (random) |
 
@@ -81,6 +82,15 @@ Create the Secret once, by hand, before deploying: `kubectl -n ping-devops-curti
    `GET /ping-siem-events-v2/_search?size=3&sort=@timestamp:desc`. The `cribl_siem` user itself is write-only, so it cannot read.
 4. In the newest event, `Data` must show `***` for any password, key or token, and the event has `cribl_pipe: siem_mask`.
 5. Cribl's own view: `kubectl --context us -n ping-devops-curtismuir logs deploy/cribl-siem -c cribl | grep "Destination failed"` prints nothing when writes succeed.
+
+## Basic or API key
+
+The SIEM form offers both. Cribl's Elasticsearch source accepts only one auth mode and refuses the `ApiKey` scheme (it takes `Bearer <token>` or a bare token), so an `auth-proxy` nginx container in the same pod checks the credential
+(`config/nginx.conf.tpl`: `Basic` = the `cribl-siem-privilege-login` pair, `ApiKey` = `cribl-siem-privilege-apikey`) and Cribl listens on 127.0.0.1:9201 with no auth of its own. Both modes reach the same pipeline and index.
+Copy the key to the clipboard without printing it:
+`kubectl --context us -n ping-devops-curtismuir get secret cribl-siem-privilege-apikey -o jsonpath='{.data.password}' | base64 -d | pbcopy`
+Create the Secret once, by hand, before deploying: `kubectl -n ping-devops-curtismuir create secret generic cribl-siem-privilege-apikey --from-literal=username=apikey --from-literal=password="$(printf 'cribl-siem:%s' "$(openssl rand -hex 24)" | base64 | tr -d '\n')"`.
+Verified (local test and live): no credential, wrong password, wrong key and `Bearer <key>` are all 401; Basic and ApiKey are 200 and both writes arrive masked. Not yet verified: what Privilege itself sends in API-key mode (expected `ApiKey`, the Elastic standard).
 
 ## Roll back
 

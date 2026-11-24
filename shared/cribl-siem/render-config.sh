@@ -1,11 +1,12 @@
 #!/bin/sh
 # Builds Cribl's local config from /cfg (files) and the environment (secrets), into $CRIBL_LOCAL.
 # Runs as the pod's init container; test/run-local.sh runs the same script, so the test covers it.
-# Env: IN_USER IN_PASS (what Privilege sends), OUT_USER OUT_PASS and ES_URL (where Cribl writes).
+# Env: IN_USER IN_PASS (Privilege's basic login) and IN_APIKEY (Privilege's API key), OUT_USER OUT_PASS and ES_URL (where Cribl writes).
+# Also writes nginx's default.conf into $NGINX_CONF (default /nginx-conf).
 set -eu
 CFG=${CFG:-/cfg}
 OUT=${CRIBL_LOCAL:-/opt/cribl/local}/cribl
-for v in IN_USER IN_PASS OUT_USER OUT_PASS ES_URL; do
+for v in IN_USER IN_PASS IN_APIKEY OUT_USER OUT_PASS ES_URL; do
   eval "[ -n \"\${$v:-}\" ]" || { echo "missing env $v" >&2; exit 1; }
 done
 mkdir -p "$OUT/pipelines/siem_mask"
@@ -30,4 +31,14 @@ render() {
 render "$CFG/inputs.yml.tpl"  > "$OUT/inputs.yml"
 render "$CFG/outputs.yml.tpl" > "$OUT/outputs.yml"
 chmod 600 "$OUT/inputs.yml" "$OUT/outputs.yml"
+
+# nginx: the basic credential is compared as the base64 of user:password, the API key as given. The API key must be base64-style
+# (letters, digits, + / = - _) so it can sit inside the nginx map; the Secret is generated that way.
+case "$IN_APIKEY" in *[!A-Za-z0-9+/=_-]*) echo "IN_APIKEY has characters outside A-Za-z0-9+/=_-" >&2; exit 1;; esac
+NGINX_CONF=${NGINX_CONF:-/nginx-conf}; mkdir -p "$NGINX_CONF"
+BASIC=$(printf '%s:%s' "$IN_USER" "$IN_PASS" | base64 | tr -d '\n')
+awk -v basic="$BASIC" -v key="$IN_APIKEY" '
+  function sub1(line, k, val,   i) { while ((i = index(line, k)) > 0) line = substr(line, 1, i - 1) val substr(line, i + length(k)); return line }
+  { l = sub1($0, "__BASIC__", basic); l = sub1(l, "__APIKEY__", key); print l }' "$CFG/nginx.conf.tpl" > "$NGINX_CONF/default.conf"
+chmod 600 "$NGINX_CONF/default.conf"
 echo "cribl config rendered into $OUT"
