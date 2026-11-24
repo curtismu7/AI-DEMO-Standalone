@@ -229,8 +229,12 @@ if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && -n "$configured_env" ]]; then
   # Never fall through to a basic environment when the configured one has PingID and Privilege: every lab would silently lose them.
   # (Quiet check: exit 0 means PingID Workforce with its deployment, Privilege and a SANDBOX.)
   # Exit 0 = PingID + Privilege; 1 = read fine, not one (a basic environment); anything else = could not tell, which must not
-  # be treated as "basic" (a 503 here would let the run overwrite the configured environment).
-  if command -v node >/dev/null 2>&1 && [[ "$configured_env" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]]; then
+  # be treated as "basic" (a 503 here would let the run overwrite the configured environment). The same goes for a check that
+  # cannot run at all (no node, or an id that is not an environment id, e.g. a hand-edited line): fail closed, never fall through.
+  if ! command -v node >/dev/null 2>&1 || ! [[ "$configured_env" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]]; then
+    err "PINGONE_ENVIRONMENT_ID in $ENV_FILE is set (\"$configured_env\") but it cannot be checked for PingID + Privilege (node missing, or the value is not an environment id), so this run will not risk replacing it."
+    fatal "install Node 26 or fix the line; or re-run with --existing-env <id>, or --api-create to really switch to a basic environment."
+  else
     guard_rc=0
     PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
       node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$configured_env" >/dev/null 2>&1 || guard_rc=$?
@@ -263,9 +267,19 @@ if [[ -n "$ADOPT_ENV" ]]; then
   [[ "$ADOPT_ENV" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]] || fatal "\"$ADOPT_ENV\" is not an environment ID (expected 8-4-4-4-12 hex, from the console URL)."
   command -v node >/dev/null 2>&1 || fatal "node is required to check the environment (Node 26, see the README)."
   info "Checking the environment you made in the console..."
-  PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
-    node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$ADOPT_ENV" \
-    || fatal "that environment is not ready for PingID + Privilege (see the FAIL lines above). Fix it in the console, or re-run with --api-create for a basic environment."
+  # Kept so the closing steps can say what check-env saw (is Privilege already in agent mode?).
+  check_rc=0
+  check_out="$(PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
+    node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$ADOPT_ENV" 2>&1)" || check_rc=$?
+  printf '%s\n' "$check_out"
+  if [[ "$check_rc" == 2 ]]; then
+    # 2 = could not read it (a wrong id or region, or a worker that cannot see it): not a defect of the environment.
+    fatal "could not read that environment (see above). Check the id, the region and that the worker can see it (Environment Admin or Organization Admin)."
+  elif [[ "$check_rc" != 0 ]]; then
+    fatal "that environment is not ready for PingID + Privilege (see the FAIL lines above). Fix it in the console, or re-run with --api-create for a basic environment."
+  fi
+  privilege_in_agent_mode=0
+  printf '%s\n' "$check_out" | grep -E 'PASS +Privilege' | grep -Eq 'AUTHENTICATION_MODE_AGENT($|[^A-Za-z_])' && privilege_in_agent_mode=1
   new_env="$ADOPT_ENV"
   reuse_answer="r"   # find the lab worker if an earlier run made one, instead of making a second
   ok "adopting environment $new_env (no license lookup, no environment created). Next: the lab worker is found or created here, and an existing one has its secret re-minted: its old secret stops working."
@@ -446,9 +460,31 @@ roles = d if isinstance(d, list) else d.get("_embedded", {}).get("roles", [])
 print(next((r["id"] for r in roles if r.get("name") == "Identity Data Admin"), ""))' 2>/dev/null || true)"
 [[ -z "$role_id" ]] && { err "could not resolve the Identity Data Admin role id:"; printf '%s\n' "$roles_json" >&2; exit 1; }
 # Role assignment is /roleAssignments with an explicit scope (/roles 403s — measured).
-assign="$(curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/roleAssignments" \
+assign_role() {
+  curl -s --max-time 30 -X POST "$api/environments/$new_env/applications/$app_id/roleAssignments" \
     -H "authorization: Bearer $access" -H 'content-type: application/json' \
-    -d '{"role":{"id":"'"$role_id"'"},"scope":{"id":"'"$new_env"'","type":"ENVIRONMENT"}}')"
+    -d '{"role":{"id":"'"$role_id"'"},"scope":{"id":"'"$new_env"'","type":"ENVIRONMENT"}}'
+}
+assign="$(assign_role)"
+# Right after the app is created its inherited roles arrive asynchronously, and PingOne can answer 400 INVALID_DATA once
+# (measured 2026-11-24 on probe apps). Look at the app's roles again: if the role is there, it is done; otherwise assign it
+# once more. Any other error is not retried.
+if printf '%s' "$assign" | grep -q 'INVALID_DATA'; then
+  info "role assignment answered INVALID_DATA right after the app was created — checking the app's roles and trying once more"
+  sleep "${STANDALONE_ROLE_RETRY_SECONDS:-2}"
+  held_json="$(curl -s --max-time 30 "$api/environments/$new_env/applications/$app_id/roleAssignments" -H "authorization: Bearer $access")"
+  if printf '%s' "$held_json" | ROLE_ID="$role_id" python3 -c '
+import sys, json, os
+try:
+    held = json.load(sys.stdin).get("_embedded", {}).get("roleAssignments", [])
+except Exception:
+    held = []
+sys.exit(0 if any(a.get("role", {}).get("id") == os.environ["ROLE_ID"] for a in held) else 1)' 2>/dev/null; then
+    assign='{"code":"UNIQUENESS_VIOLATION"}'
+  else
+    assign="$(assign_role)"
+  fi
+fi
 if printf '%s' "$assign" | grep -q 'UNIQUENESS_VIOLATION'; then
   info "role already assigned — continuing"
 elif printf '%s' "$assign" | grep -q '"code"'; then
@@ -515,7 +551,7 @@ except Exception:
     apps = []
 print(apps[0]["id"] if apps else "")' 2>/dev/null || true)"
   if [[ -n "$user_app_id" ]]; then
-    warn "user app exists from a previous run; PINGONE_USER_CLIENT_SECRET not refreshed — reset it in the PingOne console if the lab's sign-in fails."
+    warn "user app exists from a previous run; its secret cannot be minted again, so PINGONE_USER_CLIENT_ID/SECRET are not written (an earlier run's pair for this same environment is kept; one for another environment is dropped) — reset the secret in the PingOne console if the lab's sign-in fails."
   else
     warn "user app creation failed — pi.flow sign-in labs will fall back to their own configuration"
     printf '%s\n' "$user_app_json" | sed -E 's/("secret")[^,}]*/\1:<redacted>/' >&2
@@ -555,10 +591,15 @@ import sys
 main, update = sys.argv[1], sys.argv[2]
 fresh = dict(line.split("=", 1) for line in open(update).read().splitlines() if "=" in line)
 kept = {}
-for line in open(main).read().splitlines():
+lines = open(main).read().splitlines()
+old_env = next((l.split("=", 1)[1].strip().strip("\"'") for l in lines if l.startswith("PINGONE_ENVIRONMENT_ID=")), "")
+# The user app belongs to one environment. When this run moves to another one and could not write that environment's pair
+# (the secret of an existing app cannot be minted again), the old pair must not stay beside the new environment id.
+switched = bool(old_env) and old_env != fresh.get("PINGONE_ENVIRONMENT_ID", old_env)
+for line in lines:
     if "=" in line and not line.lstrip().startswith("#"):
         k, v = line.split("=", 1)
-        if k not in fresh:
+        if k not in fresh and not (switched and k.startswith("PINGONE_USER_")):
             kept[k] = line
 with open(main, "w") as f:
     f.write("# Standalone labs shared settings (merged by scripts/pingone-setup.sh).\n")
@@ -609,7 +650,11 @@ if [[ -n "$ADOPT_ENV" ]]; then
   echo "    1. Run:  node scripts/pingone-admin.mjs privilege-prepare --create-admin <your login> --users demouser,demoAdmin"
   echo "       (creates your admin as a user inside this environment, which the Privilege console requires)."
   echo "    2. In the console, as the login that added Privilege: Users → your admin → Roles → PingOne Privilege Administrator."
-  echo "    3. Need the local desktop agent? Then set-privilege-mode --mode agent (Privilege was added agentless on purpose)."
+  if [[ "${privilege_in_agent_mode:-0}" == 1 ]]; then
+    echo "    3. Privilege is already in agent mode (the local desktop agent can pair); nothing to switch."
+  else
+    echo "    3. Need the local desktop agent? Then node scripts/pingone-admin.mjs set-privilege-mode --env $new_env --mode agent (Privilege is not in agent mode yet)."
+  fi
   echo "    4. Pair a phone with PingID for each approver before any MFA is switched on."
 else
   echo "  This basic environment has no PingID and no Privilege. To run them, create a new environment in the console"

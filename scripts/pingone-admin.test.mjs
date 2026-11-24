@@ -711,6 +711,142 @@ test('setup: an Environment-Admin-only worker runs ensure-worker-roles with --st
   assert.match(sh, /ensure-worker-roles --env "\$new_env" --app "\$app_id" \$strict_flag/);
 });
 
+// ---- review of 52b4ff5 + the two open items (2026-11-24): a whole adopt run against a stubbed curl and node ----
+// curl is an in-memory PingOne for the routes the script uses; node stands in for pingone-admin.mjs (check-env prints
+// STUB_CHECK_OUT and exits STUB_CHECK_RC; every other command succeeds). Nothing here touches a real environment.
+function runAdopt({ assign = 'ok', checkOut = '  PASS  Privilege — AUTHENTICATION_MODE_AGENTLESS', checkRc = 0, userExists = false, settings = '', args = ['--existing-env', ENV_ID], noNode = false, extraEnv = {} } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ad-'));
+  fs.writeFileSync(path.join(dir, 'curl'), `#!/usr/bin/env python3
+import sys, os, json
+a = sys.argv[1:]
+url = next((x for x in a if x.startswith("http")), "")
+method = a[a.index("-X") + 1] if "-X" in a else "GET"
+data = a[a.index("-d") + 1] if "-d" in a else ""
+open(os.environ["STUB_LOG"], "a").write(method + " " + url + "\\n")
+mode = os.environ["STUB_ASSIGN"]
+posts_file = os.environ["STUB_LOG"] + ".posts"
+def posts(): return int(open(posts_file).read()) if os.path.exists(posts_file) else 0
+def out(o): print(json.dumps(o), end="")
+if url.endswith("/as/token"): out({"access_token": "tok"})
+elif "/applications/c/roleAssignments" in url: out({"_embedded": {"roleAssignments": [{"role": {"id": "r0"}, "scope": {"type": "ORGANIZATION"}}]}})
+elif "/roles/r0" in url: out({"name": "Organization Admin"})
+elif "/roles?filter" in url: out({"_embedded": {"roles": [{"id": "r-ida", "name": "Identity Data Admin"}]}})
+elif url.endswith("/applications/wk1/roleAssignments"):
+    if method == "POST":
+        n = posts() + 1; open(posts_file, "w").write(str(n))
+        if mode == "denied": out({"code": "ACCESS_FAILED"})
+        elif mode == "always-invalid" or (mode in ("race", "race-listed") and n == 1): out({"code": "INVALID_DATA"})
+        else: out({"id": "ra1"})
+    else:
+        out({"_embedded": {"roleAssignments": [{"role": {"id": "r-ida"}}] if mode == "race-listed" and posts() >= 1 else []}})
+elif "/applications?filter" in url: out({"_embedded": {"applications": [{"id": "ua-old"}] if "User" in url and os.environ.get("STUB_USER_EXISTS") else []}})
+elif method == "POST" and url.endswith("/applications"):
+    if "Labs Worker" in data: out({"id": "wk1"})
+    elif os.environ.get("STUB_USER_EXISTS"): out({"code": "UNIQUENESS_VIOLATION"})
+    else: out({"id": "ua1"})
+elif method == "POST" and url.endswith("/secret"): out({"secret": "user-secret" if "/ua1/" in url else "worker-secret" if "/wk1/" in url else ""})
+else: print("{}", end="")
+`, { mode: 0o755 });
+  if (!noNode) fs.writeFileSync(path.join(dir, 'node'), `#!/bin/sh\necho "node $*" >> "$STUB_LOG"\nif [ "$2" = check-env ]; then printf '%s\\n' "$STUB_CHECK_OUT"; exit "$STUB_CHECK_RC"; fi\nexit 0\n`, { mode: 0o755 });
+  const envFile = path.join(dir, 'settings.env');
+  if (settings) fs.writeFileSync(envFile, settings);
+  const log = path.join(dir, 'calls.log');
+  const r = spawnSync('bash', [new URL('./pingone-setup.sh', import.meta.url).pathname, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: noNode ? `${dir}:/usr/bin:/bin` : `${dir}:${process.env.PATH}`, STUB_ROLES: '[]', STUB_LOG: log, STUB_ASSIGN: assign, STUB_CHECK_OUT: checkOut, STUB_CHECK_RC: String(checkRc), ...(userExists ? { STUB_USER_EXISTS: '1' } : {}), STANDALONE_ENV: envFile, STANDALONE_CRED_FILE: path.join(dir, 'cred.txt'), STANDALONE_ROLE_RETRY_SECONDS: '0', ASSUME_YES: '1', PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_WORKER_CLIENT_ID: 'c', PINGONE_WORKER_CLIENT_SECRET: 's', ...extraEnv },
+  });
+  const calls = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
+  return { code: r.status, out: `${r.stdout}${r.stderr}`, calls, assignPosts: (calls.match(/^POST \S+\/applications\/wk1\/roleAssignments$/gm) || []).length, settings: fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8') : '' };
+}
+
+test('adopt: a 400 INVALID_DATA on the role assignment right after creating the app is retried once, and the run goes on', () => {
+  const r = runAdopt({ assign: 'race' });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(r.assignPosts, 2);
+  assert.match(r.calls, /GET \S+\/applications\/wk1\/roleAssignments$/m, 'the app\'s roles are listed again before the retry');
+  assert.match(r.settings, /^PINGONE_WORKER_CLIENT_ID=wk1$/m);
+});
+
+test('adopt: if the role shows up when the roles are listed again, it is a success and is not assigned a second time', () => {
+  const r = runAdopt({ assign: 'race-listed' });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(r.assignPosts, 1);
+});
+
+test('adopt: the role assignment is retried once and no more; any other error is not retried', () => {
+  const twice = runAdopt({ assign: 'always-invalid' });
+  assert.equal(twice.code, 1);
+  assert.equal(twice.assignPosts, 2);
+  assert.match(twice.out, /role assignment failed/);
+  assert.equal(twice.settings, '', 'no secret written');
+  const denied = runAdopt({ assign: 'denied' });
+  assert.equal(denied.code, 1);
+  assert.equal(denied.assignPosts, 1);
+  assert.match(denied.out, /not allowed to assign roles/);
+});
+
+test('adopt: the closing steps mention flipping Privilege to agent mode only when check-env saw it is not in agent mode already', () => {
+  const agent = runAdopt({ checkOut: '  PASS  Privilege — AUTHENTICATION_MODE_AGENT' });
+  assert.equal(agent.code, 0, agent.out);
+  assert.match(agent.out, /privilege-prepare --create-admin/);
+  assert.doesNotMatch(agent.out, /set-privilege-mode/);
+  assert.match(agent.out, /already in agent mode/);
+  // AUTHENTICATION_MODE_AGENTLESS starts with AUTHENTICATION_MODE_AGENT: it must not be mistaken for agent mode
+  for (const checkOut of ['  PASS  Privilege — AUTHENTICATION_MODE_AGENTLESS', '  PASS  Privilege — no mode tag']) {
+    const less = runAdopt({ checkOut });
+    assert.equal(less.code, 0, less.out);
+    assert.match(less.out, /set-privilege-mode --env \S+ --mode agent/);
+    assert.doesNotMatch(less.out, /already in agent mode/);
+  }
+});
+
+test('adopt: check-env exit 2 (could not read) points at the id, region and worker role, not at --api-create; exit 1 keeps the console advice', () => {
+  const unreadable = runAdopt({ checkRc: 2, checkOut: '  FAIL  environment — HTTP 404' });
+  assert.equal(unreadable.code, 1);
+  assert.match(unreadable.out, /could not read that environment/);
+  assert.doesNotMatch(unreadable.out, /--api-create/);
+  const notReady = runAdopt({ checkRc: 1, checkOut: '  FAIL  PingID' });
+  assert.equal(notReady.code, 1);
+  assert.match(notReady.out, /not ready for PingID \+ Privilege/);
+  assert.match(notReady.out, /--api-create/);
+});
+
+test('adopt into another environment: the user app of the previous environment is not left in the settings file', () => {
+  const other = 'ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee';
+  const old = `PINGONE_ENVIRONMENT_ID=${other}\nPINGONE_USER_CLIENT_ID=app-in-old-env\nPINGONE_USER_CLIENT_SECRET=old-secret\nPINGONE_USER_REDIRECT_URI=https://x/cb\nPINGONE_USER_TOKEN_ENDPOINT_AUTH_METHOD=client_secret_post\nAI_GATEWAY_KEY=keep-me\n`;
+  const r = runAdopt({ userExists: true, settings: old });
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.settings, new RegExp(`^PINGONE_ENVIRONMENT_ID=${ENV_ID}$`, 'm'));
+  assert.doesNotMatch(r.settings, /app-in-old-env|old-secret/);
+  assert.match(r.settings, /^AI_GATEWAY_KEY=keep-me$/m, 'unrelated keys survive');
+  assert.match(r.out, /PINGONE_USER_CLIENT_ID/);
+});
+
+test('adopt into the same environment again: the user app secret from the earlier run survives (it cannot be minted again)', () => {
+  const old = `PINGONE_ENVIRONMENT_ID=${ENV_ID}\nPINGONE_USER_CLIENT_ID=ua-old\nPINGONE_USER_CLIENT_SECRET=kept-secret\n`;
+  const r = runAdopt({ userExists: true, settings: old });
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.settings, /^PINGONE_USER_CLIENT_ID=ua-old$/m);
+  assert.match(r.settings, /^PINGONE_USER_CLIENT_SECRET=kept-secret$/m);
+});
+
+test('setup, no flags: a configured environment id that cannot be checked (not an id, or no node) stops the run instead of creating a basic environment', () => {
+  const garbled = runAdopt({ args: [], settings: 'PINGONE_ENVIRONMENT_ID="not-an-id"\n' });
+  assert.equal(garbled.code, 1);
+  assert.match(garbled.out, /will not risk replacing it/);
+  assert.doesNotMatch(garbled.out, /Looking for an active license/);
+  const bare = spawnSync('/bin/sh', ['-c', 'PATH=/usr/bin:/bin command -v node']).status !== 0;
+  if (bare) {
+    const noNode = runAdopt({ args: [], noNode: true, settings: `PINGONE_ENVIRONMENT_ID=${ENV_ID}\n` });
+    assert.equal(noNode.code, 1);
+    assert.match(noNode.out, /will not risk replacing it/);
+    assert.doesNotMatch(noNode.out, /Looking for an active license/);
+  }
+  // --api-create is the way out, and it still reaches the license lookup
+  const out = runAdopt({ args: ['--api-create'], settings: 'PINGONE_ENVIRONMENT_ID="not-an-id"\n' });
+  assert.match(out.out, /Looking for an active license/);
+});
+
 test('teardown fails closed on a 200 whose body has no product list; and its scratch files are not predictable /tmp names', () => {
   for (const bom of [{ _links: {} }, { products: 'x' }, {}]) {
     const r = runTeardown({ bom });
