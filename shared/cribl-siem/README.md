@@ -15,6 +15,7 @@ Two separate logins, each in its own Secret in `ping-devops-curtismuir` (created
 | Secret | Used for | Keys |
 |---|---|---|
 | `cribl-siem-privilege-login` | What the **Privilege SIEM form** signs in to Cribl with (Username and password) | `username` (`privilege`), `password` (random) |
+| `cribl-siem-admin` | Cribl's admin **UI** login (port-forward only; applied by the `set-admin-password` sidecar) | `username` (`admin`), `password` (random) |
 | `cribl-siem-es-writer` | What **Cribl** signs in to Elasticsearch with: user `cribl_siem`, role `privilege_siem_writer` (write on `ping-siem-events*`, cluster `monitor`, no read) | `username`, `password` (random) |
 
 Read the values for the Privilege form on your own machine (the last part copies it to the clipboard instead of printing it):
@@ -24,7 +25,7 @@ kubectl --context us -n ping-devops-curtismuir get secret cribl-siem-privilege-l
 kubectl --context us -n ping-devops-curtismuir get secret cribl-siem-privilege-login -o jsonpath='{.data.password}' | base64 -d | pbcopy   # paste into Password
 ```
 
-Do **not** use Cribl's own `admin` login in the Privilege form: that is the Cribl UI account, and Cribl rejects it on the Elasticsearch port (the console shows "The token or API key was rejected").
+Do **not** use Cribl's own `admin` login (Secret `cribl-siem-admin`) in the Privilege form: that is the Cribl UI account, and Cribl rejects it on the Elasticsearch port (the console shows "The token or API key was rejected").
 The older Secret `elasticsearch-siem-privilege-credentials` (user `privilege_siem`) no longer matches Elasticsearch's password for that user (401 on 2026-11-24), so nothing here uses it.
 
 ## What is proven, and what is not
@@ -66,8 +67,11 @@ curl -s -u "$USER:$PASS" https://cmuir-cribl.ping-devops.com/ | head -c 200   # 
 Then in the Privilege console: SIEM configuration, **Elastic**, set URL to `https://cmuir-cribl.ping-devops.com`, enter the `cribl-siem-privilege-login` username and password (the form has no Index field now), run the health check, **Save Changes**,
 and change something small. Check the count (`GET /ping-siem-events-v2/_count`) rises, and that `Data` shows `***` where a key would be.
 
-Open Cribl's UI with `kubectl --context us -n ping-devops-curtismuir port-forward deploy/cribl-siem 9000:9000`, then <http://127.0.0.1:9000>
-(`admin` / `admin` at first start: change it). The UI has no Service or Ingress on purpose.
+Open Cribl's UI with `kubectl --context us -n ping-devops-curtismuir port-forward deploy/cribl-siem 9000:9000`, then <http://127.0.0.1:9000>.
+The UI has no Service or Ingress on purpose. Its `admin` password is in Secret `cribl-siem-admin` (key `password`) and, if saved, Bitwarden.
+Because Cribl rebuilds its users file as `admin`/`admin` on every pod start, the `set-admin-password` sidecar logs in with the default and sets the Secret's password
+through Cribl's API (and re-applies it every 5 minutes if it is ever back to the default). Cribl's policy needs 3 of lower/upper/digit/symbol, so the Secret is random hex plus `-Aa`.
+Create the Secret once, by hand, before deploying: `kubectl -n ping-devops-curtismuir create secret generic cribl-siem-admin --from-literal=username=admin --from-literal=password="$(openssl rand -hex 20)-Aa"`.
 
 ## Test it
 

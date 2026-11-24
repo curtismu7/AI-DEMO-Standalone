@@ -48,6 +48,18 @@ spec:
           resources:
             requests: {cpu: 250m, memory: 1Gi}
             limits: {memory: 3Gi}
+        # Keeps Cribl's admin UI login off the default admin/admin: sets it from Secret cribl-siem-admin (see set-admin-password.sh).
+        - name: set-admin-password
+          image: cribl/cribl:4.13.0
+          command: ["sh", "/cfg/set-admin-password.sh"]
+          env:
+            - name: ADMIN_PASS
+              valueFrom: {secretKeyRef: {name: cribl-siem-admin, key: password}}
+          volumeMounts:
+            - {name: cfg, mountPath: /cfg, readOnly: true}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
       volumes:
         - name: cfg
           configMap: {name: cribl-siem-config}
