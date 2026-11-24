@@ -101,6 +101,12 @@ The gateway login works on that path only, and the Privilege logins do not work 
 Elasticsearch: user `cribl_siem` has a second role `cribl_gateway_writer` (write on `gateway-events*`, no read).
 
 Phase 1 (now): the sidecar keeps posting to OpenSearch itself, plus to Cribl, so Cribl writes Elasticsearch only (no duplicates in OpenSearch). Phase 2 (cut-over, own go): the sidecar posts to Cribl only and `GW_OPENSEARCH` is set to `true` in `k8s/deployment.yaml`.
+**Before deploying to a new cluster/namespace** (the Deployment reads these; a missing Secret leaves the pod in `CreateContainerConfigError` and stops the SIEM feed too):
+
+1. Secret: `kubectl -n <ns> create secret generic cribl-siem-gateway-login --from-literal=username=gateway --from-literal=password="$(openssl rand -hex 24)"` (the gateways' sidecars use the same Secret via the chart's `logShipping.cribl.authSecret`).
+2. Elasticsearch (as the `elastic` user): `PUT _security/role/cribl_gateway_writer` with cluster `monitor` and, on `gateway-events*`, privileges `auto_configure, create_index, create_doc, index, view_index_metadata`; then `PUT _security/user/cribl_siem` with `roles: [privilege_siem_writer, cribl_gateway_writer]`.
+3. `OS_URL` in `k8s/deployment.yaml` is `http://opensearch:9200/_bulk`: the `opensearch` Service in the **same namespace** as Cribl, the one the sidecars post to (security off, so no login). Checked from the Cribl pod: 200.
+
 Spec: `docs/specs/2026-11-24-cribl-gateway-events.md`. If Cribl or Elasticsearch is down, the Cribl copy of those events is lost (no queue); the OpenSearch copy is unaffected in phase 1.
 
 ## Roll back

@@ -103,8 +103,28 @@ gw_post() { curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type
 [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H "$(basic "$GW_USER" "$GW_PASS")" --data '{}' http://127.0.0.1:$PORT/_bulk)" = 401 ] && ok "the gateway login is refused on /_bulk (401)" || bad "gateway login works on /_bulk"
 [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "$(basic "$GW_USER" "$GW_PASS")" http://127.0.0.1:$PORT/gateway-events/_doc)" = 403 ] && ok "GET on the gateway path is refused (403)" || bad "GET on the gateway path was allowed"
 [ "$(gw_post -H "$(basic "$GW_USER" "$GW_PASS")")" = 200 ] && ok "gateway login: POST /gateway-events/_doc is accepted" || bad "gateway login refused on its own path"
-GW_BEFORE=$(grep -c . "$TMP/data/received.ndjson")
-for i in $(seq 1 30); do [ "$(grep -c . "$TMP/data/received.ndjson")" -gt "$(( ${SIEM_ROWS:-2} ))" ] && break; sleep 2; done
+# Lines that have no VirtualKeyID (the A2A ones, and an AIGuard verdict) and a key that is already in prefix...last4 form
+cat > "$TMP/gw2.json" <<'JSON'
+{"time":"2026-11-24T12:00:05Z","msg":"A2A policy denied","Principal":"agent-7","App":"orders","Reason":"principal does not have access"}
+JSON
+cat > "$TMP/gw3.json" <<'JSON'
+{"time":"2026-11-24T12:00:06Z","msg":"AIGuard","Event":"llm_request_blocked","Category":"prompt_injection","VirtualKeyID":"sk-orion-...1234","User":"u-1"}
+JSON
+cat > "$TMP/gw4.json" <<'JSON'
+{"time":"2026-11-24T12:00:07Z","msg":"AIGuard","Event":"llm_request_alert","VirtualKeyID":"sk-orion-12345678","User":"u-2"}
+JSON
+for f in gw2 gw3 gw4; do curl -s -m 5 -o /dev/null -X POST -H 'Content-Type: application/json' -H "$(basic "$GW_USER" "$GW_PASS")" --data-binary @"$TMP/$f.json" http://127.0.0.1:$PORT/gateway-events/_doc; done
+# wait until all four events are in Elasticsearch, then give a wrongly-routed OpenSearch copy time to show up before asserting it is absent
+python3 - "$TMP/data/received.ndjson" <<'PY'
+import json, sys, time
+for _ in range(40):
+    n = 0
+    for l in open(sys.argv[1]):
+        n += sum(1 for m in ("LLM request", "A2A policy denied", "AIGuard") if m in json.loads(l)["body"])
+    if n >= 4: break
+    time.sleep(2)
+PY
+sleep 6
 python3 - "$TMP/data/received.ndjson" "$TMP/osdata/received.ndjson" "phase 1: OpenSearch route off" 0 <<'PY' || fail=1
 import json, sys
 def docs(path):
@@ -125,6 +145,11 @@ good = [check("index gateway-events", a.get("create", a.get("index", {})).get("_
         check("Bearer in Note masked, text kept", "zzzzzzzz9999" not in d.get("Note", "") and d.get("Note") == "called with Bearer *** ok"),
         check("other fields kept, _time removed", d.get("keep") == "me" and d.get("Model") == "gpt-x" and "_time" not in d),
         check("[%s] OpenSearch copies: %d (expected %s)" % (sys.argv[3], len(osd), sys.argv[4]), len(osd) == int(sys.argv[4]))]
+by = {d[1]["msg"] + ":" + d[1].get("User", d[1].get("Principal", "")): d for d in docs(sys.argv[1]) if d[1].get("msg") in ("A2A policy denied", "AIGuard", "LLM request")}
+a2a = by.get("A2A policy denied:agent-7"); ag = by.get("AIGuard:u-1"); short = by.get("AIGuard:u-2")
+good += [check("A2A line without VirtualKeyID arrives intact (no empty field added)", a2a is not None and "VirtualKeyID" not in a2a[1] and a2a[1].get("App") == "orders" and a2a[1].get("@timestamp") == "2026-11-24T12:00:05Z"),
+         check("AIGuard line with an already-shortened key is left as is", ag is not None and ag[1].get("VirtualKeyID") == "sk-orion-...1234"),
+         check("a short unshortened key (16 chars) is still reduced to prefix...last4", short is not None and short[1].get("VirtualKeyID") == "sk-orion-...5678")]
 sys.exit(0 if all(good) else 1)
 PY
 

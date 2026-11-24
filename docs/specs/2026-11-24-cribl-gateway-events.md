@@ -34,13 +34,13 @@ Decided 2026-11-24: destinations OpenSearch + Elasticsearch; rollout = add Cribl
 The other gateways (`agentless-mcpgw`, `agentless-mcpgw3`) until pingid is verified; the `ping-devops-cmuir` namespace gateways; phase 2 cut-over; a persistent queue in Cribl; replacing the shell sidecar with Cribl Edge.
 
 ## Protected / must not break
-The SIEM feed (Basic and ApiKey on `/`, `_bulk`); gateway traffic (pingid takes HAProxy pool traffic and serves spiffe-issuer-LAB, so its pod restart must be a rolling one with the gateway ready before the old pod stops); OpenSearch `gateway-events` readers (the MCP inspector's door); `kubectl logs` on the sidecar; flags default OFF (`logShipping.cribl` off unless set).
+The SIEM feed (Basic and ApiKey on `/`, `_bulk`); gateway traffic (pingid takes HAProxy pool traffic and serves spiffe-issuer-LAB; it is ONE replica with strategy Recreate, so upgrading it means about 1-2 minutes of outage, which is why the first target is agentless-mcpgw3, scaled to 0); OpenSearch `gateway-events` readers (the MCP inspector's door); `kubectl logs` on the sidecar; flags default OFF (`logShipping.cribl` off unless set).
 
 ## Verification plan
-Local `test/run-local.sh` (SIEM + gateway cases) and a chart render check (`helm template` with and without `logShipping.cribl`, diff only the added lines). Deploy Cribl side to `us` / `ping-devops-curtismuir` (additive), run criterion 6. Chart change in AI-DEMO2 via worktree + PR + `/code-review`. **Gateway upgrade only after Curtis says go** in this conversation; first `agentless-mcpgw-pingid` with `helm upgrade --reuse-values`, check criterion 7, then ask before the other two.
+Local `test/run-local.sh` (SIEM + gateway cases) and a chart render check (`helm template` with and without `logShipping.cribl`, diff only the added lines). Deploy Cribl side to `us` / `ping-devops-curtismuir` (additive), run criterion 6. Chart change in AI-DEMO2 via worktree + PR + `/code-review`. **Gateway upgrade only after Curtis says go** in this conversation; decided 2026-11-24: first `agentless-mcpgw3` (replicas 0, no traffic): `helm upgrade --reuse-values`, scale to 1, make a call, check criterion 7, scale back to 0; then ask before `agentless-mcpgw-pingid`.
 
 ## Evidence (Cribl side, 2026-11-24)
-1. `test/run-local.sh`: 40 checks pass (22 SIEM, 18 gateway/router). Criteria 1-5: pass.
+1. `test/run-local.sh`: 43 checks pass (22 SIEM, 21 gateway/router, including lines without `VirtualKeyID`). Criteria 1-5: pass. `/code-review` (medium) findings fixed: missing-field guard, key shortening rule, racy wait, Secret/role setup documented, OpenSearch URL checked.
 2. Live: gateway login `POST /gateway-events/_doc` over public HTTPS 200; privilege login on `_doc` 401; Basic/ApiKey on `/` still 200; no credential 401.
 3. Live: stored event had `VirtualKeyID` `sk-orion-...9999`, `Headers` absent, `@timestamp` from `time`, `cribl_pipe: gateway_mask`, index `gateway-events` (test document deleted afterwards).
 4. Live: `cribl_siem` read `gateway-events` 403, write to another index 403 (criterion 6). No Cribl `Destination failed` / error lines.
