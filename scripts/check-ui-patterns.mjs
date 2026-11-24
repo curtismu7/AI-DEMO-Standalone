@@ -95,8 +95,8 @@ export const RULES = {
   H3: 'no inline style colours or font-size, no hardcoded colour in markup attributes',
   T1: 'theme tokens only: no colour literals in own CSS outside token definitions; purple/violet/indigo hues drift',
   T2: 'font-size floor of 10px',
-   T3: 'dark and light themes are both defined',
-   B1: 'brand font sizes come from the shared stylesheet: no font-size on .shell-brand* in the app own CSS (advisory until the header rollout completes)',
+  T3: 'dark and light themes are both defined',
+  B1: 'brand font sizes come from the shared stylesheet: no font-size on .shell-brand* in the app own CSS (advisory until the header rollout completes)',
   A1: 'buttons, links and form controls have an accessible name',
   A2: 'no outline:none without a replacement focus style',
   A3: 'every img has alt (role=img needs a label)',
@@ -108,8 +108,9 @@ export const RULES = {
 export const RULE_IDS = Object.keys(RULES);
 // Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
 // their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
-// B1 (brand font-size in app CSS, header standard 2026-11-24) is advisory-only (WARN status) during the rollout; it is not in this set because
-// it never reports DRIFT until the rollout completes.
+// B1 (brand font-size in app CSS, header standard 2026-11-24) is WARN-only during the rollout, so it never blocks an enforced page. When the rollout
+// completes, enforcement is a two-step flip: change ruleB1's `mk(R, 'WARN', ...)` to `mk(R, 'DRIFT', ...)` AND remove B1 from this set (or every
+// unconverted lab goes red at once).
 const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
@@ -2691,7 +2692,7 @@ function ruleB1(u) {
       if (!parts.some((p) => /\.shell-brand/i.test(p))) continue;
       for (const d of r.decls) {
         if (d.prop === 'font-size' || d.prop === 'font') {
-          hit.push({ file: r.file, line: d.line, msg: `${r.selector.trim()} { ${d.prop}: ${d.value.trim()} } (${r.file}:${d.line}) — brand sizes come from shared/standalone-ui.css` });
+          hit.push({ file: r.file, line: d.line, msg: `${r.selector.trim()} { ${d.prop}: ${d.value.trim()} } — brand sizes come from shared/standalone-ui.css` });
         }
       }
     }
