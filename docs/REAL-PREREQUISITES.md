@@ -222,7 +222,7 @@ Six labs from the 2026-11-10 audit were repointed on 2026-11-17 (see the "Repoin
 `ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`,
 `demo-map-LAB`, `observability-LAB`. This is the audit plus what the READMEs above say.
 
-2026-11-24: the five privilege-* model-gateway labs were added as submodules so the drift guard passes; four of the five first landed at wrong lowercase paths (now removed — the real `privilege-model-fallback-LAB`, `privilege-rate-limit-LAB`, `privilege-bedrock-assume-role-LAB`, `privilege-model-armor-LAB` submodules exist since waves B and C) and `privilege-semantic-cache-lab-LAB` goes when wave D lands the real submodule. Their standalone status and Real prerequisites are classified in the group-D lines above.
+2026-11-24: the five privilege-* model-gateway labs were added as submodules so the drift guard passes; four of the five first landed at wrong lowercase paths (now removed — the real `privilege-model-fallback-LAB`, `privilege-rate-limit-LAB`, `privilege-bedrock-assume-role-LAB`, `privilege-model-armor-LAB` submodules exist since waves B and C) and the fifth (`privilege-semantic-cache-LAB`, wave D) replaced its duplicate too. Their standalone status and Real prerequisites are classified in the group-D lines above.
 
 Fleet-wide, 2026-11-18: a sweep found 14 more labs whose vendored TopMenu imports `./ReleaseNotes.jsx`
 but never received the file — the web build and every web test suite failed at their main since the
