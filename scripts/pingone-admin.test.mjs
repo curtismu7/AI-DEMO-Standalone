@@ -565,7 +565,7 @@ import sys, os, json
 a = sys.argv[1:]; url = next((x for x in a if x.startswith("http")), ""); out = a[a.index("-o") + 1] if "-o" in a else None
 method = a[a.index("-X") + 1] if "-X" in a else "GET"
 def reply(body, code):
-    if out: open(out, "w").write(body); print(code, end="")
+    if out: open(os.environ["STUB_OUTS"], "a").write(out + "\\n"); open(out, "w").write(body); print(code, end="")
     else: print(body, end="")
 if url.endswith("/as/token"): reply('{"access_token":"tok"}', 200)
 elif url.endswith("/billOfMaterials"): reply(os.environ["STUB_BOM"], os.environ["STUB_BOM_CODE"])
@@ -575,10 +575,11 @@ else: reply('{"name":"Test Env"}', 200)
   const log = path.join(dir, 'calls.log');
   const r = spawnSync('bash', [new URL('./pingone-teardown.sh', import.meta.url).pathname, '--env-id', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', '--yes', '--keep-env-file', ...extra], {
     encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_BOM: JSON.stringify(bom), STUB_BOM_CODE: String(bomCode), STUB_LOG: log, STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.json'), PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_ADMIN_CLIENT_ID: 'c', PINGONE_ADMIN_CLIENT_SECRET: 's', ...shellEnv },
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, STUB_BOM: JSON.stringify(bom), STUB_BOM_CODE: String(bomCode), STUB_LOG: log, STUB_OUTS: path.join(dir, 'outs.log'), STANDALONE_ENV: path.join(dir, 'none.env'), STANDALONE_CRED_FILE: path.join(dir, 'none.json'), PINGONE_REGION: 'com', PINGONE_ADMIN_ENV_ID: 'adm', PINGONE_ADMIN_CLIENT_ID: 'c', PINGONE_ADMIN_CLIENT_SECRET: 's', ...shellEnv },
   });
   const deleted = fs.existsSync(log) && /DELETE/.test(fs.readFileSync(log, 'utf8'));
-  return { code: r.status, out: `${r.stdout}${r.stderr}`, deleted };
+  const outsFile = path.join(dir, 'outs.log');
+  return { code: r.status, out: `${r.stdout}${r.stderr}`, deleted, outs: fs.existsSync(outsFile) ? fs.readFileSync(outsFile, 'utf8').split('\n').filter(Boolean) : [] };
 }
 const BASIC = { products: [{ type: 'PING_ONE_BASE' }, { type: 'PING_ONE_DAVINCI' }, { type: 'PING_ONE_AUTHORIZE' }] };
 
@@ -708,4 +709,17 @@ test('setup: an Environment-Admin-only worker runs ensure-worker-roles with --st
   const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
   assert.match(sh, /if \[\[ "\$needs_org_admin" == 1 \]\]; then strict_flag="--strict"; fi/);
   assert.match(sh, /ensure-worker-roles --env "\$new_env" --app "\$app_id" \$strict_flag/);
+});
+
+test('teardown fails closed on a 200 whose body has no product list; and its scratch files are not predictable /tmp names', () => {
+  for (const bom of [{ _links: {} }, { products: 'x' }, {}]) {
+    const r = runTeardown({ bom });
+    assert.notEqual(r.code, 0, JSON.stringify(bom));
+    assert.match(r.out, /Not deleting without knowing/);
+    assert.equal(r.deleted, false);
+  }
+  const ok = runTeardown({ bom: BASIC });
+  assert.equal(ok.deleted, true);
+  assert.ok(ok.outs.length >= 3);
+  for (const f of ok.outs) assert.doesNotMatch(f, /\/p1-(lookup|teardown)-\d+$/, f);
 });

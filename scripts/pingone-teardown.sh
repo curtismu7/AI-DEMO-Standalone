@@ -194,9 +194,10 @@ print(hits[0]["id"] if hits else "")' 2>/dev/null || true)"
 fi
 [[ -z "${TARGET_ENV_ID:-}" ]] && fatal "no target environment: pass --env-id, --name, or have PINGONE_ENVIRONMENT_ID in $ENV_FILE."
 
-env_json="$(curl -s --max-time 30 -o /tmp/p1-lookup-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
-lookup_body="$(cat /tmp/p1-lookup-$$ 2>/dev/null || true)"
-: > /tmp/p1-lookup-$$ 2>/dev/null || true
+lookup_file="$(mktemp)"
+env_json="$(curl -s --max-time 30 -o "$lookup_file" -w '%{http_code}' "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
+lookup_body="$(cat "$lookup_file" 2>/dev/null || true)"
+rm -f "$lookup_file"
 if [[ "$env_json" == "401" || "$env_json" == "403" ]]; then
   err "the org worker cannot read environment $TARGET_ENV_ID (HTTP $env_json)."
   fatal "check that the worker has an organization-wide admin role and that the region is right."
@@ -221,8 +222,10 @@ if [[ -z "${ALLOW_PRIVILEGE_ENV:-}" ]]; then
   bom_verdict="$(printf '%s' "$bom_body" | python3 -c '
 import sys, json
 try:
-    products = json.load(sys.stdin).get("products", [])
+    products = json.load(sys.stdin).get("products")
 except Exception:
+    products = None
+if not isinstance(products, list):   # a 200 without a product list (an error envelope, a proxy page) tells us nothing
     print("unreadable"); sys.exit()
 found = []
 for p in products:
@@ -262,9 +265,10 @@ fi
 
 # ── 3. delete ─────────────────────────────────────────────────────────────────
 info "Deleting environment $TARGET_ENV_ID..."
-del_code="$(curl -s --max-time 60 -o /tmp/p1-teardown-$$ -w '%{http_code}' -X DELETE "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
-del_body="$(cat /tmp/p1-teardown-$$ 2>/dev/null || true)"
-: > /tmp/p1-teardown-$$ 2>/dev/null || true
+del_file="$(mktemp)"
+del_code="$(curl -s --max-time 60 -o "$del_file" -w '%{http_code}' -X DELETE "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
+del_body="$(cat "$del_file" 2>/dev/null || true)"
+rm -f "$del_file"
 # 202 accepted (async delete) and 204 are successes; 404 already gone is fine.
 # 409 = deletion already in progress from an earlier run: nothing to do but report it.
 if [[ "$del_code" == "202" || "$del_code" == "204" ]]; then
