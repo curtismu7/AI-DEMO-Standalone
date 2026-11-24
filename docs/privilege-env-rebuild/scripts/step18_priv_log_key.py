@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Step 18: key `priv-log-agent` + key-bound grant on the `hostile-mcp` door for privilege-logging-LAB (PRIV_LOG_AGENT_KEY).
-Cloned from the working pgc-all-tools key and grant (custodian aidemo, scope mcp, expiry 2027-02-20). Idempotent. Never prints key values."""
+Cloned from the working lab-banking-full-key key and grant (custodian aidemo, scope mcp, expiry 2027-02-20). Idempotent. Never prints key values."""
 import base64, copy, json, ssl, sys, time, urllib.request, uuid, os
 T = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "state.json")))["env_id"]
 B = f"https://local.procyon.ai:8643/api/{T}/v1"; CTX = ssl._create_unverified_context(); H = {"x-procyon-session-id": str(uuid.uuid4()), "accept": "application/json", "content-type": "application/json"}
@@ -18,13 +18,13 @@ assert "hostile-mcp" in apps
 def strip(o):
     for k in ("UUID", "CreatedAt", "UpdatedAt", "RevisionID"): o["ObjectMeta"].pop(k, None)
 if "priv-log-agent" not in keys:
-    k = copy.deepcopy(keys["pgc-all-tools"]); strip(k); k["ObjectMeta"]["Name"] = "priv-log-agent"; k["ObjectMeta"]["ID"] = b64(f"{T}@@@default@@@priv-log-agent")
+    k = copy.deepcopy(keys["lab-banking-full-key"]); strip(k); k["ObjectMeta"]["Name"] = "priv-log-agent"; k["ObjectMeta"]["ID"] = b64(f"{T}@@@default@@@priv-log-agent")
     k["ObjectMeta"]["CTags"] = {"Map": {"purpose": "privilege-logging-lab", "source": "ai-demo2", "env": "demo"}}
     k["Spec"].update({"VirtualKey": "", "RealKey": "", "Revoked": False})
     c, r = call("POST", "agentaccesskeys", k); print("POST key priv-log-agent:", c, "" if c in (200, 201) else r)
 else: print("key priv-log-agent exists")
 if "priv-log-agent-grant" not in pols:
-    g = copy.deepcopy(pols["pgc-all-tools-grant"]); strip(g); n = "priv-log-agent-grant"
+    g = copy.deepcopy(pols["lab-banking-full-key-grant"]); strip(g); n = "priv-log-agent-grant"
     g["ObjectMeta"]["Name"] = n; g["ObjectMeta"]["ID"] = b64(f"{T}@@@default@@@{n}"); g["ObjectMeta"]["CTags"] = {"Map": {"purpose": "privilege-logging-lab", "source": "ai-demo2", "env": "demo"}}
     rule = g["Spec"]["ActionMap"]["MCP"]["PolicyRule"][0]
     rule["ObjectRef"] = {"RefKind": "Application", "RefID": b64(f"{T}@@@default@@@hostile-mcp")}

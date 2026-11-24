@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Step 14: standing demo doors + the four privilege-gateway-client-LAB keys on the NEW tenant.
+"""Step 14: standing demo doors + the privilege-gateway-client-LAB keys on the NEW tenant.
 
 Spec: cmuir-c6's request (see SPEC.md) and ~/Development/HANDOFF-2026-11-21-scripts/make-demo-doors.py + make-pgc-keys.py,
 rebuilt from objects that exist in this tenant (the old scripts' templates NiagaraRiver-* and hitl-video do not).
-  doors: demo-all-tools, demo-some-tools, demo-blocked  (clones of app a2a-mcp-tools, auth none; blocked has NO policy)
-  keys : pgc-all-tools (+grant, all tools), pgc-some-tools (+grant, 7 tools), pgc-blocked (no grant), pgc-agent-llm (llm only)
+  doors: lab-banking-full, lab-banking-limited, lab-banking-blocked  (clones of app a2a-mcp-tools, auth none; blocked has NO policy)
+  keys : lab-banking-full-key (+grant, all tools), lab-banking-limited-key (+grant, 7 tools), lab-banking-blocked-key (no grant), pgc-agent-llm (llm only)
 Custodian aidemo, expiry 2027-02-20, CTags purpose=privilege-gateway-client-lab.
 Key values are NEVER printed. Written to the lab .env (backup first, only the 3 PGC_GW_KEY_* lines) and
 ~/.config/demo-kit/pgc-hosted.env (PGC_LLM_VIRTUAL_KEY). Dry run by default; --apply writes. Idempotent.
@@ -20,6 +20,7 @@ HOSTED_ENV = os.path.expanduser("~/.config/demo-kit/pgc-hosted.env")
 PROVIDER_ENV = os.path.expanduser("~/.config/demo-kit/provider-keys.pingid.env")
 BACKUPS = os.path.expanduser("~/.config/demo-kit/backups")
 APPLY = "--apply" in sys.argv
+WRITE_ENV = "--write-env" in sys.argv  # the env-file writes repoint the lab: only after the gateways serve this tenant (step 15)
 EXPIRY = "2027-02-20T00:00:00.000Z"
 SOME = ["list_entitlements", "who_has_role", "get_access_grants", "get_portfolio_summary",
         "get_investment_accounts", "get_investment_balance", "get_investment_transactions"]
@@ -57,6 +58,9 @@ def rename(o, old, new):
 
 apps, pols, keys, users = listing("applications"), listing("pacpolicys"), listing("agentaccesskeys"), listing("users")
 uname = {u["Spec"]["UserName"]: n for n, u in users.items()}
+# the Privilege UserName is the PingOne username, which differs per environment (5bfb4e12: emails)
+for short, real in {"demoAdmin": "demoAdmin@pingone.com", "aidemo": "cmuir+aidemo@pingone.com"}.items():
+    if short not in uname and real in uname: uname[short] = uname[real]
 for u in ("demoAdmin", "demouser", "aidemo"):
     assert u in uname, f"user {u} missing in the Privilege tenant"
 AIDEMO = uname["aidemo"]
@@ -69,12 +73,12 @@ now = datetime.datetime.utcnow(); fmt = "%Y-%m-%dT%H:%M:%S.000Z"
 nb = (now - datetime.timedelta(minutes=2)).strftime(fmt)
 status0 = {"Status": "", "AppRoles": {"ObjectRef": []}, "Error": "", "ApprovalReq": {"RefKind": "", "RefID": ""}}
 
-DOORS = [("demo-all-tools", "Standing demo door: every tool is permitted.", [".*"]),
-         ("demo-some-tools", "Standing demo door: only 7 read-only, non-sensitive tools are permitted; open_ticket and every sensitive_* tool are refused.", SOME),
-         ("demo-blocked", "Standing demo door: NO policy grants access, so Privilege refuses every caller (no policy = deny all).", None)]
-KEYS = [("pgc-all-tools", "PGC_GW_KEY_DEMO_ALL_TOOLS", "demo-all-tools", [".*"]),
-        ("pgc-some-tools", "PGC_GW_KEY_DEMO_SOME_TOOLS", "demo-some-tools", SOME),
-        ("pgc-blocked", "PGC_GW_KEY_DEMO_BLOCKED", None, None)]
+DOORS = [("lab-banking-full", "Standing demo door: every tool is permitted.", [".*"]),
+         ("lab-banking-limited", "Standing demo door: only 7 read-only, non-sensitive tools are permitted; open_ticket and every sensitive_* tool are refused.", SOME),
+         ("lab-banking-blocked", "Standing demo door: NO policy grants access, so Privilege refuses every caller (no policy = deny all).", None)]
+KEYS = [("lab-banking-full-key", "PGC_GW_KEY_LAB_BANKING_FULL", "lab-banking-full", [".*"]),
+        ("lab-banking-limited-key", "PGC_GW_KEY_LAB_BANKING_LIMITED", "lab-banking-limited", SOME),
+        ("lab-banking-blocked-key", "PGC_GW_KEY_LAB_BANKING_BLOCKED", None, None)]
 
 print(f"tenant {T}\ncustodian aidemo = user {AIDEMO[:8]}; template key for mcp keys: {tpl_mcp['ObjectMeta']['Name']}")
 plan = []  # (kind, name, body)
@@ -97,13 +101,14 @@ for name, desc, tools in DOORS:
         rule["Capabilities"] = {"Map": {"tools": {"Elems": tools}}}
         p["Spec"]["ActionMap"]["MCP"]["PolicyRule"] = [rule]
         p["Spec"]["Description"] = f"{desc} Issued to demoAdmin, demouser, aidemo."
-        p["NotBefore"], p["NotAfter"] = nb, EXPIRY; p["Status"] = status0
+        p["NotBefore"], p["NotAfter"] = nb, EXPIRY; p["Status"] = status0; p["GivenName"] = p["ObjectMeta"]["Name"]; p["Type"] = p.get("Type") or "App"
         plan.append(("pacpolicys", pname, p))
 for name, envname, app, tools in KEYS:
     if name not in keys:
         k = copy.deepcopy(tpl_mcp); strip(k); k["ObjectMeta"]["Name"] = name; k["ObjectMeta"]["ID"] = b64(f"{T}@@@default@@@{name}")
         k["ObjectMeta"]["CTags"] = {"Map": PURPOSE}
         sp = k["Spec"]; sp.update({"VirtualKey": "", "RealKey": "", "Revoked": False, "Scopes": {"Elems": ["mcp"]}, "UserRef": ref("User", AIDEMO), "NotAfter": EXPIRY})
+        if "CustodianRef" in sp: sp["CustodianRef"] = {"RefKind": "", "RefID": ""}  # human custodian = UserRef only
         plan.append(("agentaccesskeys", name, k))
     gname = f"{name}-grant"
     if app and gname not in pols:
@@ -114,7 +119,7 @@ for name, envname, app, tools in KEYS:
         rule["Capabilities"]["Map"]["tools"] = {"Elems": tools}
         g["Spec"]["ActionMap"]["MCP"]["PolicyRule"] = [rule]
         g["Spec"]["Description"] = f"Key-bound grant for the agent key {name}: {app}."
-        g["NotBefore"], g["NotAfter"] = nb, EXPIRY; g["Status"] = status0
+        g["NotBefore"], g["NotAfter"] = nb, EXPIRY; g["Status"] = status0; g["GivenName"] = g["ObjectMeta"]["Name"]; g["Type"] = g.get("Type") or "App"
         plan.append(("pacpolicys", gname, g))
 if "pgc-agent-llm" not in keys:
     penv = {}
@@ -143,15 +148,18 @@ for kind, name, body in plan:
         sys.exit("stopping on first failure")
     time.sleep(3)
 
+if not WRITE_ENV:
+    print("env files NOT touched (pass --write-env after the gateways serve this tenant; step15_repoint.py reads the keys by name)")
+    print("done"); sys.exit(0)
 # capture key values (never printed) and write them
 keys = listing("agentaccesskeys")
-vals = {n: (keys[n]["Spec"].get("VirtualKey") or "") for n in ("pgc-all-tools", "pgc-some-tools", "pgc-blocked", "pgc-agent-llm")}
+vals = {n: (keys[n]["Spec"].get("VirtualKey") or "") for n in ("lab-banking-full-key", "lab-banking-limited-key", "lab-banking-blocked-key", "pgc-agent-llm")}
 print("key values present:", {n: bool(v) for n, v in vals.items()})
-if all(vals[n] for n in ("pgc-all-tools", "pgc-some-tools", "pgc-blocked")) and os.path.exists(LAB_ENV):
+if all(vals[n] for n in ("lab-banking-full-key", "lab-banking-limited-key", "lab-banking-blocked-key")) and os.path.exists(LAB_ENV):
     os.makedirs(BACKUPS, exist_ok=True)
     bk = os.path.join(BACKUPS, f"privilege-gateway-client-LAB.env.{time.strftime('%Y%m%d-%H%M%S')}.bak")
     shutil.copy2(LAB_ENV, bk); os.chmod(bk, 0o600)
-    m = {"PGC_GW_KEY_DEMO_ALL_TOOLS": "pgc-all-tools", "PGC_GW_KEY_DEMO_SOME_TOOLS": "pgc-some-tools", "PGC_GW_KEY_DEMO_BLOCKED": "pgc-blocked"}
+    m = {"PGC_GW_KEY_LAB_BANKING_FULL": "lab-banking-full-key", "PGC_GW_KEY_LAB_BANKING_LIMITED": "lab-banking-limited-key", "PGC_GW_KEY_LAB_BANKING_BLOCKED": "lab-banking-blocked-key"}
     out, done = [], set()
     for l in open(LAB_ENV).read().split("\n"):
         hit = [e for e in m if l.lstrip("# ").startswith(e + "=")]
