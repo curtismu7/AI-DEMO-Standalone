@@ -8,8 +8,24 @@ in the same Elasticsearch (`elasticsearch-siem`, namespace `ping-devops-curtismu
 Privilege cloud --HTTPS, basic auth--> cmuir-cribl.ping-devops.com --> Cribl (in_elastic -> siem_mask -> es_siem) --> elasticsearch-siem:9200
 ```
 
-It reuses the existing Secret `elasticsearch-siem-privilege-credentials` (keys `username`, `password`) for both the sign-in Privilege uses
-on Cribl and the sign-in Cribl uses on Elasticsearch, so the Privilege SIEM form changes by its URL only.
+## Credentials
+
+Two separate logins, each in its own Secret in `ping-devops-curtismuir` (created by hand, never in git, values never printed):
+
+| Secret | Used for | Keys |
+|---|---|---|
+| `cribl-siem-privilege-login` | What the **Privilege SIEM form** signs in to Cribl with (Username and password) | `username` (`privilege`), `password` (random) |
+| `cribl-siem-es-writer` | What **Cribl** signs in to Elasticsearch with: user `cribl_siem`, role `privilege_siem_writer` (write on `ping-siem-events*`, cluster `monitor`, no read) | `username`, `password` (random) |
+
+Read the values for the Privilege form on your own machine (the last part copies it to the clipboard instead of printing it):
+
+```sh
+kubectl --context us -n ping-devops-curtismuir get secret cribl-siem-privilege-login -o jsonpath='{.data.username}' | base64 -d | pbcopy   # paste into Username
+kubectl --context us -n ping-devops-curtismuir get secret cribl-siem-privilege-login -o jsonpath='{.data.password}' | base64 -d | pbcopy   # paste into Password
+```
+
+Do **not** use Cribl's own `admin` login in the Privilege form: that is the Cribl UI account, and Cribl rejects it on the Elasticsearch port (the console shows "The token or API key was rejected").
+The older Secret `elasticsearch-siem-privilege-credentials` (user `privilege_siem`) no longer matches Elasticsearch's password for that user (401 on 2026-11-24), so nothing here uses it.
 
 ## What is proven, and what is not
 
