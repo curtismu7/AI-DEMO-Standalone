@@ -9,7 +9,7 @@
 - Both sign-in options in the Privilege form work: **Username and password** and **API key**.
 - It passed a 53-check local test and live checks. 66 real Privilege events have gone through so far, with **0 secrets found** in a scan of all of them.
 - Privilege's own feed already carries the gateway runtime logs (policy decisions, guardrail verdicts, accepted requests), including **user, agent key, policy ids and decision**. Cribl promotes those to top-level `gw_*` fields.
-- Not done yet: a real gateway sidecar posting to Cribl (built and verified on the Cribl side only), and masking of prompt text, because no prompt field has appeared yet (see section 6).
+- Not done yet: a sidecar on a real gateway (the script was tested live with a simulated log source), and masking of prompt text, because no prompt field has appeared yet (see section 4).
 
 ```text
 Privilege cloud --HTTPS (Basic or ApiKey)--> nginx (checks the credential) --> Cribl (mask, add gw_* fields) --> Elasticsearch ping-siem-events-v2
@@ -21,7 +21,7 @@ Gateway log-tailer sidecar --POST /_doc (own login)--> nginx --> Cribl --> Elast
 
 | # | What | How | Result |
 |---|---|---|---|
-| 1 | Privilege can reach Cribl | Console health check against the Cribl URL | **Passed** (after fixing the credentials, see section 5) |
+| 1 | Privilege can reach Cribl | Console health check against the Cribl URL | **Passed** (after fixing the credentials) |
 | 2 | Privilege can save the setting | Console Save | **Passed.** The first two Saves returned HTTP 500 from Privilege's own API; the successful one was a `PUT` to the existing config |
 | 3 | What Privilege actually sends | Ingress and Cribl logs | `GET /`, `HEAD /audit-log`, `POST /_bulk` from the Go client `elastic/7.0.22`. Single-document `_doc` is **not** used |
 | 4 | Events land in Elasticsearch | Count and read back | **Passed.** Console, guardrail, policy-decision and proxy-audit events arrive with `cribl_pipe: siem_mask` set |
@@ -35,8 +35,7 @@ Gateway log-tailer sidecar --POST /_doc (own login)--> nginx --> Cribl --> Elast
 | 12 | Gateway sidecar path (Cribl side) | Local test and a live POST | Gateway login accepted on `POST /gateway-events/_doc` only; Privilege logins refused there; the gateway login is refused everywhere else. Event stored masked with `@timestamp` set (test document then deleted) |
 | 13 | OpenSearch route | Local test, both modes | Off: nothing reaches OpenSearch. On: one copy each in Elasticsearch and OpenSearch. Off for now so events are not stored twice |
 | 14 | Helm chart option | `helm template` | Off by default: output **byte-identical** to today's (567 lines). On: only the added lines differ. Generated shell passes `sh -n` |
-| 15 | Real gateway posting to Cribl | not run | The `agentless-mcpgw3` test (replicas 0) was agreed but not started: see section 7 |
-| 16 | Independent review | `/code-review` on three PRs | Findings fixed: case-insensitive auth scheme, a vacuous port test, a missing-field guard, key shortening rule, Secret setup docs, a racy test wait, chart auth-header and URL handling. Two findings were checked and rejected (see the spec) |
+| 15 | Real sidecar script on the live path | A short-lived pod in the namespace ran the `log-tailer` script rendered from the PR #3696 chart (real busybox), tailing a log file fed with realistic gateway lines, posting to the live Cribl service and OpenSearch | **Passed, with a simulated log source.** Cribl up: +4 events in OpenSearch in 3 s; all 7 log lines still echoed (so `kubectl logs` keeps working); the `/mcp` request, `AIPolicyDecision` and plain lines were not shipped; the same 4 reached Elasticsearch `gateway-events` via Cribl, key shortened to `sk-orion-...9999`, no `Headers`, `@timestamp` set. Cribl black-holed: OpenSearch still got all 4 (8 s, 2 s per event as designed) and nothing reached Elasticsearch. Test data deleted. **Not a real gateway:** `agentless-mcpgw3` is annotated "Leave parked" (old tenant), so it was not started. Finding: the sidecar's `sed` strips `Headers` only when another key follows it. Real lines put it in the middle (key order `Device`, `Headers`, `Host`, ...), but in the test fixture it was last, so two OpenSearch documents kept it with the key masked; Cribl removed it for the Elasticsearch copy |
 
 **Local test:** `shared/cribl-siem/test/run-local.sh` runs Cribl and nginx against mock Elasticsearch and OpenSearch containers in OrbStack. 53 checks pass.
 
@@ -67,31 +66,22 @@ Kibana example: `gw_decision : "hitl"` finds approval-required decisions; `gw_ag
 - **Privilege Save.** The first Saves returned HTTP 500 with no message. The cause is not proven; the later Save used `PUT` and worked. If it returns, check whether a config already exists.
 - **Known CI state.** The `gh-labs-drift` check is red on `main` and on these PRs because five other `privilege-*-lab` repos are not registered as submodules. It is unrelated to this work.
 
-## 5. Problems we hit and how they were fixed
-
-1. **"The token or API key was rejected."** The form held Cribl's own `admin`/`admin` UI login. Fixed by using the dedicated Privilege login.
-2. **Cribl could not write to Elasticsearch.** The secret first used no longer matched Elasticsearch's password for that user. Fixed with a new write-only user and Secrets.
-3. **Events refused with 403.** Privilege names the index `audit-log` and Cribl passed it through. Fixed by forcing the index in the pipeline; the first local test missed this because it used the same name on both sides, so the test now sends `audit-log`.
-4. **`ApiKey` refused.** Cribl does not accept that scheme. Fixed with the nginx front; nginx also needed a larger map bucket for the long credential strings.
-5. **Cribl admin password reset on every restart.** Cribl rebuilds its users file from defaults and rejects a plaintext password there. Fixed with a small sidecar that sets the password through Cribl's API from a Secret.
-6. **CI secret scan.** The CI pins gitleaks 8.18.4, which flagged fake keys in test fixtures. Fixtures are now built at runtime and the branch was squashed.
-
-## 6. Open items
+## 5. Open items
 
 | Item | State |
 |---|---|
-| Merge #561, #568 (AI-DEMO-Standalone) and #3696 (AI-DEMO2) | Open, reviewed; waiting on the owner |
-| Real sidecar test on `agentless-mcpgw3` (scaled to 0), then `agentless-mcpgw-pingid` | Not run. `pingid` is one replica with a `Recreate` strategy: about 1 to 2 minutes of outage |
-| Phase 2: sidecar posts to Cribl only; set `GW_OPENSEARCH=true` | Own go-ahead needed |
-| Prompt text masking | Needs the real field names once the feature is on |
-| Admin password and other logins | Saved to Bitwarden by the owner |
+| Merge #561, #568 (AI-DEMO-Standalone) and #3696 (AI-DEMO2) | **Done** 24 Nov, after review. CI green except the unrelated `gh-labs-drift` |
+| Sidecar on a real gateway (`agentless-mcpgw3`, then `agentless-mcpgw-pingid`) | **Not done.** `mcpgw3` is annotated "Leave parked" (old tenant), so it was not started. `pingid` is one replica on `Recreate`: about 1-2 minutes of outage. Needs the owner's go-ahead. The sidecar script itself passed a live test (row 15) |
+| Phase 2: sidecar posts to Cribl only; set `GW_OPENSEARCH=true` | Needs the owner's go-ahead; follows a real gateway rollout |
+| Prompt text masking | Waiting for the field names once the feature is on |
+| Logins saved to Bitwarden | Done by the owner |
 | Persistent queue in Cribl | Not built |
 
-## 7. Why the gateway sidecar path is on hold
+## 6. Why the gateway sidecar path is on hold
 
-Privilege's own feed already delivers the same gateway runtime logs through Cribl, so the sidecar adds little today. It stays built and un-deployed as a second route (it also carries `A2A policy denied` lines).
+Privilege's own feed already delivers the same gateway runtime logs through Cribl, so the sidecar adds little today. It stays built and un-deployed as a second route (it also carries `A2A policy denied` lines). The script has been tested live with a simulated log source, not yet on a real gateway.
 
-## 8. How to repeat the checks
+## 7. How to repeat the checks
 
 ```sh
 shared/cribl-siem/test/run-local.sh                         # 53 local checks (needs OrbStack)

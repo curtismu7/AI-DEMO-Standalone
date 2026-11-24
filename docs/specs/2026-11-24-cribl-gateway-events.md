@@ -1,6 +1,6 @@
 # Cribl for the gateway traffic lines spec
 
-**Status:** built (Cribl side deployed and verified live; gateway change pending Curtis's go)   **Owner:** Curtis (decides go for any gateway change)
+**Status:** verified (Cribl side live; sidecar script tested live with a simulated log source; no real gateway upgraded)   **Owner:** Curtis (decides go for any gateway change)
 
 ## Goal
 The Privilege gateway's `LLM request`, `AIGuard`, A2A-accepted and `A2A policy denied` log lines go through Cribl (masked, routed) into Elasticsearch
@@ -47,3 +47,4 @@ Local `test/run-local.sh` (SIEM + gateway cases) and a chart render check (`helm
 5. Criterion 7 (gateway upgrade) not run yet.
 6. `/code-review` of #561 (nginx front): scheme-name case-insensitivity, a non-vacuous 9201 check (second container), single Content-Type, validation before rendering: fixed here. Rejected: 'curl may be missing from the Cribl image' (the live pod is Ready; the probe runs curl), securityContext (nginx runs in this namespace).
 7. Finding 2026-11-24: Privilege's own SIEM feed already delivers `policy-decision-log`, `aiguard-log` and `proxy-audit-log` (user, agent key, policy ids, decision, reason, target) through Cribl, so the sidecar path is largely redundant. Decision: keep the sidecar path built but un-deployed (criterion 7 not run); enrich the native path instead (gw_* promoted fields, header defense; 53 local checks; live `proxy-audit-log` event confirmed with gw_user/gw_path/gw_method/gw_host/gw_tenant).
+8. Criterion 7 (sidecar) run 2026-11-24 with a simulated log source: the real `log-tailer` script rendered from the AI-DEMO2 chart (PR #3696), real busybox, in a short-lived pod in `ping-devops-curtismuir`, posting to the live Cribl service and OpenSearch. Cribl up: +4 in OpenSearch (3 s), 7 of 7 log lines echoed, noise lines not shipped, the same 4 in Elasticsearch masked. Cribl black-holed: OpenSearch still +4 (8 s), nothing in Elasticsearch. Test data deleted. `agentless-mcpgw3` is annotated "Leave parked" and was not started; no real gateway has been upgraded. Finding: the sidecar's `sed` strips `Headers` only if a key follows it (true of real lines); Cribl removes it regardless.
