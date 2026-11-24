@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { checkWorkforceEnv, ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
+import { checkWorkforceEnv, ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, parseArgs, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 const ENV = 'env-new', OTHER = 'env-other', ADMIN = 'env-admin', WORKER = 'app-worker';
 const ROLES = [['r-ida', 'Identity Data Admin'], ['r-env', 'Environment Admin'], ['r-org', 'Organization Admin'], ['r-pa', 'PingOne Privilege Administrator']];
@@ -497,7 +497,65 @@ test('pingone-setup.sh: adopting a console-made environment skips the license lo
   assert.match(guarded, /-X POST "\$api\/environments"/);
   assert.doesNotMatch(sh.slice(0, guardOpen) + sh.slice(guardClose), /organizations\/\$org_id\/licenses|-X POST "\$api\/environments"/);
   // the question is only asked with a terminal, no flag and no ASSUME_YES
-  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && "\$\{ASSUME_YES:-\}" != "1" && \( -t 0 \|\| -r \/dev\/tty \)/);
+  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && "\$\{ASSUME_YES:-\}" != "1" && "\$have_tty" == 1/);
   // the id is validated before it reaches a URL
   assert.match(sh, /\^\[0-9a-fA-F\]\{8\}\(-\[0-9a-fA-F\]\{4\}\)\{3\}-\[0-9a-fA-F\]\{12\}\$/);
+});
+
+// ---- review fixes (2026-11-24) ----
+test('parseArgs: --no-privilege and --dry-run are booleans wherever they appear; other flags still take a value', () => {
+  assert.equal(parseArgs(['check-env', '--env', 'e1', '--no-privilege'])['no-privilege'], true);
+  const mid = parseArgs(['check-env', '--no-privilege', '--env', 'e1']);
+  assert.equal(mid['no-privilege'], true);
+  assert.equal(mid.env, 'e1');
+  assert.equal(parseArgs(['privilege-prepare', '--dry-run', '--users', 'a,b']).dryRun, true);
+  assert.equal(parseArgs(['x', '--env', 'e1'])['no-privilege'], undefined);
+  assert.equal(parseArgs(['x', '--users']).users, '');
+});
+
+test('checkWorkforceEnv: a Multi_Factor policy on the second page is found (no false "missing")', async () => {
+  const api = async (method, p) => {
+    if (p === '/environments/e1') return { status: 200, body: { name: 'D', type: 'SANDBOX', region: 'NA' } };
+    if (p === '/environments/e1/billOfMaterials') return { status: 200, body: { products: CONSOLE_MADE } };
+    if (p === '/environments/e1/signOnPolicies') return { status: 200, body: { _embedded: { signOnPolicies: [{ name: 'Single_Factor' }] }, _links: { next: { href: 'https://api.pingone.com/v1/page2' } } } };
+    if (p === 'https://api.pingone.com/v1/page2') return { status: 200, body: { _embedded: { signOnPolicies: [{ name: 'Multi_Factor' }] } } };
+    return { status: 404, body: {} };
+  };
+  const r = await checkWorkforceEnv(api, { envId: 'e1' });
+  assert.equal(status(r, 'Multi_Factor sign-on policy'), 'PASS');
+  assert.equal(r.exitCode, 0);
+});
+
+test('checkWorkforceEnv: an unreadable sign-on policy list is a WARN naming the HTTP status, not a crash', async () => {
+  const api = async (method, p) => {
+    if (p === '/environments/e1') return { status: 200, body: { name: 'D', type: 'SANDBOX', region: 'NA' } };
+    if (p === '/environments/e1/billOfMaterials') return { status: 200, body: { products: CONSOLE_MADE } };
+    return { status: 403, body: { message: 'no' } };
+  };
+  const r = await checkWorkforceEnv(api, { envId: 'e1' });
+  assert.equal(status(r, 'sign-on policies'), 'WARN');
+  assert.equal(r.exitCode, 0);
+});
+
+test('adopted environments are protected: setup records them, teardown refuses to delete them unless --delete-adopted, even with --yes', () => {
+  const setup = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
+  const tear = fs.readFileSync(new URL('./pingone-teardown.sh', import.meta.url), 'utf8');
+  assert.match(setup, /echo "PINGONE_ENV_ADOPTED=\$\{ADOPT_ENV:-\}"/);          // empty for an API-made environment, so an old value is overwritten
+  assert.match(tear, /--delete-adopted\) ALLOW_ADOPTED=1/);
+  assert.match(tear, /ADOPTED_ENV="\$\(file_value PINGONE_ENV_ADOPTED\)"/);
+  const guard = tear.indexOf('"$ADOPTED_ENV" == "$TARGET_ENV_ID" && -z "${ALLOW_ADOPTED:-}"');
+  assert.ok(guard > 0, 'guard present');
+  // the refusal comes before the dry-run exit, the confirmation and the DELETE call
+  for (const later of ['${BOLD}Will DELETE:', 'Type the environment id to confirm', '-X DELETE "$api/environments/$TARGET_ENV_ID"']) {
+    assert.ok(tear.indexOf(later) > guard, `${later} must come after the guard`);
+  }
+  assert.match(tear, /gone_exact\.add\(f"PINGONE_ENV_ADOPTED=\{env_id\}"\)/);
+});
+
+test('pingone-setup.sh: --existing-env cannot be combined with --api-create or --with-pingone-mfa, and a readable-but-dead /dev/tty is not a terminal', () => {
+  const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
+  assert.match(sh, /-n "\$ADOPT_ENV" && \( "\$API_CREATE" == "1" \|\| "\$WITH_MFA" == "1" \) \]\]; then\n\s+fatal/);
+  assert.ok(sh.indexOf('cannot be combined with --api-create') < sh.indexOf('Standalone labs — PingOne environment setup'), 'checked before any prompt or network call');
+  assert.match(sh, /: <\/dev\/tty; \} 2>\/dev\/null && have_tty=1/);
+  assert.match(sh, /"\$have_tty" == 1 \]\]; then\n\s+echo ""/);
 });

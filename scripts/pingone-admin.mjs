@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { checkWorkforceEnv, ensureWorkerRoles, generatePassword, grantAdminRoles, makeApi, mintToken, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
+import { checkWorkforceEnv, ensureWorkerRoles, generatePassword, grantAdminRoles, makeApi, mintToken, parseArgs, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 function readEnvFile(file) {
   const out = {};
@@ -19,17 +19,6 @@ function readEnvFile(file) {
     if (m && !line.trim().startsWith('#')) out[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
   }
   return out;
-}
-
-function parseArgs(argv) {
-  const o = { _: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--dry-run') o.dryRun = true;
-    else if (a.startsWith('--')) o[a.slice(2)] = argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? '' : argv[++i];
-    else o._.push(a);
-  }
-  return o;
 }
 
 async function main() {

@@ -336,7 +336,7 @@ else
   # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
   # shellcheck disable=SC2086
   if "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-}; then
-    step_ok "environment created, ~/Development/.env written"
+    step_ok "environment ready, ~/Development/.env written"
   else
     step_warn "setup failed — continuing in mock mode"
     step_detail "Fix and re-run scripts/pingone-setup.sh, or stay in mock mode (the default in every app)."

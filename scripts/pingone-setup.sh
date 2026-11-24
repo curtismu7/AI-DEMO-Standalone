@@ -110,6 +110,9 @@ USAGE
     *) err "unknown argument: $1 (usage: pingone-setup.sh [--region R] [--admin-env-id ID] [--client-id ID] [--client-secret SECRET] [--admin-user LOGIN] [--existing-env ID | --api-create] [--with-pingone-mfa])"; exit 2 ;;
   esac
 done
+if [[ -n "$ADOPT_ENV" && ( "$API_CREATE" == "1" || "$WITH_MFA" == "1" ) ]]; then
+  fatal "--existing-env (or PINGONE_EXISTING_ENV_ID=$ADOPT_ENV in your shell) cannot be combined with --api-create or --with-pingone-mfa: an adopted environment already has its products. Unset the variable or drop the flag."
+fi
 
 echo ""
 echo "${BOLD}Standalone labs — PingOne environment setup${RESET}"
@@ -207,7 +210,9 @@ ok "worker has Organization Admin (organization scope)"
 # And only the person who adds Privilege in the console becomes Privilege Administrator. So an environment that is to run
 # PingID + Privilege is created by a PERSON in the console, and this script adopts it (--existing-env). With no terminal
 # and no flag, the old behaviour stays: a basic environment through the API.
-if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && "${ASSUME_YES:-}" != "1" && ( -t 0 || -r /dev/tty ) ]]; then
+# A readable /dev/tty is not a terminal (ssh without -t, cron, CI): open it for real before printing a question.
+have_tty=0; [[ -t 0 ]] && have_tty=1; { [[ "$have_tty" == 1 ]] || : </dev/tty; } 2>/dev/null && have_tty=1
+if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && "${ASSUME_YES:-}" != "1" && "$have_tty" == 1 ]]; then
   echo ""
   echo "  ${BOLD}Which environment?${RESET}  PingID and PingOne Privilege cannot be created by a script."
   echo "  For the demos that approve with PingID or use Privilege, create the environment yourself first:"
@@ -230,7 +235,7 @@ if [[ -n "$ADOPT_ENV" ]]; then
     || fatal "that environment is not ready for PingID + Privilege (see the FAIL lines above). Fix it in the console, or re-run with --api-create for a basic environment."
   new_env="$ADOPT_ENV"
   reuse_answer="r"   # find the lab worker if an earlier run made one, instead of making a second
-  ok "adopting environment $new_env (no license lookup, nothing created)"
+  ok "adopting environment $new_env (no license lookup, nothing created; teardown will refuse to delete it)"
 fi
 
 if [[ -z "$ADOPT_ENV" ]]; then
@@ -484,6 +489,8 @@ backup="$ENV_FILE.bak.$(date +%Y%m%d-%H%M%S)"
 new_keys=$(mktemp)
 {
   echo "PINGONE_ENVIRONMENT_ID=$new_env"
+  # Set only for an environment a person made in the console: pingone-teardown.sh refuses to delete it. Empty otherwise (the merge overwrites an old value).
+  echo "PINGONE_ENV_ADOPTED=${ADOPT_ENV:-}"
   echo "PINGONE_REGION=$PINGONE_REGION"
   # Both key-name conventions: some labs read WORKER_CLIENT_ID/SECRET, others
   # (ciba-hitl-lab) read WORKER_ID/WORKER_SECRET.

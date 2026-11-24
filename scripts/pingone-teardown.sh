@@ -68,6 +68,8 @@ Options:
   --client-secret <secret>
   --yes                         skip the confirmation (ASSUME_YES=1 also works)
   --keep-env-file               do not touch ~/Development/.env
+  --delete-adopted              allow deleting an environment you made in the PingOne console and that pingone-setup.sh only
+                                adopted (--existing-env). Refused otherwise: it holds your PingID account and Privilege Administrator role.
   --dry-run                     resolve and show the target, delete nothing
 
 Deleting an environment is irreversible: its users, applications, populations,
@@ -82,6 +84,7 @@ USAGE
     --client-secret) PINGONE_ADMIN_CLIENT_SECRET="$2"; shift 2 ;;
     --yes) ASSUME_YES=1; shift ;;
     --keep-env-file) KEEP_ENV_FILE=1; shift ;;
+    --delete-adopted) ALLOW_ADOPTED=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     *) err "unknown argument: $1 (see --help)"; exit 2 ;;
   esac
@@ -104,6 +107,7 @@ PYEOF
   : "${PINGONE_ADMIN_CLIENT_ID:=$(file_value PINGONE_ADMIN_CLIENT_ID)}"
   : "${PINGONE_ADMIN_CLIENT_SECRET:=$(file_value PINGONE_ADMIN_CLIENT_SECRET)}"
   [[ -z "${TARGET_ENV_ID:-}" && -z "${TARGET_NAME:-}" ]] && TARGET_ENV_ID="$(file_value PINGONE_ENVIRONMENT_ID)"
+  ADOPTED_ENV="$(file_value PINGONE_ENV_ADOPTED)"   # written by pingone-setup.sh --existing-env: a console-made environment
 fi
 
 CREDS_FROM_FILE=0
@@ -205,6 +209,14 @@ if [[ -z "$env_name" ]]; then
   fatal "environment $TARGET_ENV_ID not found in region $PINGONE_REGION (or the org worker cannot see it)."
 fi
 
+# A console-made environment holds the owner's PingID account and the Privilege Administrator role (nobody can grant it again).
+# --yes does not lift this: only --delete-adopted does.
+if [[ -n "${ADOPTED_ENV:-}" && "$ADOPTED_ENV" == "$TARGET_ENV_ID" && -z "${ALLOW_ADOPTED:-}" ]]; then
+  err "$env_name ($TARGET_ENV_ID) was created by you in the PingOne console and only adopted by pingone-setup.sh --existing-env."
+  err "It holds your PingID account and the PingOne Privilege Administrator role, which cannot be granted again. Not deleting it."
+  fatal "delete it in the console yourself, or pass --delete-adopted if you really mean it."
+fi
+
 echo ""
 echo "${BOLD}Will DELETE:${RESET}"
 echo "  environment: $env_name ($TARGET_ENV_ID, region $PINGONE_REGION)"
@@ -265,6 +277,7 @@ gone_exact = {
 }
 gone_prefix = ("PINGONE_WORKER_CLIENT_ID=", "PINGONE_WORKER_CLIENT_SECRET=",
                "PINGONE_WORKER_ID=", "PINGONE_WORKER_SECRET=")
+gone_exact.add(f"PINGONE_ENV_ADOPTED={env_id}")
 out = []
 dropped = []
 for line in open(path).read().splitlines():

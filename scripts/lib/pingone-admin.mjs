@@ -160,6 +160,19 @@ export async function setPrivilegeMode(api, { envId, mode, backupDir = path.join
   return { ok, changed: true, backup: bk, detail: ok ? `now ${mode}` : `HTTP ${put.status} ${msg(put.body)}` };
 }
 
+// Flags that take no value. Any other `--name` takes the next argument (a bare one at the end or before another flag reads as '').
+const BOOLEAN_FLAGS = new Set(['dry-run', 'no-privilege']);
+export function parseArgs(argv) {
+  const o = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--') && BOOLEAN_FLAGS.has(a.slice(2))) o[a.slice(2) === 'dry-run' ? 'dryRun' : a.slice(2)] = true;
+    else if (a.startsWith('--')) o[a.slice(2)] = argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? '' : argv[++i];
+    else o._.push(a);
+  }
+  return o;
+}
+
 // Checks an environment a PERSON made in the console (Workforce, PingID "create new", Privilege). Read-only.
 // Why it exists: through the API PingOne accepts PING_ONE_ID in the bill of materials but never provisions the PingID
 // deployment (measured 2026-11-24: no `deployment` on the product, and a PINGID_AUTHENTICATION sign-on action is refused with
@@ -191,10 +204,9 @@ export async function checkWorkforceEnv(api, { envId, requirePrivilege = true })
   const pam = of('PING_ONE_PAM');
   if (!pam) add(requirePrivilege ? 'FAIL' : 'WARN', 'Privilege', 'not in this environment: add it in the console (Add Services, PingOne Privilege, No Endpoint Controller); only the person who adds it becomes Privilege Administrator');
   else add('PASS', 'Privilege', (pam.tags || []).join(', ') || 'no mode tag');
-  const pol = await api('GET', `/environments/${envId}/signOnPolicies`);
-  const names = new Set((pol.body._embedded?.signOnPolicies || []).map((p) => p.name));
-  if (pol.status !== 200) add('WARN', 'sign-on policies', `HTTP ${pol.status}`);
-  else {
+  let names = null;
+  try { names = new Set((await listAll(api, `/environments/${envId}/signOnPolicies`, 'signOnPolicies')).map((p) => p.name)); } catch (e) { add('WARN', 'sign-on policies', e.message); }
+  if (names) {
     add(names.has('Multi_Factor') ? 'PASS' : 'WARN', 'Multi_Factor sign-on policy', names.has('Multi_Factor') ? '' : 'missing: PingID approvals need it (a console-made PingID environment has it)');
     add(names.has('Single_Factor') ? 'PASS' : 'WARN', 'Single_Factor sign-on policy', names.has('Single_Factor') ? '' : 'missing: `privilege-prepare` creates it');
   }
