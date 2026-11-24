@@ -17,10 +17,10 @@ functions:
           replaceExpr: "'Bearer ***'"
         - matchRegex: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g
           replaceExpr: "'***jwt***'"
+      # All fields: Privilege now puts the changed object in DataText (older events used Data) and in nested Resources/User/Device
+      # objects, and a field list missed arrays. Volume is tiny, so scanning everything is cheap.
       fields:
-        - Data
-        - Status
-        - Message
+        - "*"
       depth: 5
       flags: []
   # Cribl adds _time (epoch seconds); the events already carry @timestamp.
