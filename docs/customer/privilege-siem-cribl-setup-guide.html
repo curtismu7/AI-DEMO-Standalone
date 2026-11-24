@@ -1,0 +1,305 @@
+<title>Privilege SIEM to Cribl Setup Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, sticky-free contents bar, code and tables scroll inside their own boxes. */
+:root { --bg:#f6f8fa; --surface:#ffffff; --fg:#17202a; --muted:#5b6876; --line:#dbe2e9; --accent:#0b6b7a; --accent-soft:#e0f1f3;
+  --pass:#17692f; --pass-bg:#e2f4e7; --warn:#8a5300; --warn-bg:#fdf0d8; --bad:#9d2222; --bad-bg:#fbe4e4; --info:#274f8f; --info-bg:#e5edf9; --code-bg:#eef2f6;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f151b; --surface:#17202a; --fg:#e6ebf0; --muted:#98a5b3; --line:#2b3745; --accent:#5cc4d3; --accent-soft:#14323a;
+  --pass:#7bd391; --pass-bg:#163423; --warn:#f0b95a; --warn-bg:#3a2c12; --bad:#f08b8b; --bad-bg:#3c1b1b; --info:#8fb4ee; --info-bg:#1a2a45; --code-bg:#0f1a24; color-scheme:dark; } }
+:root[data-theme="dark"] { --bg:#0f151b; --surface:#17202a; --fg:#e6ebf0; --muted:#98a5b3; --line:#2b3745; --accent:#5cc4d3; --accent-soft:#14323a;
+  --pass:#7bd391; --pass-bg:#163423; --warn:#f0b95a; --warn-bg:#3a2c12; --bad:#f08b8b; --bad-bg:#3c1b1b; --info:#8fb4ee; --info-bg:#1a2a45; --code-bg:#0f1a24; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font:15px/1.6 var(--font); padding-block:28px 64px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.wrap { max-width:960px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr); gap:24px; }
+header { display:grid; gap:10px; }
+.kicker { font:500 12px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+h1 { font-size:clamp(26px,4.6vw,36px); line-height:1.15; margin:0; letter-spacing:-.01em; text-wrap:balance; }
+h2 { font-size:20px; margin:0 0 12px; text-wrap:balance; } h3 { font-size:15px; margin:18px 0 6px; }
+p { margin:0 0 10px; max-width:76ch; } ul,ol { margin:0 0 10px; padding-left:22px; } li { margin:4px 0; max-width:76ch; }
+.meta { display:flex; flex-wrap:wrap; gap:6px 18px; color:var(--muted); font-size:13px; } .meta b { color:var(--fg); font-weight:600; }
+section { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:22px max(16px,3vw); min-width:0; }
+nav { display:flex; flex-wrap:wrap; gap:6px; } nav a { font-size:13px; color:var(--accent); text-decoration:none; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 12px; }
+nav a:hover,nav a:focus-visible { background:var(--accent-soft); outline:none; }
+.scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; margin:6px 0 12px; }
+table { border-collapse:collapse; width:100%; min-width:620px; font-size:13.5px; } th,td { text-align:left; vertical-align:top; padding:9px 12px; border-bottom:1px solid var(--line); }
+th { background:var(--bg); font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); } tr:last-child td { border-bottom:0; }
+code { font:12.5px/1.4 var(--mono); background:var(--code-bg); border:1px solid var(--line); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
+pre { font:12.5px/1.55 var(--mono); background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow-x:auto; margin:8px 0 12px; max-width:100%; } pre code { border:0; padding:0; background:none; }
+.cap { font:600 11px/1 var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:12px 0 -4px; }
+.tag { display:inline-block; font:600 11px/1 var(--font); letter-spacing:.03em; text-transform:uppercase; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+.pass{color:var(--pass);background:var(--pass-bg)} .warn{color:var(--warn);background:var(--warn-bg)} .bad{color:var(--bad);background:var(--bad-bg)} .info{color:var(--info);background:var(--info-bg)}
+.callout { border-left:3px solid var(--warn); background:var(--warn-bg); border-radius:0 8px 8px 0; padding:12px 16px; margin:8px 0 12px; max-width:80ch; } .callout.note { border-left-color:var(--info); background:var(--info-bg); }
+.flow { display:grid; gap:8px; margin:6px 0; } .flow .row { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+.flow .node { border:1px solid var(--line); background:var(--bg); border-radius:8px; padding:6px 10px; font-size:13px; } .flow .node.hi { border-color:var(--accent); background:var(--accent-soft); } .flow .arrow { color:var(--muted); font:12px var(--mono); }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; } .tile { border:1px solid var(--line); border-radius:8px; padding:12px 14px; background:var(--bg); } .tile .n { font:600 26px/1.1 var(--font); } .tile .l { color:var(--muted); font-size:12.5px; margin-top:4px; }
+footer { color:var(--muted); font-size:12.5px; } @media (max-width:520px){ section{padding:18px 14px;} } @media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth;} }
+</style>
+<div class="wrap">
+<header><div class="kicker">Setup guide</div><h1>Send PingOne Privilege events to Elasticsearch through Cribl Stream</h1><div class="meta"><span><b>Audience</b> Platform and security engineers</span><span><b>Time</b> About 1 to 2 hours (estimate)</span><span><b>Tested with</b> Cribl Stream 4.13 · nginx 1.27 · Elasticsearch 9.1</span></div><nav aria-label="Sections"><a href="#overview">Overview</a><a href="#before">Before you start</a><a href="#how">How Privilege sends</a><a href="#es">1 Elasticsearch</a><a href="#secrets">2 Secrets</a><a href="#cribl">3 Cribl</a><a href="#nginx">4 nginx</a><a href="#run">5 Run</a><a href="#priv">6 Privilege</a><a href="#verify">7 Verify</a><a href="#events">What arrives</a><a href="#prompt">Prompt logging</a><a href="#security">Security</a><a href="#trouble">Troubleshooting</a><a href="#limits">Limits</a></nav></header>
+<section id="overview"><h2>What you will build</h2>
+<p>PingOne Privilege can send its audit and runtime events to Elasticsearch through its <b>SIEM</b> setting. This guide puts <b>Cribl Stream</b> in the middle, so that you can mask secrets, add fields that are easy to filter on, and route the same events to other destinations later.</p>
+<div class="flow" role="img" aria-label="Privilege to nginx to Cribl Stream to Elasticsearch">
+  <div class="row"><span class="node">PingOne Privilege (cloud)</span><span class="arrow">HTTPS, Basic or ApiKey →</span><span class="node">nginx: checks the credential</span><span class="arrow">→</span><span class="node hi">Cribl Stream: mask, add fields</span><span class="arrow">→</span><span class="node">Elasticsearch</span></div>
+</div>
+<p>What you get in Elasticsearch:</p>
+<ul>
+<li>Console changes (who changed which app, policy or key), guardrail verdicts, policy decisions, accepted gateway requests and prompt-log records, each tagged by an <code>Index</code> field.</li>
+<li>Secrets removed from the events before they are stored.</li>
+<li>Top-level <code>gw_*</code> fields (user, agent key, policy ids, decision, target) so dashboards need no nested paths.</li>
+</ul>
+<p>Tested with Cribl Stream 4.13, nginx 1.27 and Elasticsearch 9.1, with Privilege's SIEM provider set to <b>Elastic</b>. Names, hosts and credentials below are placeholders.</p></section>
+<section id="before"><h2>Before you start</h2><div class="scroll"><table><thead><tr><th>You need</th><th>Notes</th></tr></thead><tbody><tr><td>A Privilege tenant admin</td><td>To open <b>SIEM Config</b> (and <b>Prompt Logging</b>, if you use it).</td></tr><tr><td>Elasticsearch 8.x or 9.x</td><td>Admin access once, to create a role and a user. Any version that accepts the <code>_bulk</code> API works; the tested one is 9.1.</td></tr><tr><td>A place to run two containers</td><td>Cribl Stream and nginx, side by side (a Kubernetes pod, or one host with Docker). About 1 CPU and 1 GiB of memory is enough for this volume.</td></tr><tr><td>A public HTTPS address</td><td><b>Privilege sends from its own cloud</b>, so the address you give it must be reachable from the internet, with a valid certificate. Terminate TLS on your load balancer or ingress.</td></tr><tr><td>A secret manager</td><td>You will create four random secrets (step 2). Privilege keeps no copy of the ones you give it.</td></tr></tbody></table></div></section>
+<section id="how"><h2>How Privilege sends events</h2>
+<p>Knowing the exact requests saves time. These are what we measured from the console's SIEM Config against a test endpoint:</p>
+<div class="scroll"><table><thead><tr><th>What</th><th>What we saw</th></tr></thead><tbody><tr><td>Client</td><td>A Go Elasticsearch client, version 7.x (user agent <code>elastic/7.0.x</code>).</td></tr><tr><td>Requests</td><td><code>GET /</code> (version check), <code>HEAD /&lt;index&gt;</code>, and <code>POST /_bulk</code> for the events. It does <b>not</b> use single-document writes (<code>POST /&lt;index&gt;/_doc</code>).</td></tr><tr><td>Index name</td><td>Privilege chooses it (<code>audit-log</code>). The current form has <b>no Index field</b>. Your pipeline decides where events really go (step 3).</td></tr><tr><td>Authentication</td><td><b>Username and password</b> (<code>Authorization: Basic …</code>) or <b>API key</b> (<code>Authorization: ApiKey …</code>). Both are offered in the form.</td></tr><tr><td>URL</td><td>Must include <code>https://</code>. A bare <code>host:9200</code> fails.</td></tr><tr><td>Health check</td><td>Writes one event through the same path, so a passing check proves the whole chain.</td></tr><tr><td>Timing</td><td>Events appeared in the index within about a minute of the action that caused them.</td></tr></tbody></table></div></section>
+<section id="es"><h2>Step 1. Elasticsearch: a write-only user</h2>
+<p>Give Cribl the least access it needs: create documents in one index family and nothing else. Run as an administrator (Kibana Dev Tools or <code>curl</code>):</p>
+<div class="cap">Elasticsearch</div><pre><code>PUT _security/role/privilege_siem_writer
+{
+  "cluster": ["monitor"],
+  "indices": [{
+    "names": ["privilege-siem-events*"],
+    "privileges": ["auto_configure", "create_index", "create_doc", "index", "view_index_metadata"]
+  }]
+}
+
+PUT _security/user/cribl_siem
+{ "password": "&lt;generate-a-long-random-password&gt;", "roles": ["privilege_siem_writer"] }</code></pre>
+<div class="callout note"><b>Why no read access.</b> A writer that cannot read cannot leak what is already stored. Create a separate read-only role for the people who search the index. Do not use the built-in superuser for ingestion, and do not leave an anonymous role on the cluster.</div>
+<p>The index <code>privilege-siem-events</code> is created on the first write. We use that name throughout; use your own if you prefer, in the role and in step 3.</p></section>
+<section id="secrets"><h2>Step 2. Create four secrets</h2>
+<p>Generate each value randomly and store it in your secret manager.</p>
+<div class="scroll"><table><thead><tr><th>Secret</th><th>Used by</th><th>How to make it</th></tr></thead><tbody><tr><td>Privilege login (user and password)</td><td>Privilege signs in to your endpoint (Basic)</td><td>User <code>privilege</code>; password: <code>openssl rand -hex 24</code></td></tr><tr><td>Privilege API key</td><td>Privilege signs in (ApiKey), if you choose that mode</td><td><code>printf 'siem:%s' "$(openssl rand -hex 24)" | base64 | tr -d '\n'</code>. Keep it to the characters <code>A-Z a-z 0-9 + / = _ -</code> (it sits inside an nginx map).</td></tr><tr><td>Elasticsearch writer password</td><td>Cribl signs in to Elasticsearch</td><td>The password you set for <code>cribl_siem</code> in step 1.</td></tr><tr><td>Cribl admin password</td><td>You, in the Cribl UI</td><td>Cribl requires 3 of 4 character classes (lower, upper, digit, symbol). Example: <code>$(openssl rand -hex 20)-Aa</code>.</td></tr></tbody></table></div>
+<p>Use either the login or the API key in Privilege, not both at once. Having both configured in nginx is harmless and lets you switch without a deployment.</p></section>
+<section id="cribl"><h2>Step 3. Cribl Stream</h2>
+<p>One source, one destination, one route and one pipeline. If you prefer the UI, create the same objects there; the YAML below is what Cribl stores under <code>$CRIBL_HOME/local/cribl/</code>.</p>
+<h3>Source: an Elasticsearch API source on loopback</h3>
+<div class="cap">inputs.yml</div><pre><code>inputs:
+  in_elastic:
+    type: elastic
+    disabled: false
+    host: 127.0.0.1        # loopback only: nginx is the only way in
+    port: 9201
+    elasticAPI: /
+    authType: none
+    tls:
+      disabled: true
+    proxyMode:
+      enabled: false</code></pre>
+<h3>Destination: Elasticsearch</h3>
+<div class="cap">outputs.yml</div><pre><code>outputs:
+  es_siem:
+    type: elastic
+    url: 'https://&lt;elasticsearch-host&gt;:9200/_bulk'
+    index: privilege-siem-events
+    # The write-only user cannot call GET /, so name the version instead of letting Cribl probe it.
+    elasticVersion: '7'
+    authType: basic
+    username: 'cribl_siem'
+    password: '&lt;writer password&gt;'
+  devnull:
+    type: devnull</code></pre>
+<h3>Route</h3>
+<div class="cap">pipelines/route.yml</div><pre><code>routes:
+  - id: siem
+    name: privilege-siem
+    final: true
+    disabled: false
+    pipeline: siem_mask
+    filter: __inputId=='elastic:in_elastic'
+    output: es_siem
+  - id: default
+    name: default
+    final: true
+    disabled: false
+    pipeline: main
+    filter: "true"
+    output: devnull
+    description: Anything else is dropped</code></pre>
+<h3>Pipeline: mask, promote, fix the index</h3>
+<div class="cap">pipelines/siem_mask/conf.yml</div><pre><code>asyncFuncTimeout: 1000
+functions:
+  # 1. Mask secrets in every field, including nested objects.
+  - id: mask
+    filter: "true"
+    disabled: false
+    conf:
+      rules:
+        # "&lt;name containing password / secret / token / apikey / accesskey / virtualkey / providerkey&gt;": "&lt;value&gt;"
+        - matchRegex: /("\w*(?:password|passwd|secret|token|apikey|api_key|accesskey|virtualkey|providerkey)\w*"\s*:\s*")[^"]+(")/gi
+          replaceExpr: "`${g1}***${g2}`"
+        - matchRegex: /sk-[A-Za-z0-9_-]{16,}/g
+          replaceExpr: "'sk-***'"
+        - matchRegex: /Bearer\s+[A-Za-z0-9._~+\/=-]{8,}/g
+          replaceExpr: "'Bearer ***'"
+        - matchRegex: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g
+          replaceExpr: "'***jwt***'"
+      fields:
+        - "*"
+      depth: 5
+  # 2. Promote the fields people filter on to the top level (runtime events keep them inside Data).
+  - id: eval
+    filter: "typeof Data === 'object' &amp;&amp; Data !== null"
+    disabled: false
+    conf:
+      add:
+        - {name: gw_user, value: Data.User}
+        - {name: gw_agent_key, value: Data.AgentKey}
+        - {name: gw_app, value: Data.App}
+        - {name: gw_policy_ids, value: Data.PolicyIDs}
+        - {name: gw_decision, value: Data.Decision}
+        - {name: gw_decision_reason, value: Data.Reason}
+        - {name: gw_stage, value: Data.Stage}
+        - {name: gw_target, value: Data.Target}
+        - {name: gw_flow, value: Data.Flow}
+        - {name: gw_request_id, value: Data.RequestID}
+        - {name: gw_tenant, value: Data.Tenant}
+      # Defence in depth: never store these headers if they ever appear.
+      remove:
+        - "Data.Headers.Authorization"
+        - "Data.Headers['Proxy-Authorization']"
+        - "Data.Headers.Cookie"
+        - "Data.Headers['Set-Cookie']"
+        - "Data.Headers['X-Api-Key']"
+  # 3. Always write to one index (Privilege names its own, which your writer role does not cover), and drop Cribl's _time.
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      add:
+        - name: __index
+          value: "'privilege-siem-events'"
+      remove:
+        - _time</code></pre>
+<div class="callout"><b>Two things that cost us time.</b>
+<ul>
+<li><b>Cribl's Elasticsearch source accepts only <code>_bulk</code> requests</b> (<code>/_bulk</code> and <code>/&lt;index&gt;/_bulk</code>) and only one authentication mode. A single-document write gets <code>404 could not find parser</code>. Privilege uses <code>_bulk</code>, so this is fine here.</li>
+<li><b>The mask function turns every value it visits into a string</b>, even when no rule matches. That is harmless for the audit events (their <code>Data</code> fields are text in the index anyway). If you also ingest events with real numbers or booleans, list those field names <b>before</b> the <code>"*"</code> in the field list with a <code>!</code> prefix (for example <code>"!HTTPStatus"</code>). Cribl takes the first match, so the order matters.</li>
+</ul></div></section>
+<section id="nginx"><h2>Step 4. nginx: the authentication front</h2>
+<p>Cribl's Elasticsearch source takes one auth mode and does not accept the <code>ApiKey</code> scheme, but Privilege can send either Basic or ApiKey. A small nginx in front checks the credential and lets Cribl listen on loopback with no authentication of its own, so nothing can reach Cribl except through nginx.</p>
+<div class="cap">/etc/nginx/conf.d/default.conf</div><pre><code>map_hash_bucket_size 512;                       # credential strings are longer than nginx's default 64-byte bucket
+
+# Auth scheme names are case-insensitive (RFC 7235): normalise before comparing.
+map $http_authorization $auth_norm {
+    ~*^basic\s+(?&lt;c&gt;.+)$     "Basic $c";
+    ~*^apikey\s+(?&lt;c&gt;.+)$    "ApiKey $c";
+    default                  $http_authorization;
+}
+
+map $auth_norm $siem_authed {
+    default                  0;
+    "Basic &lt;base64 of privilege:password&gt;"   1;     # printf 'privilege:%s' "$PW" | base64 | tr -d '\n'
+    "ApiKey &lt;your API key&gt;"                  1;
+}
+
+server {
+    listen 9200;
+    client_max_body_size 20m;
+
+    location / {
+        default_type application/json;
+        if ($siem_authed = 0) {
+            return 401 '{"message":"Access denied"}';
+        }
+        proxy_set_header Authorization "";      # Cribl runs with no auth of its own
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_pass http://127.0.0.1:9201;
+    }
+}</code></pre>
+<p>Generate this file from your secrets at deploy time. Do not commit it. Keep it readable only by root.</p></section>
+<section id="run"><h2>Step 5. Run it</h2>
+<p>nginx and Cribl must share a network namespace, so that nginx can reach Cribl on <code>127.0.0.1:9201</code>. Publish only nginx's port 9200.</p>
+<h3>One host with Docker</h3>
+<div class="cap">Shell</div><pre><code># Cribl: configuration lives in ./cribl-local (inputs.yml, outputs.yml, pipelines/...). No port is published for 9201.
+docker run -d --name cribl -p 127.0.0.1:9200:9200 -v "$PWD/cribl-local:/opt/cribl/local" cribl/cribl:4.13.0
+
+# nginx joins Cribl's network namespace, so it can reach 127.0.0.1:9201 and owns the published 9200.
+docker run -d --name nginx --network container:cribl -v "$PWD/nginx:/etc/nginx/conf.d:ro" nginx:1.27-alpine</code></pre>
+<p>Put your TLS terminator (a reverse proxy or load balancer with a real certificate) in front of <code>127.0.0.1:9200</code>.</p>
+<h3>Kubernetes</h3>
+<ul>
+<li>One Deployment, one pod, two containers (<code>nginx</code> on port 9200 and <code>cribl</code>); they share the pod's network automatically.</li>
+<li>An init container renders the Cribl and nginx configuration from your Kubernetes Secrets into <code>emptyDir</code> volumes, so no credential is ever in a ConfigMap or in git.</li>
+<li>Expose only the nginx port through a Service and an HTTPS Ingress. Give the Cribl admin UI (port 9000) no Service; reach it with <code>kubectl port-forward</code>.</li>
+<li>Readiness: a TCP probe on 9200 for nginx and an HTTP probe on <code>127.0.0.1:9201</code> for Cribl.</li>
+<li>Use a <code>Recreate</code> strategy for a single replica, and expect a short gap in delivery on every deploy (see the limits below).</li>
+</ul>
+<div class="callout note"><b>Cribl admin password.</b> Cribl regenerates its user file as <code>admin</code>/<code>admin</code> when its <code>local</code> directory is empty at start. If you keep the directory on a persistent volume, set the password once in the UI. If you rebuild it on every start (as above), have a small sidecar set the password through Cribl's API from a secret on each start.</div></section>
+<section id="priv"><h2>Step 6. Configure Privilege</h2>
+<ol>
+<li>In the Privilege console open <b>SIEM Config</b>.</li>
+<li><b>Provider:</b> Elastic.</li>
+<li><b>Authentication:</b> <i>Username and password</i> (user <code>privilege</code> and its password) or <i>API key</i> (the value from step 2).</li>
+<li><b>URL:</b> <code>https://siem.example.com</code> (your public address, with <code>https://</code>).</li>
+<li>Press <b>Health Check</b>. It should say <i>Passed</i>.</li>
+<li>Press <b>Save Changes</b>. If a config already exists, edit it rather than adding a second one.</li>
+</ol>
+<div class="scroll"><table><thead><tr><th>Message in the console</th><th>Meaning</th></tr></thead><tbody><tr><td>The token or API key was rejected</td><td>The credential does not match what nginx expects. Check the user and password (or key) character for character, and that the scheme in use is the one you configured.</td></tr><tr><td>Health check passes but Save fails</td><td>In our test the first Save attempts returned HTTP 500 from the console. Saving again as an update to the existing config succeeded.</td></tr></tbody></table></div></section>
+<section id="verify"><h2>Step 7. Verify</h2>
+<p>Replace the placeholders. Read with an account that can read the index, not with the writer.</p>
+<div class="cap">Shell</div><pre><code># 1. The endpoint refuses strangers and accepts the Privilege credential
+curl -s -o /dev/null -w '%{http_code}\n' https://siem.example.com/                           # expect 401
+curl -s -o /dev/null -w '%{http_code}\n' -u privilege:&lt;password&gt; https://siem.example.com/   # expect 200
+
+# 2. Events are arriving (after a Health Check, or any change in the console)
+curl -s -u &lt;reader&gt;:&lt;password&gt; 'https://&lt;elasticsearch-host&gt;:9200/privilege-siem-events/_count?pretty'
+curl -s -u &lt;reader&gt;:&lt;password&gt; 'https://&lt;elasticsearch-host&gt;:9200/privilege-siem-events/_search?size=3&amp;sort=@timestamp:desc&amp;pretty'
+
+# 3. The writer cannot read (expect 403)
+curl -s -o /dev/null -w '%{http_code}\n' -u cribl_siem:&lt;writer password&gt; 'https://&lt;elasticsearch-host&gt;:9200/privilege-siem-events/_count'</code></pre>
+<p>Then check three things in a few stored events: secrets show as <code>***</code> where a key or password would be, <code>cribl_pipe</code> is set, and the <code>gw_*</code> fields are present on runtime events.</p>
+<p>In Cribl, <code>Destination failed</code> warnings in the log mean Elasticsearch refused something (usually an index the writer role does not cover).</p></section>
+<section id="events"><h2>What arrives</h2>
+<p>The <code>Index</code> field says which kind of event it is:</p>
+<div class="scroll"><table><thead><tr><th>Index</th><th>Meaning</th><th>Fields worth using</th></tr></thead><tbody><tr><td><code>audit-log</code></td><td>A change made in the Privilege console</td><td><code>Message</code> (method and object), <code>Status</code>, <code>User</code>, <code>Device</code>, <code>Module</code>, <code>DataText</code>, <code>Resources</code></td></tr><tr><td><code>policy-decision-log</code></td><td>A policy decision on an agent call</td><td><b>user, agent key, app, policy ids, decision (allow / hitl / deny), reason</b>, stage, flow, target (the tool), method, principal, request id</td></tr><tr><td><code>aiguard-log</code></td><td>A guardrail verdict, a rate-limit refusal or a model call</td><td>user, decision, event, reason, control id, resource name, key type, compliance mappings, request id</td></tr><tr><td><code>proxy-audit-log</code></td><td>A request the gateway accepted</td><td>user, method, path, host, device, tenant</td></tr><tr><td><code>prompt-log</code></td><td>A recorded prompt, tool call or response (see below)</td><td>metadata in the clear, content <b>sealed</b></td></tr></tbody></table></div>
+<p>Runtime events keep their payload inside <code>Data</code>; the pipeline copies the common fields to top-level <code>gw_user</code>, <code>gw_agent_key</code>, <code>gw_app</code>, <code>gw_policy_ids</code>, <code>gw_decision</code>, <code>gw_decision_reason</code>, <code>gw_stage</code>, <code>gw_target</code>, <code>gw_flow</code>, <code>gw_request_id</code> and <code>gw_tenant</code>.</p>
+<p>Kibana examples:</p>
+<div class="cap">Kibana query language</div><pre><code>gw_decision : "hitl"                     approvals that are waiting
+gw_decision : "deny" and gw_agent_key : "&lt;agent key name&gt;"
+gw_request_id : "&lt;id&gt;"                   everything about one request, across event kinds
+Index : "audit-log" and Message : "agentaccesskeys"   changes to agent keys</code></pre></section>
+<section id="prompt"><h2>Prompt logging</h2>
+<p>The Privilege <b>Prompt Logging</b> page controls whether prompts, tool calls and (optionally) responses are recorded, and for which surfaces (LLM traffic, MCP tool calls, agent-to-agent messages, coding agents). It also holds a size limit (default 65,536 bytes, maximum 131,072 per record), a <b>public key</b> and a <b>key id</b>.</p>
+<h3>How it protects the content</h3>
+<ul>
+<li>Every recorded item is <b>encrypted to a public key that you hold</b> (an X25519 key; HPKE, RFC 9180). Privilege cannot read the records. Only the private key opens them.</li>
+<li>Make the key pair in the console (<b>Generate Key Pair</b>) or bring your own X25519 key as a JWK. <b>Save the private half in a password manager at once.</b> Privilege keeps no copy, and without it the records cannot be read.</li>
+<li>The key id is recorded on every record, so after a rotation old records still open with the retired key.</li>
+</ul>
+<h3>What your SIEM receives (observed)</h3>
+<p>Records arrive as <code>prompt-log</code> events: the readable details plus the sealed content. We checked this with a real prompt that contained a unique marker: the marker was in none of the events, and no part of the prompt was readable in any <code>Content</code> field.</p>
+<div class="scroll"><table><thead><tr><th>Field</th><th>Content</th></tr></thead><tbody><tr><td><code>App</code>, <code>User</code>, <code>AgentKey</code>, <code>KeyType</code>, <code>PrincipalKind</code>, <code>Tenant</code></td><td>Who and what, in the clear</td></tr><tr><td><code>RequestID</code>, <code>Direction</code>, <code>Flow</code>, <code>Bytes</code>, <code>UnitCount</code></td><td>Which request, request or response, which surface, size</td></tr><tr><td><code>Content</code></td><td>The sealed content (ciphertext, base64)</td></tr><tr><td><code>Enc</code></td><td>The encapsulated key (32 bytes, base64); a request and its response share one</td></tr><tr><td><code>Alg</code></td><td>Observed: <code>HPKE-X25519-SHA256-AES256GCM-EXPORT</code></td></tr><tr><td><code>KeyID</code></td><td>Which of your keys sealed it, for example <code>prompt-log-&lt;date&gt;-&lt;id&gt;</code></td></tr></tbody></table></div>
+<div class="callout"><b>Plan for it.</b>
+<ul>
+<li><b>The SIEM holds every sealed prompt.</b> Whoever has the private key and can read the index can open all of them. Restrict both, and keep the private key out of the SIEM's reach.</li>
+<li><b>Volume:</b> a request and its response are two records each. In light test traffic we saw about 2.4 records a minute; with real use and larger prompts, size the index and its retention for it.</li>
+<li>Cribl does not alter the ciphertext.</li>
+<li>Opening a record programmatically needs the exact record layout (how the key is derived and the nonce handled). It is not published in the console; the Prompt Logging page describes reading records in the console's <b>Agent Insights → Prompts</b> view, with the private key entered in your browser (we did not test that view).</li>
+</ul></div></section>
+<section id="security"><h2>Security checklist</h2>
+<ul>
+<li>Endpoint over HTTPS only; certificate valid for the name Privilege uses.</li>
+<li>Cribl's port 9201 is bound to <code>127.0.0.1</code> and not published. nginx is the only way in.</li>
+<li>Credentials generated randomly, stored in a secret manager, never in git or a ConfigMap, rotated on a schedule.</li>
+<li>The Elasticsearch writer is write-only on the one index family. No read, no other indices.</li>
+<li>Test the refusals: no credential, a wrong password and a wrong key are all <code>401</code>.</li>
+<li>The index is readable only by people who need it (events carry user ids, device details and client IP addresses; prompt-log carries sealed content).</li>
+<li>No anonymous access on Elasticsearch or Kibana; port 9200 of Elasticsearch is not on the public internet.</li>
+<li>Cribl's admin UI has no public route and no default password.</li>
+</ul></section>
+<section id="trouble"><h2>Troubleshooting</h2><div class="scroll"><table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead><tbody><tr><td>Console: the token or API key was rejected</td><td>Wrong credential, or Cribl's own admin login was used</td><td>Use the Privilege login you made in step 2, not the Cribl admin account. Check the key character for character.</td></tr><tr><td><code>404 could not find parser</code> in Cribl's log</td><td>A single-document write (<code>POST /&lt;index&gt;/_doc</code>)</td><td>Privilege does not send that. If another client does, send it <code>_bulk</code>.</td></tr><tr><td>Cribl: <code>Destination failed … 403 … auto_create</code></td><td>Events were sent to an index the writer role does not cover</td><td>Force the index in the pipeline (step 3), or widen <code>names</code> in the role.</td></tr><tr><td>Cribl: <code>Failed to get Elastic Version … 401</code></td><td>The write-only user cannot call <code>GET /</code></td><td>Set <code>elasticVersion: '7'</code> on the destination.</td></tr><tr><td>ApiKey rejected, Basic accepted</td><td>Cribl's source does not accept the ApiKey scheme</td><td>Use the nginx front (step 4).</td></tr><tr><td>nginx fails to start: <code>could not build map_hash</code></td><td>Credential strings longer than the default map bucket</td><td>Add <code>map_hash_bucket_size 512;</code>.</td></tr><tr><td>Numbers show as text in Elasticsearch</td><td>The mask function stringifies values</td><td>Exclude those field names, before the <code>*</code>, in the mask field list.</td></tr><tr><td>Health check passes, then nothing arrives</td><td>The pod restarted or Elasticsearch was down</td><td>Cribl keeps no queue by default; see the limits.</td></tr><tr><td>Events arrive up to about a minute after the action</td><td>Observed delay between the action and the event appearing</td><td>No action; wait a minute before concluding something is missing.</td></tr></tbody></table></div></section>
+<section id="limits"><h2>Limits to know about</h2>
+<ul>
+<li><b>No queue.</b> Events that arrive while Elasticsearch is down, or while the pod restarts, are lost. If you need no loss, enable Cribl's persistent queue on the destination, backed by a persistent volume (not tested here).</li>
+<li><b>One replica gap.</b> A single replica with a <code>Recreate</code> strategy leaves about a minute with no delivery on each deploy. If that matters, run two replicas with a rolling update behind the same Service (not tested here; keep the nginx and Cribl configuration identical in both).</li>
+<li><b>Cribl's Elasticsearch source is <code>_bulk</code> only</b> and takes one auth mode (hence nginx).</li>
+<li><b>The index name is chosen by Privilege</b> and cannot be set in the form; the pipeline overrides it.</li>
+<li><b>Privilege sends from its cloud</b>, so a private-network-only Elasticsearch needs the public front described here.</li>
+<li>Rotating a credential means updating nginx (and the Privilege form) together.</li>
+</ul></section>
+<footer>Hosts, names and credentials in this guide are placeholders. Everything described was run in a test environment; limits and open points are stated where they apply.</footer>
+</div>
