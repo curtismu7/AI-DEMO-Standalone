@@ -283,7 +283,9 @@ Index : "audit-log" and Message : "agentaccesskeys"   changes to agent keys</cod
 <li><b>The SIEM holds every sealed prompt.</b> Whoever has the private key and can read the index can open all of them. Restrict both, and keep the private key out of the SIEM's reach.</li>
 <li><b>Volume:</b> a request and its response are two records each. In light test traffic about 2.4 records a minute were seen; with real use and larger prompts, size the index and its retention for it.</li>
 <li>Cribl does not alter the ciphertext.</li>
-<li>Opening a record programmatically needs the exact record layout (how the key is derived and the nonce handled). It is not published in the console; the Prompt Logging page describes reading records in the console's <b>Agent Insights → Prompts</b> view, with the private key entered in your browser (we did not test that view).</li>
+<li><b>Opening a record</b> was tested end to end: a record read from the index opened with the private key and returned the original prompt. Each record is an HPKE (RFC 9180) encapsulation to your X25519 public key (suite <code>HPKE-X25519-SHA256-AES256GCM-EXPORT</code>); a 44-byte secret derived from the record's <code>Enc</code> value with the context <code>&lt;RequestID&gt;|&lt;Direction&gt;</code> gives the AES-256-GCM key (first 32 bytes) and nonce (last 12), and the same context is the authenticated data. Open the request and the response separately.</li>
+<li><b>Check the Public key box, not only the Key id.</b> In the console the <i>Key id</i> is a label recorded on each row, while the <i>Public key</i> box is what records are sealed to. If the box still holds another key, records carry your key id yet will not open with your private key. After saving, reload the page, confirm the box shows your public key, send one test call, and open its records before relying on the setup.</li>
+<li>The Prompt Logging page also describes reading records in the console's <b>Agent Insights → Prompts</b> view, with the private key entered in your browser (that view was not tested here).</li>
 </ul></div></section>
 <section id="security"><h2>Security checklist</h2>
 <ul>
