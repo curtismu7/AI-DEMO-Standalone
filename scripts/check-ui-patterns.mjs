@@ -95,7 +95,8 @@ export const RULES = {
   H3: 'no inline style colours or font-size, no hardcoded colour in markup attributes',
   T1: 'theme tokens only: no colour literals in own CSS outside token definitions; purple/violet/indigo hues drift',
   T2: 'font-size floor of 10px',
-  T3: 'dark and light themes are both defined',
+   T3: 'dark and light themes are both defined',
+   B1: 'brand font sizes come from the shared stylesheet: no font-size on .shell-brand* in the app own CSS (advisory until the header rollout completes)',
   A1: 'buttons, links and form controls have an accessible name',
   A2: 'no outline:none without a replacement focus style',
   A3: 'every img has alt (role=img needs a label)',
@@ -2677,7 +2678,27 @@ function ruleC1(u) {
   return PASS(R);
 }
 
-const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1];
+// ---- B1: brand sizing belongs to the shared stylesheet, not the app's own CSS
+// (header standard, 2026-11-24: sizes live in shared/standalone-ui.css only).
+function ruleB1(u) {
+  const R = 'B1';
+  const hit = [];
+  for (const s of ownSheets(u)) {
+    for (const r of s.parsed.rules) {
+      const parts = selParts(r.selector);
+      if (!parts.some((p) => /\.shell-brand/i.test(p))) continue;
+      for (const d of r.decls) {
+        if (d.prop === 'font-size' || d.prop === 'font') {
+          hit.push({ file: r.file, line: d.line, msg: `${r.selector.trim()} { ${d.prop}: ${d.value.trim()} } (${r.file}:${d.line}) — brand sizes come from shared/standalone-ui.css` });
+        }
+      }
+    }
+  }
+  if (hit.length) return mk(R, 'WARN', `app CSS sets a brand font-size on .shell-brand*: ${first(hit)}`, hit);
+  return PASS(R);
+}
+
+const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1, ruleB1];
 
 /** Apply the `ui-pattern: allow` escapes: a finding on the escape's line or the line below is let through. */
 function applyEscapes(results, u) {

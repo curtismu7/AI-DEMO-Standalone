@@ -115,14 +115,17 @@ const CASES = [
   ['H1', 'clean-react', { 'web/src/pages/Home.jsx': sub('<h1>Home</h1>', '<h1>Home</h1><h1>Again</h1>') }, {}, 'DRIFT', 'react: two h1'],
   ['M1', 'clean-react', { 'web/src/AppShell.jsx': (x) => x.replace('        <ModeToggle />\n', '').replace('import ModeToggle from "./components/ModeToggle";\n', '') }, {}, 'DRIFT', 'react: toggle removed from the shell'],
   ['P10', 'clean-react', { 'web/src/app.css': append('button { color: var(--brand-header-on); }') }, {}, 'DRIFT', 'react: button reads a brand token'],
+  ['B1', 'clean-static', { [CSS]: append('.shell-brand__name { font-size: 1.4rem; }') }, {}, 'WARN', 'app CSS sets a font-size on .shell-brand*'],
+  ['B1', 'clean-static', { [CSS]: append('.other { font-size: 1.4rem; }') }, {}, 'PASS', 'app CSS may set font-size on other selectors', [], true],
 ];
 
-for (const [rule, fixture, edits, extra, status, label, also = []] of CASES) {
+for (const [rule, fixture, edits, extra, status, label, also = [], ignoreOther = false] of CASES) {
   test(`${rule} ${status}: ${label}`, () => {
     const { drift, warn } = check(make(fixture, edits, extra).app);
     const got = status === 'DRIFT' ? drift : warn;
-    assert.ok(got.has(rule), `${rule} should be ${status}; DRIFT=[${[...drift]}] WARN=[${[...warn]}]`);
+    if (status !== 'PASS') assert.ok(got.has(rule), `${rule} should be ${status}; DRIFT=[${[...drift]}] WARN=[${[...warn]}]`);
     if (status === 'DRIFT') assert.deepEqual([...drift].filter((r) => r !== rule && !also.includes(r)).sort(), [], `only ${rule}${also.length ? ` (and ${also})` : ''} may drift`);
+    else if (!ignoreOther) assert.ok(drift.size === 0, `${rule} ${status}: unexpected DRIFT [${[...drift]}]`);
   });
 }
 
