@@ -160,15 +160,21 @@ export default function TopMenu({
             type="button"
             data-testid="postman-download"
             title="Download this lab's Postman collection and its variables file"
-            onClick={() => {
+            onClick={async () => {
               const base = `https://raw.githubusercontent.com/${postman.repo}/main/postman`;
-              for (const f of [`${postman.slug}.postman_collection.json`, `${postman.slug}.live.environment.example.json`]) {
+              const files = [`${postman.slug}.postman_collection.json`, `${postman.slug}.live.environment.example.json`];
+              for (const f of files) {
+                // fetch + blob: a.download is ignored for cross-origin URLs, so download via a blob URL
+                const res = await fetch(`${base}/${f}`);
+                if (!res.ok) { console.error(`postman download failed: ${f} (${res.status})`); continue; }
+                const blob = new Blob([await res.text()], { type: "application/json" });
                 const a = document.createElement("a");
-                a.href = `${base}/${f}`;
+                a.href = URL.createObjectURL(blob);
                 a.download = f;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+                URL.revokeObjectURL(a.href);
               }
             }}
           >
