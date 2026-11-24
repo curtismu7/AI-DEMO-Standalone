@@ -19,6 +19,7 @@ One file holds every bubble and slide. Each demo keeps its own `video/captions.m
 
 - `# Step: <key>` starts a bubble, with `## Title` and `## Text` sections.
 - `# Slide: <key>` starts a slide, with `## Title`, `## Lead`, optional `## Column A: <label>` and `## Column B: <label>` lists, and `## Verdict`.
+- **First page title (owner, 2026-11-24; STANDALONE-RULES rule 29):** the `# Opening Slide` has a `## Header` naming what the demo shows (for example "A2A, and A2A with an AWS agent"); the overlay shows it above the slide's title, and the parser refuses an opening slide without one. If a mode shows another slide first (a Mock "this is simulated" note), give that slide the same `## Header`: whatever the viewer sees first carries it, in the live Story and in the video.
 - `---` separates sections. Keep each bullet on its own line starting with `- `.
 - Live values go in `{braces}`, for example `{status}`, `{tools}`, `{words}`. The page fills them from the DOM.
 - Keep slide text to about 40 words, so a slide is never held longer than 10 s in a video.

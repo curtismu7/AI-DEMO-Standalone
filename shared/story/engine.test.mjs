@@ -320,7 +320,7 @@ test('a step\'s tab is opened BEFORE its target is looked for, so a target insid
 
 test('parity checks the Mock wording keys too (a sampleKey with no wording fails the check)', async () => {
   const { parity, parseCaptions } = await import('./captions.js');
-  const c = parseCaptions('# Opening Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
+  const c = parseCaptions('# Opening Slide\n\n## Header\nh\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: [] }), []);
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: ['sample_handoff'] }), ['the demo has step "sample_handoff" but captions.md does not']);
 });

@@ -153,6 +153,15 @@ describe("createOverlay", () => {
     o.destroy();
   });
 
+  test("rule 29: a slide with a header shows it above the title, as text; a slide without one has none", () => {
+    const o = mk();
+    o.slide({ header: "<b>A2A</b>, and A2A with an AWS agent", title: "T", lead: "L", colA: { heading: "A", lines: ["a"] }, colB: { heading: "B", lines: ["b"] }, verdict: "V" });
+    const h = document.querySelector(".story-slide .header"); expect(h.textContent).toBe("<b>A2A</b>, and A2A with an AWS agent"); expect(h.querySelector("b")).toBeNull();
+    expect(h.nextElementSibling.tagName).toBe("H1");
+    o.slide({ title: "T", lead: "L", colA: { heading: "A", lines: ["a"] }, colB: { heading: "B", lines: ["b"] }, verdict: "V" });
+    expect(document.querySelector(".story-slide .header")).toBeNull();
+  });
+
   test("a slide has both columns and the verdict; no image unless one is given; a broken image is removed", () => {
     const o = mk();
     const slide = { title: "T", lead: "L", colA: { heading: "A", lines: ["a1", "a2"] }, colB: { heading: "B", lines: ["b1"] }, verdict: "V" };
