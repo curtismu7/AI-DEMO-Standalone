@@ -118,3 +118,55 @@ Done: everything above evidenced (test counts, screenshots, conformance output);
 - **Interactions** (fallback, rate limit, cache, guard) are not specified in the notes; each lab states its assumption on its page.
 - **Scope**: five repos means five ship checklists. Cut order if needed: Fallback, Rate Limit, Assume Role, Model Armor, Semantic Cache.
 - **Shared-code drift**: the vendored stub and trace shape must stay byte-identical; copy from one canonical place.
+
+## 7. Full build plan (2026-11-24)
+
+Ground rules for every phase: `standalone-demo` skill and `~/Development/STANDALONE-RULES.md`; one worktree and one branch per lab, one writer per repo; subagent prompts name the worktree path and say: check skills first, use the `curtismu7` account, no AI attribution, heavy tests on the Air (`air-test`, `git add` new files first). Tier 2: `spec-first` spec in each repo, a test for each bug fix, local gate output pasted, independent `/code-review` of the diff before merge. Repo creation needs owner approval each time; the owner sets `FORBIDDEN_STRINGS`; publish only after the owner's go. Stack: Node 26, ESM, Express, React, Vite, npm workspaces (`server/`, `web/`), `node --test test/*.test.js`.
+
+### Phase 0: sourcing (blocks everything below)
+The owner sends console screens, swagger or tenant access, and says whether any tenant runs this release. Output: one page per feature saying what is known and how, with a source for each behaviour or an UNVERIFIED label; the Mock-only or Real answer; the settled Assume Role reading.
+
+### Phase A: shared foundation (one PR in AI-DEMO-Standalone, before any lab)
+1. `shared/model-gateway-sim/`, vendored byte-for-byte into each lab: mock LLM provider stub (healthy, down, overloaded, over budget, timeout, slow), LLM-key object with a Usage view, a lab clock (tests run on virtual time), the request-trace shape (`traceparent` per hop, feeding `GatewayTrace`).
+2. One diagram-studio entry per lab (new labs load diagrams by name, rule 17).
+3. Five one-page specs with acceptance criteria and unhappy paths.
+4. Test for the shared kit and a vendoring drift check.
+
+### Phases B to D: per-lab work packages
+Each lab: pure-function engine on the lab clock with a table-driven test per scenario; server API; web pages; docs and scripts.
+
+| Wave | Lab | Engine | Web | Pattern to copy |
+|---|---|---|---|---|
+| B | `privilege-model-fallback-LAB` | Ordered chain per key; triggers down, overloaded, out of budget; per-model budget ledger; names the serving model; named refusal when the chain and budgets are exhausted | Key form, scenario buttons, attempt-by-attempt trace, budget meters | `privilege-gateway-client-LAB` |
+| B | `privilege-rate-limit-LAB` | Refilling token bucket vs fixed window; in-flight semaphore; two-node cluster with and without a shared Redis stand-in; app-wide MCP/A2A caps | Sliders, load generator, live chart (`dataviz` skill), cluster view | `privilege-logging-LAB` |
+| C | `privilege-bedrock-assume-role-LAB` | Pure IAM evaluator (trust policy, external ID, permission policy, model access, region, session expiry); key object with no credential; hops show metering, AI Guard and audit still firing | Stored credential vs assumed role, failure scenarios with fixes, copy-paste IAM snippets (placeholder ids only) | `salesforce-privilege-LAB` |
+| C | `privilege-model-armor-LAB` | Inspector adapter with stub inspectors (Model Armor, Azure AI Content Safety, Bedrock Guardrails); one per key; authority cap enforcing vs advisory; fail-open vs fail-closed | Prompt and response panes, findings, enforcing/advisory switch, inspector-down case | Fork of `ai-guard-sidecar-LAB` (strip identity, honest "fork of" line, replace its pinned tests) |
+| D | `privilege-semantic-cache-LAB` | Stand-in encoder (deterministic n-gram vectors, labelled not a real embedding model); per-key store; strictness; TTL; Requests / From cache / Saved counters | Per-key config, paraphrase tester, threshold slider, Usage tab | `intent-console-lab-LAB` |
+
+Every lab (Demo tier): Mock/Real toggle and banner (Real disabled if no tenant), stories as data with `{{cast}}` tokens, Story mode (`story-mode` skill), TopMenu, JsonPane, "what this run left behind" panel, `doctor`, Reset, presenter mode, talk track, `content-pack.json`, `customer.config`, workspace id, `GET /api/health` returning `demo-health/1`, Dockerfile and compose (127.0.0.1 publish, `restart: unless-stopped`, non-root), `ci.yml` on GitHub-hosted Node 26.
+
+### Phase E: integration and ship (strictly one lab at a time)
+These steps touch shared files (ports registry, `nginx.conf`, `VERSION`, release notes), so parallel PRs would conflict. Per lab, in the rulebook's order: (1) claim a port (`npm run ports -- --next`) and a board row; (2) create the repo (owner approval), single clean commit, history scan 0, gitleaks clean, conformance `--new` 0 FAIL, owner sets `FORBIDDEN_STRINGS`, CI green; (3) shelf registry PR; (4) AI-DEMO-Standalone PR (lab-proxy route, submodule pin); (5) release (VERSION minor bump, `RELEASE_NOTES.md`, `UPDATES.md`; owner decision 2026-11-24: **one release per wave**, so waves B, C and D each get one bump covering that wave's labs); (6) local proof through the shelf tile and in a browser at `https://local.ping-devops.com:8443/<lab>/`, logged in `SHELF-START-SWEEP.md`.
+
+### Gates per lab (evidence pasted)
+Real test counts on Node 26 (one per scenario, mutation of each core behaviour, hostile input such as huge prompts, negative limits, bad thresholds and malformed trust JSON, netguard self-test with zero outbound calls); Playwright at desktop and 375px, dark and light, long names and empty states, screenshots read; every behaviour sourced or UNVERIFIED with the same wording in banner, README and talk track; an independent reviewer reruns from a clean clone.
+
+### Order
+Phase 0, then A, then B (Fallback and Rate Limit in parallel), then C (Assume Role and Model Armor in parallel), then D (Cache). Phase E follows each merge. Fallback uses Assume Role only as an optional target, so B does not wait on C. Rough size: foundation M; Fallback M; Rate Limit L; Assume Role M; Model Armor M; Cache M.
+
+## 8. Additional features: extend existing labs (2026-11-24)
+
+Source: `docs/privilege-feature-demo-options-2026-11-24.md`, on branch `docs/privilege-demo-options` (not yet on `main`; written by another session). It concerns a **different release list**: the 2026-11-02 list tracked in `standalone/gateway-claims-LAB` (entitlement-aware discovery, aggregate cap, OBO redeem, scope layers, hold). None is measured on our tenant; the gateway-image claims are read from binaries and unverified. These items are **not new labs**: each is a mock tab or story added to an existing lab, labelled unverified, which avoids the full standalone rulebook.
+
+| # | Feature | Where | Mock work | Real run needs |
+|---|---|---|---|---|
+| 1 | Entitlement-aware discovery (two keys, two tool lists) | `privilege-gateway-client-LAB` | Mock tab "Ping claim, unverified" | A second, lower-entitled agent key (tenant write) |
+| 2 | Aggregate cap (one cap across calls) | `gateway-claims-LAB`, new tab | Mock burst until first refusal | A low-cap test key and a small burst |
+| 3 | OBO redeem (one token) | `gateway-claims-LAB` OBO tab or `pf-privilege-obo-LAB` | Mock "redeem" step | A real PingFederate token acting for a user |
+| 4 | Hold: a rejected approval is not held again | `ciba-approval-sequence-LAB` or story S04 in `privilege-gateway-client-LAB` | Mock | A real held call |
+| 5 | Scope layers | `gateway-claims-LAB` | Re-run the measured tiers on the new image and compare tool counts | A quick live rerun (cheapest real measurement) |
+| 6 | SPIFFE workload identity to a door | `spiffe-issuer-LAB` | Nothing to build; verified | Nothing |
+| 7 | Support P1 time-boxed Salesforce access | `salesforce-privilege-LAB` (3.14) | Nothing to build | One open check: does the end time end access by itself? |
+
+Build approach for #1 to #5: same rules as above for extending an existing lab (keep its Mock/Real toggle and unverified labels, claim only what a real run showed, worktree per lab, browser check). Real measurements only after the owner's go in the conversation. Owner decisions 2026-11-24: #1 to #5 are in scope as mock tabs (#4 and #5 together as one item); #6 and #7 need no build. Start order for the real measurements is still open; #5 is the suggested first, and every real run waits for the owner's go.
+
