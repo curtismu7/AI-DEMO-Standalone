@@ -218,6 +218,8 @@ Six labs from the 2026-11-10 audit were repointed on 2026-11-17 (see the "Repoin
 `ping-services-stub-LAB`, `p1az-inspector-LAB`, `mcp-tools-LAB`,
 `demo-map-LAB`, `observability-LAB`. This is the audit plus what the READMEs above say.
 
+2026-11-24: five privilege-* labs were added as submodules so the drift guard passes: `privilege-bedrock-assume-role-lab-LAB`, `privilege-model-armor-lab-LAB`, `privilege-model-fallback-lab-LAB`, `privilege-rate-limit-lab-LAB`, `privilege-semantic-cache-lab-LAB`. Their standalone status and Real prerequisites are not classified here yet; the owner classifies them next.
+
 Fleet-wide, 2026-11-18: a sweep found 14 more labs whose vendored TopMenu imports `./ReleaseNotes.jsx`
 but never received the file — the web build and every web test suite failed at their main since the
 rule-22 re-vendor. All 14 now ship the byte-identical shared file (one-commit PR each, all merged,
