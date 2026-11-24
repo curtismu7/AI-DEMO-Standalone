@@ -11,6 +11,9 @@
 .story-bar select option{color:#14202e}
 .story-speed{display:inline-flex;gap:.3rem;align-items:center}
 .story-msg{min-width:7rem;max-width:22rem;overflow-wrap:anywhere}
+/* Waiting on the viewer: bright red, a slow blink (well under 3 flashes a second). Reduced motion keeps the red and drops the blink. */
+.story-msg[data-your-turn="true"]{color:var(--story-your-turn,#ff2a2a);font-weight:800;animation:story-your-turn 1.6s ease-in-out infinite}
+@keyframes story-your-turn{0%,100%{opacity:1}50%{opacity:.25}}
 .story-chip{padding:.1rem .5rem;border:1px solid #d29a0e;border-radius:.35rem;color:#fde68a;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
 .story-warn{color:#fca5a5;font-size:.75rem}
-@media (prefers-reduced-motion:reduce){.story-hl{transition:none !important}}
+@media (prefers-reduced-motion:reduce){.story-hl{transition:none !important}.story-msg[data-your-turn="true"]{animation:none}}

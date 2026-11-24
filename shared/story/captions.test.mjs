@@ -7,6 +7,9 @@ const FILE = `<!-- editing notes -->
 
 # Opening Slide
 
+## Header
+A2A, and A2A with an AWS agent
+
 ## Title
 Agents calling agents
 
@@ -140,3 +143,10 @@ test('regression: an empty field does not swallow the next one, and an empty req
   assert.throws(() => parseCaptions(FILE.replace('## Text\nThis is a local stand-in.', '## Text\n')), /step "sample_intro" needs both/);
   assert.throws(() => parseCaptions(FILE.replace('## Verdict\nBye.', '## Verdict\n')), /Closing Slide is missing a "## Verdict"/);
 });
+
+test('rule 29: the Opening Slide carries a Header naming the demo, and a file without one is refused', () => {
+  assert.equal(parseCaptions(FILE).opening.header, 'A2A, and A2A with an AWS agent');
+  assert.equal(parseCaptions(FILE).slides.part2.header, null);
+  assert.throws(() => parseCaptions(FILE.replace('## Header\nA2A, and A2A with an AWS agent\n\n', '')), /Opening Slide needs a "## Header"/);
+});
+

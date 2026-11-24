@@ -15,6 +15,7 @@ The contract is `README.md` in this folder (what Story is, the toggle, the wordi
 - One file, the format in `README.md`. Every bubble is a `# Step: <key>`, every slide a `# Slide: <key>` (plus `# Opening Slide` and `# Closing Slide`).
 - **Public-safe**: no internal hostnames, tenant or client ids, keys, customer names. No screenshots (slides are text-only, so a column that says "above" or "left" about a picture must be reworded).
 - Say only what the run proved. A bubble that explains a block must not show when the run did not block (see "Gate every claim" below).
+- **The first page names the demo (rule 29).** The `# Opening Slide` needs a `## Header` with what the demo shows (the parser refuses it otherwise), and so does any slide a mode shows before it (a Mock note). Add a lab test that the first slide in each mode has a header (the A2A lab's `test/story.test.ts` does).
 - Mock wording goes in `sample_*` steps (the video's simulated variants). A step that needs Mock wording names it with `sampleKey`.
 
 ## 2. Vendor the shared code (byte for byte)
