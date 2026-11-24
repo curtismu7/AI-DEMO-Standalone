@@ -126,6 +126,19 @@ describe("createOverlay", () => {
     } finally { HTMLElement.prototype.getBoundingClientRect = orig; }
   });
 
+  test("follow: false (the recorded video) draws a caption once and leaves it exactly there: no redraw on resize or scroll", async () => {
+    document.body.innerHTML = '<button id="send">Send</button>';
+    const t = document.getElementById("send"); let top = 100;
+    t.getBoundingClientRect = () => ({ left: 50, top, width: 80, height: 30, right: 130, bottom: top + 30 });
+    const o = mk({ follow: false });
+    o.cap({ n: 1, total: 1, title: "t", text: "x", target: t });
+    const bub = document.querySelector(".story-bub"); expect(document.querySelector(".story-hl").style.top).toBe("95px");
+    top = 300; window.dispatchEvent(new Event("resize")); document.dispatchEvent(new Event("scroll")); await new Promise((r) => setTimeout(r, 60));
+    expect(document.querySelector(".story-hl").style.top).toBe("95px");          // still where it was drawn
+    expect(document.querySelector(".story-bub")).toBe(bub);                      // the very same node: nothing was redrawn
+    o.destroy();
+  });
+
   test("regression: the highlight follows a resize, and stops following once cleared", async () => {
     document.body.innerHTML = '<button id="send">Send</button>';
     const t = document.getElementById("send"); let top = 100;
