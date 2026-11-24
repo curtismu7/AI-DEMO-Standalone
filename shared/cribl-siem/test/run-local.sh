@@ -52,7 +52,12 @@ post_status() { curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST --data '{}' 
 [ "$(post_status -H "Authorization: ApiKey wrong$APIKEY")" = 401 ] && ok "wrong API key is refused (401)" || bad "wrong API key was accepted"
 [ "$(post_status -H "Authorization: Bearer $APIKEY")" = 401 ] && ok "API key under the wrong scheme (Bearer) is refused (401)" || bad "Bearer scheme was accepted"
 [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Authorization: ApiKey $APIKEY" http://127.0.0.1:$PORT/)" = 200 ] && ok "valid API key: GET / is 200" || bad "valid API key refused on GET /"
-[ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:19201/ 2>/dev/null || true)" != 200 ] && ok "Cribl's own port (9201) is not reachable from outside" || bad "Cribl port 9201 is exposed"
+# From a second container on the same network (not the host): Cribl's no-auth port must refuse connections, and nginx's port must demand credentials
+[ "$(docker run --rm --network $NET --entrypoint curl "$IMG" -s -m 5 -o /dev/null -w '%{http_code}' http://cribl-siem-test:9201/ 2>/dev/null || true)" != 200 ] && ok "Cribl's own port (9201) is not reachable from another container" || bad "Cribl port 9201 is reachable inside the network"
+[ "$(docker run --rm --network $NET --entrypoint curl "$IMG" -s -m 5 -o /dev/null -w '%{http_code}' http://cribl-siem-test:9200/ 2>/dev/null)" = 401 ] && ok "nginx (9200) without credentials is 401 from another container" || bad "nginx 9200 did not return 401 to an anonymous client"
+[ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Authorization: apikey $APIKEY" http://127.0.0.1:$PORT/)" = 200 ] && ok "scheme name is case-insensitive (apikey)" || bad "lowercase apikey scheme refused"
+[ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Authorization: BASIC $(printf '%s:%s' "$IN_USER" "$IN_PASS" | base64 | tr -d '\n')" http://127.0.0.1:$PORT/)" = 200 ] && ok "scheme name is case-insensitive (BASIC)" || bad "uppercase BASIC scheme refused"
+[ "$(curl -s -m 5 -D - -o /dev/null http://127.0.0.1:$PORT/ | grep -ci '^content-type:')" = 1 ] && ok "the 401 carries exactly one Content-Type header" || bad "the 401 has duplicate or missing Content-Type"
 
 JWT="eyJ""hbGciOiJIUzI1NiJ9.eyJ""zdWIiOiJ1LTEyMyJ9.abcDEF123456xyz"
 python3 - "$JWT" > "$TMP/bulk.ndjson" <<'PY'

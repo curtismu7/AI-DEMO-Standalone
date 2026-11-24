@@ -10,6 +10,8 @@ OUT=${CRIBL_LOCAL:-/opt/cribl/local}/cribl
 for v in IN_USER IN_PASS IN_APIKEY GW_USER GW_PASS OUT_USER OUT_PASS ES_URL OS_URL; do
   eval "[ -n \"\${$v:-}\" ]" || { echo "missing env $v" >&2; exit 1; }
 done
+# Validate everything before writing anything. The API key sits inside an nginx map, so it must be base64-style (A-Za-z0-9 + / = _ -).
+case "$IN_APIKEY" in *[!A-Za-z0-9+/=_-]*) echo "IN_APIKEY has characters outside A-Za-z0-9+/=_- (a base64 value, as in the cribl-siem-privilege-apikey Secret)" >&2; exit 1;; esac
 mkdir -p "$OUT/pipelines/siem_mask" "$OUT/pipelines/gateway_mask"
 cp "$CFG/cribl.yml" "$OUT/cribl.yml"
 cp "$CFG/route.yml" "$OUT/pipelines/route.yml"
@@ -39,7 +41,6 @@ chmod 600 "$OUT/inputs.yml" "$OUT/outputs.yml"
 
 # nginx: the basic credential is compared as the base64 of user:password, the API key as given. The API key must be base64-style
 # (letters, digits, + / = - _) so it can sit inside the nginx map; the Secret is generated that way.
-case "$IN_APIKEY" in *[!A-Za-z0-9+/=_-]*) echo "IN_APIKEY has characters outside A-Za-z0-9+/=_-" >&2; exit 1;; esac
 NGINX_CONF=${NGINX_CONF:-/nginx-conf}; mkdir -p "$NGINX_CONF"
 BASIC=$(printf '%s:%s' "$IN_USER" "$IN_PASS" | base64 | tr -d '\n')
 GWBASIC=$(printf '%s:%s' "$GW_USER" "$GW_PASS" | base64 | tr -d '\n')
