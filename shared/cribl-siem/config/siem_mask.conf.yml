@@ -23,6 +23,41 @@ functions:
         - "*"
       depth: 5
       flags: []
+  # Runtime events from Privilege's own SIEM feed (Index aiguard-log, policy-decision-log, proxy-audit-log, ...) keep their payload in the
+  # Data OBJECT. Promote the fields people filter on to top-level gw_* fields (user, agent key, policy, decision, ...), so Kibana needs no
+  # nested paths. Data itself is left as it is. Missing keys stay absent. Console audit-log events carry Data as text, so they skip this.
+  - id: eval
+    filter: "typeof Data === 'object' && Data !== null"
+    disabled: false
+    conf:
+      add:
+        - {name: gw_user, value: Data.User}
+        - {name: gw_agent_key, value: Data.AgentKey}
+        - {name: gw_app, value: Data.App}
+        - {name: gw_policy_ids, value: Data.PolicyIDs}
+        - {name: gw_decision, value: Data.Decision}
+        - {name: gw_decision_reason, value: Data.Reason}
+        - {name: gw_decision_event, value: Data.Event}
+        - {name: gw_stage, value: Data.Stage}
+        - {name: gw_target, value: Data.Target}
+        - {name: gw_flow, value: Data.Flow}
+        - {name: gw_method, value: Data.Method}
+        - {name: gw_path, value: Data.Path}
+        - {name: gw_host, value: Data.Host}
+        - {name: gw_principal, value: Data.Principal}
+        - {name: gw_principal_kind, value: Data.PrincipalKind}
+        - {name: gw_request_id, value: Data.RequestID}
+        - {name: gw_tenant, value: Data.Tenant}
+        - {name: gw_control_id, value: Data.ControlID}
+        - {name: gw_resource_name, value: Data.ResourceName}
+        - {name: gw_key_type, value: Data.KeyType}
+      # Defense in depth: Privilege already strips these upstream (none seen in 23 live proxy-audit-log events), but never store them if that changes.
+      remove:
+        - "Data.Headers.Authorization"
+        - "Data.Headers['Proxy-Authorization']"
+        - "Data.Headers.Cookie"
+        - "Data.Headers['Set-Cookie']"
+        - "Data.Headers['X-Api-Key']"
   # Cribl adds _time (epoch seconds); the events already carry @timestamp.
   # Privilege's sender names the target index itself ("audit-log"); the cribl_siem user may only write ping-siem-events*,
   # and the existing history is in ping-siem-events-v2, so always write there.

@@ -92,6 +92,43 @@ Copy the key to the clipboard without printing it:
 Create the Secret once, by hand, before deploying: `kubectl -n ping-devops-curtismuir create secret generic cribl-siem-privilege-apikey --from-literal=username=apikey --from-literal=password="$(printf 'cribl-siem:%s' "$(openssl rand -hex 24)" | base64 | tr -d '\n')"`.
 Verified (local test and live): no credential, wrong password, wrong key and `Bearer <key>` are all 401; Basic and ApiKey are 200 and both writes arrive masked. Not yet verified: what Privilege itself sends in API-key mode (expected `ApiKey`, the Elastic standard).
 
+## What the events contain, and what Cribl adds
+
+Privilege's own SIEM feed (since the 11/20 release at the latest) delivers more than console changes. The `Index` field names the kind:
+
+| `Index` | What it is | Useful fields (in `Data`, and promoted to `gw_*` by Cribl) |
+|---|---|---|
+| `audit-log` | A change made in the Privilege console | `Message` (method + object), `Status`, `User`, `Device`, `Module`, `Region`, `DataText`, `Resources` |
+| `policy-decision-log` (`AIPolicyDecision`) | A policy decision on an agent call | `User`, `AgentKey`, `App`, `PolicyIDs`, `Decision` (allow / hitl / deny), `Reason`, `Event`, `Stage`, `Flow`, `Target` (tool), `Method`, `Principal`, `PrincipalKind`, `RequestID`, `GrantShape`, `InstructionID`, `BaselinePhase`, `Tenant` |
+| `aiguard-log` (`AIGuard`, `AIGuardControl`, `LLM request`) | A guardrail verdict, a rate-limit refusal, a model call | `User`, `Decision`, `Event`, `Reason`, `ControlID`, `ResourceName`, `KeyType`, `Client`, compliance mappings (NIST AI RMF, OWASP, MITRE), `RequestID` |
+| `proxy-audit-log` (`Received HTTP request`) | A request the gateway accepted | `User`, `Method`, `Path`, `Host`, `Device`, `Headers`, `Tenant` |
+
+Cribl copies the fields people filter on to top-level `gw_user`, `gw_agent_key`, `gw_app`, `gw_policy_ids`, `gw_decision`, `gw_decision_reason`, `gw_decision_event`, `gw_stage`, `gw_target`, `gw_flow`, `gw_method`, `gw_path`, `gw_host`,
+`gw_principal`, `gw_principal_kind`, `gw_request_id`, `gw_tenant`, `gw_control_id`, `gw_resource_name`, `gw_key_type` (only when the event has them). `Data` itself is left as sent. It also removes `Authorization`, `Cookie`, `Set-Cookie`,
+`X-Api-Key` and `Proxy-Authorization` from `Data.Headers` if they ever appear (none seen in live events: Privilege strips them upstream). Still present and worth knowing: client IPs (`X-Forwarded-For`, `X-Real-Ip`) and `Mcp-Session-Id`.
+
+**Prompt content.** "Unencrypted prompt logs delivery to SIEM" is in production as part of the 11/20 release (owner note). In the 6 `Index` kinds seen so far no field carries prompt text, so nothing here masks it. When that feature is on for the tenant,
+prompt text will pass through Cribl into Elasticsearch in clear: restrict who can read the index, and add a masking rule here once the field names are known.
+
+## Gateway traffic lines (LLM request, AIGuard, A2A)
+
+Since Privilege's own feed already delivers the gateway's runtime logs (table above), this sidecar path is a second route for the same kinds of line (plus `A2A policy denied`). It is built and the Cribl side is deployed; no gateway uses it yet.
+
+The gateways' `log-tailer` sidecars post one JSON line per event to `/<index>/_doc`. Cribl's Elasticsearch source refuses that, so nginx accepts `POST /<index>/_doc` (and only that path) with the **gateway login**
+(Secret `cribl-siem-gateway-login`, user `gateway`) and rewrites it to a loopback Cribl HTTP source (`in_gateway`, `/cribl/_bulk`). Route `gateway-events` runs pipeline `gateway_mask` (shorten `VirtualKeyID` to `prefix...last4`,
+remove `Headers`, mask `sk-` keys / Bearer / JWT, `@timestamp` from `time`) and the router `gw_router` sends to Elasticsearch `gateway-events` and, when `GW_OPENSEARCH=true`, to OpenSearch `gateway-events`.
+The gateway login works on that path only, and the Privilege logins do not work on it (both checked).
+Elasticsearch: user `cribl_siem` has a second role `cribl_gateway_writer` (write on `gateway-events*`, no read).
+
+Phase 1 (now): the sidecar keeps posting to OpenSearch itself, plus to Cribl, so Cribl writes Elasticsearch only (no duplicates in OpenSearch). Phase 2 (cut-over, own go): the sidecar posts to Cribl only and `GW_OPENSEARCH` is set to `true` in `k8s/deployment.yaml`.
+**Before deploying to a new cluster/namespace** (the Deployment reads these; a missing Secret leaves the pod in `CreateContainerConfigError` and stops the SIEM feed too):
+
+1. Secret: `kubectl -n <ns> create secret generic cribl-siem-gateway-login --from-literal=username=gateway --from-literal=password="$(openssl rand -hex 24)"` (the gateways' sidecars use the same Secret via the chart's `logShipping.cribl.authSecret`).
+2. Elasticsearch (as the `elastic` user): `PUT _security/role/cribl_gateway_writer` with cluster `monitor` and, on `gateway-events*`, privileges `auto_configure, create_index, create_doc, index, view_index_metadata`; then `PUT _security/user/cribl_siem` with `roles: [privilege_siem_writer, cribl_gateway_writer]`.
+3. `OS_URL` in `k8s/deployment.yaml` is `http://opensearch:9200/_bulk`: the `opensearch` Service in the **same namespace** as Cribl, the one the sidecars post to (security off, so no login). Checked from the Cribl pod: 200.
+
+Spec: `docs/specs/2026-11-24-cribl-gateway-events.md`. If Cribl or Elasticsearch is down, the Cribl copy of those events is lost (no queue); the OpenSearch copy is unaffected in phase 1.
+
 ## Roll back
 
 Put the previous URL back in the Privilege SIEM form, then `kubectl --context us delete -k .`.
