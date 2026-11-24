@@ -217,8 +217,15 @@ ok "worker has Organization Admin (organization scope)"
 have_tty=0; [[ -t 0 ]] && have_tty=1; { [[ "$have_tty" == 1 ]] || : </dev/tty; } 2>/dev/null && have_tty=1
 configured_env=""
 [[ -f "$ENV_FILE" ]] && configured_env="$(grep -m1 '^PINGONE_ENVIRONMENT_ID=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
-if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && -n "$configured_env" && "$have_tty" == 1 ]]; then
-  # Never ask on a machine that already has an environment: Enter by habit would switch the labs to a basic one.
+if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && -n "$configured_env" ]]; then
+  # Never fall through to a basic environment when the configured one has PingID and Privilege: every lab would silently lose them.
+  # (Quiet check: exit 0 means PingID Workforce with its deployment, Privilege and a SANDBOX.)
+  if command -v node >/dev/null 2>&1 && [[ "$configured_env" =~ ^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$ ]] \
+     && PINGONE_ACCESS_TOKEN="$access" PINGONE_REGION="$PINGONE_REGION" \
+        node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pingone-admin.mjs" check-env --env "$configured_env" >/dev/null 2>&1; then
+    err "the configured environment $configured_env is a PingID + Privilege environment, and this run would replace it with a basic one."
+    fatal "re-run with --existing-env $configured_env to refresh it (its lab worker secret is re-minted), or --api-create to really switch to a basic environment."
+  fi
   info "an environment is already configured ($configured_env); pass --existing-env <id> to switch to one you made in the console."
 fi
 if [[ -z "$ADOPT_ENV" && "$API_CREATE" != "1" && -z "$configured_env" && "${ASSUME_YES:-}" != "1" && "${STANDALONE_NON_INTERACTIVE:-}" != "1" && "$have_tty" == 1 ]]; then
@@ -245,7 +252,7 @@ if [[ -n "$ADOPT_ENV" ]]; then
     || fatal "that environment is not ready for PingID + Privilege (see the FAIL lines above). Fix it in the console, or re-run with --api-create for a basic environment."
   new_env="$ADOPT_ENV"
   reuse_answer="r"   # find the lab worker if an earlier run made one, instead of making a second
-  ok "adopting environment $new_env (no license lookup, nothing created)"
+  ok "adopting environment $new_env (no license lookup, no environment created). Next: the lab worker is found or created here, and an existing one has its secret re-minted: its old secret stops working."
 fi
 
 if [[ -z "$ADOPT_ENV" ]]; then

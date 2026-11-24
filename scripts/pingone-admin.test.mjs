@@ -588,6 +588,8 @@ test('teardown: --delete-privilege-env lifts the refusal; a basic environment (P
   assert.equal(basic.deleted, true);
   const idNoDeployment = runTeardown({ bom: { products: [...BASIC.products, { type: 'PING_ONE_ID', subtype: 'WORKFORCE' }] } });
   assert.equal(idNoDeployment.deleted, true);
+  const nullDeployment = runTeardown({ bom: { products: [...BASIC.products, { type: 'PING_ONE_ID', subtype: 'WORKFORCE', deployment: null }] } });
+  assert.equal(nullDeployment.deleted, true, nullDeployment.out);   // 'deployment: null' is a basic environment, same as the JS check
 });
 
 test('teardown fails closed: an unreadable bill of materials is refused', () => {
@@ -607,5 +609,14 @@ test('pingone-setup.sh: conflicts are checked before and after the question; a c
   assert.ok(sh.indexOf('\ncheck_adopt_conflict\n') < sh.indexOf('Standalone labs — PingOne environment setup'), 'before any prompt or network call');
   assert.match(sh, /: <\/dev\/tty; \} 2>\/dev\/null && have_tty=1/);
   const boot = fs.readFileSync(new URL('./bootstrap.sh', import.meta.url), 'utf8');
-  assert.match(boot, /\[ "\$non_interactive" = 1 \] && export STANDALONE_NON_INTERACTIVE=1\n\s+if "\$root\/scripts\/pingone-setup\.sh"/);
+  assert.match(boot, /\[ "\$non_interactive" = 1 \] && export STANDALONE_NON_INTERACTIVE=1\n(?:\s+#.*\n)+\s+if "\$root\/scripts\/pingone-setup\.sh"/);
+  assert.match(boot, /# shellcheck disable=SC2086\n\s+if "\$root\/scripts\/pingone-setup\.sh"/);   // the directive stays directly above the unquoted ${PINGONE_ARGS}
+});
+
+test('pingone-setup.sh: a flagless run on a machine whose configured environment has PingID + Privilege stops instead of replacing it', () => {
+  const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
+  const stop = sh.indexOf('would replace it with a basic one');
+  assert.ok(stop > 0, 'refusal present');
+  assert.ok(stop < sh.indexOf('# ── 2. license'), 'before the license lookup and any creation');
+  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && -n "\$configured_env" \]\]; then/);   // no terminal needed
 });

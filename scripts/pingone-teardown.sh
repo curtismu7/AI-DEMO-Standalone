@@ -213,7 +213,7 @@ fi
 # The tenant is the source of truth, not a local file: a PingID deployment or the Privilege product means a person set it up.
 # --yes does not lift this: only --delete-privilege-env does. An unreadable bill of materials is refused too (fail closed).
 if [[ -z "${ALLOW_PRIVILEGE_ENV:-}" ]]; then
-  bom_code="$(curl -s --max-time 30 -o /tmp/p1-bom-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")"
+  bom_code="$(curl -s --max-time 30 -o /tmp/p1-bom-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")" || bom_code="curl-failed"
   bom_body="$(cat /tmp/p1-bom-$$ 2>/dev/null || true)"
   rm -f /tmp/p1-bom-$$
   bom_verdict="$(printf '%s' "$bom_body" | python3 -c '
@@ -224,8 +224,9 @@ except Exception:
     print("unreadable"); sys.exit()
 found = []
 for p in products:
+    if not isinstance(p, dict): continue
     if p.get("type") == "PING_ONE_PAM": found.append("PingOne Privilege")
-    if p.get("type") == "PING_ONE_ID" and p.get("deployment", {}).get("id"): found.append("a PingID deployment")
+    if p.get("type") == "PING_ONE_ID" and (p.get("deployment") or {}).get("id"): found.append("a PingID deployment")
 print(", ".join(found) if found else "none")' 2>/dev/null || echo unreadable)"
   if [[ "$bom_code" != "200" || "$bom_verdict" == "unreadable" ]]; then
     err "could not read the products of $env_name ($TARGET_ENV_ID): HTTP $bom_code. Not deleting without knowing."
@@ -297,7 +298,6 @@ gone_exact = {
 }
 gone_prefix = ("PINGONE_WORKER_CLIENT_ID=", "PINGONE_WORKER_CLIENT_SECRET=",
                "PINGONE_WORKER_ID=", "PINGONE_WORKER_SECRET=")
-
 out = []
 dropped = []
 for line in open(path).read().splitlines():
