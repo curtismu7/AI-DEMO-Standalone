@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header brand standard mock — 2026-11-24</title>
+<!--
+  Mock for the header brand-size standard (header sweep, 2026-11-24).
+  Shows the shell bar brand block at 1440px and 390px, dark and light,
+  with a short and a long app name + tagline, using the proposed sizes:
+
+    .shell-brand__name { font-size: 1.4rem; overflow-wrap: anywhere; }
+    .shell-brand__tag  { font-weight: 400; font-size: 0.9rem; letter-spacing: 0; opacity: 0.85; overflow-wrap: anywhere; }
+    .brand-mark        { font-size: 1.4rem; }
+    @media (max-width: 600px) {
+      .shell-brand__name, .brand-mark { font-size: 1.15rem; }
+      .shell-brand__tag { display: none; }
+    }
+-->
+<style>
+:root { color-scheme: light; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+section { margin: 0 0 2.5rem; }
+h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; }
+.pad { padding: 0 1rem; }
+
+.shell-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--bar-bg); color: var(--bar-fg);
+  padding: 0.5rem 1rem;
+  border-bottom: 3px solid #d20e0f;
+}
+.shell-bar--light { --bar-bg: #fcfcfc; --bar-fg: #051727; }
+.shell-bar--dark  { --bar-bg: #051727; --bar-fg: #fcfcfc; }
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.brand-mark { font-size: 1.4rem; line-height: 1; }
+.shell-brand__text { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1.2; }
+.shell-brand__name { font-size: 1.4rem; font-weight: 700; overflow-wrap: anywhere; }
+.shell-brand__tag { font-weight: 400; font-size: 0.9rem; letter-spacing: 0; opacity: 0.85; overflow-wrap: anywhere; }
+.shell-nav { display: inline-flex; gap: 0.5rem; }
+.shell-nav a { color: inherit; text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid rgba(128,128,128,0.5); border-radius: 999px; font-size: 0.85rem; }
+.shell-nav a[aria-current] { background: #d20e0f; border-color: #d20e0f; }
+.shell-right { margin-left: auto; font-size: 0.85rem; opacity: 0.85; }
+
+.phone { width: 390px; max-width: 100%; border: 1px solid #999; }
+@media (max-width: 600px) {
+  .shell-brand__name, .brand-mark { font-size: 1.15rem; }
+  .shell-brand__tag { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="pad">
+<h1>Header brand standard mock</h1>
+<p>Proposed: name 1.4rem, mark 1.4rem, tagline 0.9rem (85% opacity); at ≤600px name/mark 1.15rem, tagline hidden. rem units, so the TopMenu Text-size control scales them.</p>
+
+<h2>1440px — dark — short name</h2>
+<div class="shell-bar shell-bar--dark">
+  <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__text"><span class="shell-brand__name">CIMD Lab</span><span class="shell-brand__tag">Client-Initiated Metadata Discovery</span></span></div>
+  <nav class="shell-nav"><a href="#" aria-current="page">Home</a><a href="#">Docs</a></nav>
+  <span class="shell-right">presenter · theme</span>
+</div>
+
+<h2>1440px — dark — long name</h2>
+<div class="shell-bar shell-bar--dark">
+  <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__text"><span class="shell-brand__name">MCP Demo Client for Privilege Agentic Authorization</span><span class="shell-brand__tag">Agent keys, scopes and zero standing privilege in action</span></span></div>
+  <nav class="shell-nav"><a href="#" aria-current="page">Home</a><a href="#">Docs</a></nav>
+  <span class="shell-right">presenter · theme</span>
+</div>
+
+<h2>1440px — light — long name</h2>
+<div class="shell-bar shell-bar--light">
+  <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__text"><span class="shell-brand__name">MCP Demo Client for Privilege Agentic Authorization</span><span class="shell-brand__tag">Agent keys, scopes and zero standing privilege in action</span></span></div>
+  <nav class="shell-nav"><a href="#" aria-current="page">Home</a><a href="#">Docs</a></nav>
+  <span class="shell-right">presenter · theme</span>
+</div>
+
+<h2>390px — dark — long name</h2>
+<div class="phone">
+  <div class="shell-bar shell-bar--dark">
+    <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__text"><span class="shell-brand__name">MCP Demo Client for Privilege Agentic Authorization</span><span class="shell-brand__tag">Agent keys, scopes and zero standing privilege in action</span></span></div>
+    <nav class="shell-nav"><a href="#" aria-current="page">Home</a><a href="#">Docs</a></nav>
+  </div>
+</div>
+
+<h2>390px — dark — short name</h2>
+<div class="phone">
+  <div class="shell-bar shell-bar--dark">
+    <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__text"><span class="shell-brand__name">CIMD Lab</span><span class="shell-brand__tag">Client-Initiated Metadata Discovery</span></span></div>
+    <nav class="shell-nav"><a href="#" aria-current="page">Home</a><a href="#">Docs</a></nav>
+  </div>
+</div>
+</div>
+</body>
+</html>
