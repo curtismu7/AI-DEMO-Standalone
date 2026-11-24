@@ -926,7 +926,7 @@ const over = (fg, bg) => (fg.length > 3 && fg[3] < 1 ? fg.slice(0, 3).map((c, i)
 // ============================== files and imports ==============================
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.vite', '.next', '__tests__', 'tests', 'test', 'fixtures', 'docs', 'mocks', 'mock', 'e2e', 'playwright-report', 'data', '.data', 'storybook-static']);
-const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link', 'gateway-trace', 'diagram-kit', 'phone']);
+const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link', 'gateway-trace', 'diagram-kit', 'phone', 'story']);
 // Single vendored files (shared/json): pinned byte for byte by their sha256 files, so the rules do not judge them.
 const VENDORED_FILES = new Set(['JsonPane.jsx', 'JsonPane.css', 'Json.jsx']);
 const isVendoredPath = (appDir, p) => VENDORED_FILES.has(path.basename(p)) || path.relative(appDir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
