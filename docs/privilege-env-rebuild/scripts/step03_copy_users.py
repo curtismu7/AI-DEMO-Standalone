@@ -14,15 +14,22 @@ from p1lib import (api, token, load_env_file, read_state, write_state, write_sec
                    NEW_ENV_CREDS, ORG_ADMIN_CREDS, q)
 
 DRY = "--dry-run" in sys.argv
-IDMAP = os.path.expanduser("~/.config/demo-kit/privilege-rebuild-idmap.json")
+# Overrides for a later move (2026-11-24: ea040334 -> 5bfb4e12). Defaults keep the 2026-11-23 behaviour.
+#   SRC_CREDS  source env file: PINGID_ENV_ID/PINGID_WORKER_* keys, or ENV_ID/WORKER_CLIENT_* keys
+#   DST_CREDS  target env file (ENV_ID/WORKER_CLIENT_* keys)
+#   IDMAP      old->new id map file (use a new one per move; the old map holds another move's ids)
+IDMAP = os.path.expanduser(os.environ.get("IDMAP", "~/.config/demo-kit/privilege-rebuild-idmap.json"))
 
-src = load_env_file(ORG_ADMIN_CREDS)
-S_ENV = src["PINGID_ENV_ID"]
-st_ = token(S_ENV, src["PINGID_WORKER_CLIENT_ID"], src["PINGID_WORKER_CLIENT_SECRET"])
-dst = load_env_file(NEW_ENV_CREDS)
+src = load_env_file(os.path.expanduser(os.environ.get("SRC_CREDS", ORG_ADMIN_CREDS)))
+_p = "PINGID_" if "PINGID_ENV_ID" in src else ""
+S_ENV = src[_p + "ENV_ID"]
+st_ = token(S_ENV, src[_p + "WORKER_CLIENT_ID"], src[_p + "WORKER_CLIENT_SECRET"])
+dst = load_env_file(os.path.expanduser(os.environ.get("DST_CREDS", NEW_ENV_CREDS)))
 D_ENV = dst["ENV_ID"]
 dt = token(D_ENV, dst["WORKER_CLIENT_ID"], dst["WORKER_CLIENT_SECRET"])
-PASSWORD = src.get("PINGID_DEMO_PASSWORD")
+# The demo password always comes from pingid-env.env (never printed).
+PASSWORD = src.get("PINGID_DEMO_PASSWORD") or load_env_file(ORG_ADMIN_CREDS).get("PINGID_DEMO_PASSWORD")
+print(f"source {S_ENV[:8]} -> target {D_ENV[:8]}, idmap {os.path.basename(IDMAP)}" + (" (dry run)" if DRY else ""))
 
 
 def all_items(tok, path, key):
