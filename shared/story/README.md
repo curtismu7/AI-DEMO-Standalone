@@ -1,6 +1,8 @@
 # Story mode (shared pattern)
 
-**Status:** pattern agreed 2026-11-24 (PR #552 merged). The shared code is being built, first for the A2A lab (spec: `docs/specs/2026-11-24-story-mode.md`; each lab keeps its own copy of that spec). Amended 2026-11-24: optional **Play for me** with a speed control. This file is the contract every demo follows once it adopts Story mode. Canonical copy lives here; labs vendor a byte-for-byte copy and pin it.
+> **Scope: AI-DEMO-Standalone apps only, for now** (the `standalone/*-LAB` labs and new standalone apps in this family). Not AI-DEMO2 or any other repo yet; ask the owner before using it elsewhere. **Adding it to a lab: follow `ADDING-TO-A-LAB.md`** (the steps, the files to copy, the mistakes already made, the browser tools). This file is the contract.
+
+**Status:** engine built and merged (PR #553); first used in the A2A lab (`privilege-a2a-anthropic-demo-LAB`, the reference implementation). Agreed 2026-11-24 (PR #552 merged) (spec: `docs/specs/2026-11-24-story-mode.md`; each lab keeps its own copy of that spec). Amended 2026-11-24: optional **Play for me** with a speed control. This file is the contract every demo follows once it adopts Story mode. Canonical copy lives here; labs vendor a byte-for-byte copy and pin it.
 
 ## What it is
 A **Story** mode for any Ping demo: a guided walk-through of the live app with numbered pop-up bubbles and slides. The viewer paces it with **Next**, **Back** and **Exit** (arrow keys and Esc too). **Next/Back never use a timer.** An optional **Play for me** (below) advances on timers, only when the viewer starts it. The demo's recorded video (when it has one) uses the same overlay and the same wording, so the two cannot drift.
@@ -47,7 +49,7 @@ Live values (the answer's first sentence, states, challenge parameters) are read
 - Play never advances on a timer **past a run**: it waits for the step's trigger (`run-done` or `frame`), with a timeout, and stops with a message if the run failed or timed out. It never skips past a failed run.
 
 ## Mock mode
-Story works offline. It labels itself **simulated** and makes **no network calls**. Mock wording uses the `sample_*` variants in `captions.md`, so a mock run never reads as a gateway answer.
+Story labels itself **simulated** in Mock and makes **no network calls of its own** (only the lab's own `/api/story` and the lab's own endpoints). Mock wording uses the `sample_*` variants in `captions.md`, so a mock run never reads as a gateway answer. **Check what Mock really does in your lab**: a step that needs something Mock cannot do (in the A2A lab, a question needs a model key even in Mock) is skipped honestly, never faked.
 
 ## Slides and screenshots
 - Text slides ship as they are.
@@ -69,6 +71,8 @@ A test checks that every `# Step:` and `# Slide:` key in `captions.md` has a mat
 | `story.test.jsx` | `web/src/story/` | vitest + Testing Library; runs in the lab |
 | `story.sha256`, `checkPin.mjs` | `web/src/story/story.sha256`, `scripts/story-checkPin.mjs` | the pin and its check (`node checkPin.mjs --write` here re-pins) |
 | `*.test.mjs` | not vendored | `node --test shared/story/*.test.mjs` (a glob, never a directory) |
+| `tools/walk.py`, `tools/play.py` | not vendored | the real-browser checks (walk every step as a viewer at both screen sizes; Play for me, speed, Pause). Run them, then read the screenshots. See `ADDING-TO-A-LAB.md` section 7 |
+| `ADDING-TO-A-LAB.md` | not vendored | the runbook for agents adding Story to a lab |
 
 `StoryPanel.jsx` and `fill.js` in this folder are the older talk-track panel (2026-11-13). They are separate from Story mode and are not part of this pin.
 

@@ -62,6 +62,20 @@ describe("createOverlay", () => {
     expect(document.querySelector(".story-hl")).toBeNull();
   });
 
+  test("a bubble that would run under the Story bar is moved above it (or beside it), so no line is hidden", () => {
+    document.body.innerHTML = '<button id="t">t</button><div class="story-bar"></div>';
+    const t = document.getElementById("t"); t.getBoundingClientRect = () => ({ left: 300, top: 700, width: 100, height: 30, right: 400, bottom: 730 });
+    const bar = document.querySelector(".story-bar"); bar.getBoundingClientRect = () => ({ left: 400, top: 700, width: 600, height: 50, right: 1000, bottom: 750 });
+    const orig = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () { return this.classList.contains("story-bub") ? { left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 } : orig.call(this); };
+    try {
+      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: t, prefer: "right" });   // right of the target = x 426..826, y 615..815: under the bar
+      const b = document.querySelector(".story-bub"); const top = parseFloat(b.style.top); const left = parseFloat(b.style.left);
+      const under = left < 1000 && left + 400 > 400 && top < 750 && top + 200 > 700;
+      expect(under).toBe(false); expect(top + 200).toBeLessThanOrEqual(700 - 8 + 0.001);   // moved above the bar
+    } finally { HTMLElement.prototype.getBoundingClientRect = orig; }
+  });
+
   test("regression: the bubble is placed with its measured width (narrow screens), not the nominal 470", () => {
     document.body.innerHTML = '<button id="t">t</button>';
     const t = document.getElementById("t"); t.getBoundingClientRect = () => ({ left: 400, top: 400, width: 100, height: 30, right: 500, bottom: 430 });

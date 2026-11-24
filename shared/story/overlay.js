@@ -108,6 +108,12 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
       else { left = r.left + r.width / 2 - W / 2; top = r.top - GAP - H; }
     }
     left = Math.max(M, Math.min(vw - W - M, left)); top = Math.max(M, Math.min(vh - H - M, top));
+    // The Story bar sits on top of everything: a bubble that would run under it goes above it (or, with no room above, beside it), so no line is ever hidden.
+    const bar = doc.querySelector('.story-bar'); const bb = bar ? bar.getBoundingClientRect() : null;
+    if (bb && bb.width && left < bb.right && left + W > bb.left && top < bb.bottom && top + H > bb.top) {
+      if (bb.top - 8 - H >= M) top = bb.top - 8 - H;
+      else if (bb.left - 8 - W >= M) left = bb.left - 8 - W;
+    }
     b.style.left = `${left}px`; b.style.top = `${top}px`; b.style.visibility = 'visible';
     if (r && side && o.place !== 'bl') {
       const tail = el('div', 'story-tail');
