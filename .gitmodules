@@ -348,3 +348,9 @@
 [submodule "standalone/privilege-rate-limit-LAB"]
 	path = standalone/privilege-rate-limit-LAB
 	url = https://github.com/curtismu7/privilege-rate-limit-LAB.git
+[submodule "standalone/privilege-bedrock-assume-role-LAB"]
+	path = standalone/privilege-bedrock-assume-role-LAB
+	url = https://github.com/curtismu7/privilege-bedrock-assume-role-LAB.git
+[submodule "standalone/privilege-model-armor-LAB"]
+	path = standalone/privilege-model-armor-LAB
+	url = https://github.com/curtismu7/privilege-model-armor-LAB.git

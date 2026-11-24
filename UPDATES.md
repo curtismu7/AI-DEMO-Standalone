@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New labs: privilege-model-fallback-LAB (port 7836) and privilege-rate-limit-LAB (port 7837) — simulated, Mock-only rehearsals of two PingOne Privilege 2026-11-21 release features: an ordered model chain with fallback, and request rate limits. Update to get them on your shelf.
+New labs: privilege-bedrock-assume-role-LAB (port 7838) and privilege-model-armor-LAB (port 7846) — simulated, Mock-only rehearsals of two PingOne Privilege 2026-11-21 release features: an LLM key that reaches Bedrock under an assumed IAM role, and one external inspector per key with an authority cap. Update to get them on your shelf.
