@@ -11,4 +11,4 @@ To clear the notice: empty the file (or delete everything after the marker) and 
 
 <!-- SHELF NOTICE BELOW — text after this marker is shown to users -->
 
-New lab: salesforce-privilege-LAB (port 7835) — a simulated rehearsal of connecting a Salesforce Developer org to PingOne Privilege, then a time-boxed permission set grant and revoke, against a mock org. Update to get it on your shelf.
+New labs: privilege-model-fallback-LAB (port 7836) and privilege-rate-limit-LAB (port 7837) — simulated, Mock-only rehearsals of two PingOne Privilege 2026-11-21 release features: an ordered model chain with fallback, and request rate limits. Update to get them on your shelf.
