@@ -2,13 +2,22 @@ inputs:
   in_elastic:
     type: elastic
     disabled: false
-    host: 0.0.0.0
-    port: 9200
+    host: 127.0.0.1
+    port: 9201
     elasticAPI: /
-    authType: basic
-    username: '__IN_USER__'
-    password: '__IN_PASS__'
+    authType: none
     tls:
       disabled: true
     proxyMode:
       enabled: false
+  in_gateway:
+    type: http
+    disabled: false
+    host: 127.0.0.1
+    port: 10080
+    authType: none
+    criblAPI: /cribl
+    elasticAPI: /elastic
+    splunkHecAPI: /services/collector
+    tls:
+      disabled: true

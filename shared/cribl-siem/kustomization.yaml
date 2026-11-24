@@ -12,5 +12,7 @@ configMapGenerator:
       - config/cribl.yml
       - config/route.yml
       - config/siem_mask.conf.yml
+      - config/gateway_mask.conf.yml
       - config/inputs.yml.tpl
+      - config/nginx.conf.tpl
       - config/outputs.yml.tpl

@@ -65,7 +65,7 @@ function rig({ mode = 'real', present = ['#input', '#who', '#close'], store = nu
 test('start shows the opening slide and counts the steps', async () => {
   const r = rig(); await go(r.story.start()); await tick();
   const s = r.story.state();
-  assert.equal(s.active, true); assert.equal(s.key, 'opening'); assert.equal(s.n, 1); assert.equal(s.total, 5);   // Real mode: all five count until one is found absent (the skip test shows the count drop to 4)
+  assert.equal(s.active, true); assert.equal(s.key, 'opening'); assert.equal(s.kind, 'slide'); assert.equal(s.n, 0); assert.equal(s.total, 3);   // bubbles only, as in the video: Real has three until one is found absent (the skip test shows the count drop to 2)
   assert.equal(r.last('slide').title, 'Open');
 });
 
@@ -94,7 +94,7 @@ test('a run that finished BEFORE the viewer reached the step is not waited for a
 test('a step whose target is missing is skipped and the counter counts only what is shown', async () => {
   const r = rig(); await go(r.story.start()); await go(r.story.next()); r.host.finishRun(true); await go(r.story.next()); await tick();
   await go(r.story.next()); await r.clk.advance(3000);   // p_mcp: waits up to 2.5 s for its frame, never appears, skipped
-  const s = r.story.state(); assert.equal(s.key, 'closing'); assert.equal(s.n, 4); assert.equal(s.total, 4);
+  const s = r.story.state(); assert.equal(s.key, 'closing'); assert.equal(s.kind, 'slide'); assert.equal(s.n, 2); assert.equal(s.total, 2);   // p_mcp was absent: 2 of 2, and the closing slide carries no number of its own
   assert.deepEqual(r.story.state().warnings, []);
 });
 
@@ -115,20 +115,20 @@ test('a run that fails stalls the story; Next carries on anyway; nothing claims 
 test('Back returns to the previous shown step, never refills a prompt, and the counter follows', async () => {
   const r = rig(); await go(r.story.start()); await go(r.story.next()); await go(r.story.next()); r.host.finishRun(true); await tick();
   await go(r.story.back()); await tick();
-  let s = r.story.state(); assert.equal(s.key, 'p_prompt'); assert.equal(s.n, 2); assert.deepEqual(r.host.prefilled, ['p_prompt']);
+  let s = r.story.state(); assert.equal(s.key, 'p_prompt'); assert.equal(s.n, 1); assert.deepEqual(r.host.prefilled, ['p_prompt']);
   await go(r.story.back()); assert.equal(r.story.state().key, 'opening'); await go(r.story.back()); assert.equal(r.story.state().key, 'opening', 'Back at the first step stays put');
-  await go(r.story.next()); await go(r.story.next()); await tick(); s = r.story.state(); assert.equal(s.key, 'p_handoff'); assert.equal(s.n, 3);
+  await go(r.story.next()); await go(r.story.next()); await tick(); s = r.story.state(); assert.equal(s.key, 'p_handoff'); assert.equal(s.n, 2);
 });
 
 test('Exit clears everything; the story can be restarted', async () => {
   const r = rig(); await go(r.story.start()); await go(r.story.next()); await go(r.story.exit());
   const s = r.story.state(); assert.equal(s.active, false); assert.equal(s.status, 'idle'); assert.equal(r.calls.at(-1)[0], 'clear');
-  await go(r.story.restart()); assert.equal(r.story.state().key, 'opening'); assert.equal(r.story.state().n, 1);
+  await go(r.story.restart()); assert.equal(r.story.state().key, 'opening'); assert.equal(r.story.state().n, 0);
 });
 
 test('Mock mode: real-only steps are hidden and the sample wording is used', async () => {
   const r = rig({ mode: 'mock' }); await go(r.story.start()); await go(r.story.next()); r.host.finishRun(true); await go(r.story.next()); await tick();
-  assert.equal(r.last('cap').title, 'Simulated handoff'); assert.equal(r.story.state().total, 4);
+  assert.equal(r.last('cap').title, 'Simulated handoff'); assert.equal(r.story.state().total, 2);
   await go(r.story.next()); await tick(); assert.equal(r.story.state().key, 'closing');
 });
 
@@ -323,4 +323,14 @@ test('parity checks the Mock wording keys too (a sampleKey with no wording fails
   const c = parseCaptions('# Opening Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: [] }), []);
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: ['sample_handoff'] }), ['the demo has step "sample_handoff" but captions.md does not']);
+});
+
+test('numbering: a bubble shows its place among the BUBBLES (the video\'s 1 to N); a slide shows no number; the total falls as steps are skipped', async () => {
+  const r = rig(); await go(r.story.start());
+  assert.deepEqual([r.story.state().kind, r.story.state().n, r.story.state().total], ['slide', 0, 3]);
+  await go(r.story.next()); assert.deepEqual([r.story.state().kind, r.story.state().n, r.story.state().total], ['bubble', 1, 3]);
+  assert.equal(r.last('cap').n, 1); assert.equal(r.last('cap').total, 3);
+  r.host.finishRun(true); await go(r.story.next()); assert.equal(r.last('cap').n, 2);
+  await go(r.story.next()); await r.clk.advance(3000);                       // the real-only frame never appears: skipped
+  assert.deepEqual([r.story.state().key, r.story.state().kind, r.story.state().n, r.story.state().total], ['closing', 'slide', 2, 2]);
 });

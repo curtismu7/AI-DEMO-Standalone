@@ -27,6 +27,17 @@ spec:
               valueFrom: {secretKeyRef: {name: cribl-siem-privilege-login, key: username}}
             - name: IN_PASS
               valueFrom: {secretKeyRef: {name: cribl-siem-privilege-login, key: password}}
+            - name: IN_APIKEY
+              valueFrom: {secretKeyRef: {name: cribl-siem-privilege-apikey, key: password}}
+            - {name: NGINX_CONF, value: /nginx-conf}
+            # Gateway events: the log-tailer sidecars sign in with this on POST /<index>/_doc only.
+            - name: GW_USER
+              valueFrom: {secretKeyRef: {name: cribl-siem-gateway-login, key: username}}
+            - name: GW_PASS
+              valueFrom: {secretKeyRef: {name: cribl-siem-gateway-login, key: password}}
+            # OpenSearch copy of the gateway events: leave "false" until the cut-over (the sidecar still posts there itself).
+            - {name: OS_URL, value: "http://opensearch:9200/_bulk"}
+            - {name: GW_OPENSEARCH, value: "false"}
             - name: OUT_USER
               valueFrom: {secretKeyRef: {name: cribl-siem-es-writer, key: username}}
             - name: OUT_PASS
@@ -34,15 +45,27 @@ spec:
           volumeMounts:
             - {name: cfg, mountPath: /cfg, readOnly: true}
             - {name: local, mountPath: /opt/cribl/local}
+            - {name: nginx-conf, mountPath: /nginx-conf}
       containers:
-        - name: cribl
-          image: cribl/cribl:4.13.0
+        # The only container with a port on the Service. Checks Basic or ApiKey credentials, then proxies to Cribl on 127.0.0.1:9201.
+        - name: auth-proxy
+          image: nginx:1.27-alpine
           ports:
             - {name: es, containerPort: 9200}
           volumeMounts:
-            - {name: local, mountPath: /opt/cribl/local}
+            - {name: nginx-conf, mountPath: /etc/nginx/conf.d, readOnly: true}
           readinessProbe:
             tcpSocket: {port: 9200}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 128Mi}
+        - name: cribl
+          image: cribl/cribl:4.13.0
+          volumeMounts:
+            - {name: local, mountPath: /opt/cribl/local}
+          readinessProbe:
+            exec: {command: ["curl", "-sf", "-o", "/dev/null", "http://127.0.0.1:9201/"]}
             initialDelaySeconds: 20
             periodSeconds: 10
           resources:
@@ -64,4 +87,6 @@ spec:
         - name: cfg
           configMap: {name: cribl-siem-config}
         - name: local
+          emptyDir: {}
+        - name: nginx-conf
           emptyDir: {}

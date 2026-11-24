@@ -2,14 +2,14 @@
 // the same. It draws and clears; it never decides what to show (engine.js does) and it never makes a network call. All text goes in with textContent,
 // never innerHTML with data. Vendor to web/src/story/overlay.js, byte-for-byte; never edit a lab's copy.
 //
-//   const overlay = createOverlay({ scale: 1 });          // scale: 1 normal; the video's monitor profile uses a larger one for large text
+//   const overlay = createOverlay({ scale: 1 });          // scale: 1 normal; the video's monitor profile uses a larger one for large text; follow: false (the video) draws once and never redraws
 //   overlay.cap({ n, total, title, text, target, lines, prefer, place });   // a bubble pointing at `target` (an Element or a CSS selector)
 //   overlay.slide({ title, lead, colA:{heading,lines}, colB:{heading,lines}, verdict, image, wide });
 //   overlay.scrollSlide();  overlay.clear();  overlay.destroy();
 
 export const OVERLAY_Z = 2147483640;   // the Story bar sits above this (OVERLAY_Z + 7)
 
-export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined' ? document : null) } = {}) {
+export function createOverlay({ scale = 1, follow = true, doc = (typeof document !== 'undefined' ? document : null) } = {}) {
   if (!doc) throw new Error('createOverlay needs a document');
   const S = scale; const px = (n) => `${Math.round(n * S)}px`; const z = OVERLAY_Z;
   const css = `
@@ -73,8 +73,9 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
   }
 
   // The highlight and the bubble are measured when drawn; they are measured again when the page scrolls or the window is resized.
-  const reflow = () => { if (raf !== null || !lastCap) return; raf = (view.requestAnimationFrame || ((f) => view.setTimeout(f, 16)))(() => { raf = null; if (lastCap) draw(lastCap, false); }); };
-  const listen = () => { view.addEventListener('resize', reflow); view.addEventListener('scroll', reflow, true); };
+  // `follow: false` (the recorded video) draws a caption ONCE and leaves it exactly there: no re-measuring on scroll or resize, no watching the bar. Live Story follows.
+  const reflow = () => { if (!follow) return; if (raf !== null || !lastCap) return; raf = (view.requestAnimationFrame || ((f) => view.setTimeout(f, 16)))(() => { raf = null; if (lastCap) draw(lastCap, false); }); };
+  const listen = () => { if (!follow) return; view.addEventListener('resize', reflow); view.addEventListener('scroll', reflow, true); };
   const unlisten = () => { view.removeEventListener('resize', reflow); view.removeEventListener('scroll', reflow, true); };
 
   // The bar changes size as its message changes, and may not be mounted yet when the first bubble is drawn: watch it, and draw once more on the next frame.

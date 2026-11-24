@@ -10,6 +10,15 @@ routes:
     output: es_siem
     enableOutputExpression: false
     description: Privilege SIEM audit feed, secrets masked, to Elasticsearch
+  - id: gateway
+    name: gateway-events
+    final: true
+    disabled: false
+    pipeline: gateway_mask
+    filter: "__inputId.indexOf('in_gateway') > -1"
+    output: gw_router
+    enableOutputExpression: false
+    description: Privilege gateway log lines (LLM request, AIGuard, A2A), masked, to Elasticsearch (and OpenSearch after cut-over)
   - id: default
     name: default
     final: true

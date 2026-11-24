@@ -44,7 +44,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   const read = (k) => { try { return store ? store.getItem(k) : null; } catch { return null; } };
   const write = (k, v) => { try { if (store) store.setItem(k, v); } catch { /* storage blocked: the choice is kept for this session only */ } };
 
-  const st = { active: false, status: 'idle', index: -1, pos: -1, n: 0, total: 0, key: null, playing: false, paused: false,
+  const st = { active: false, status: 'idle', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false,
     speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, stalledAt: -1 };
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
@@ -69,7 +69,10 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     const t = typeof s.target === 'function' ? s.target() : s.target;
     return typeof t === 'string' ? host.query(t) : t || null;
   }, null, `"${s.key}": its target could not be found on the page`);
-  const remainingAfter = (i) => steps.slice(i + 1).filter(eligible).length;
+  // The number a bubble shows counts BUBBLES only (the video's 1 to 27): slides are not numbered. `total` is the bubbles shown so far plus the ones still to come that
+  // apply to this run, so it falls as steps are skipped.
+  const isBubble = (s) => s.type === 'bubble';
+  const remainingAfter = (i) => steps.slice(i + 1).filter((s) => isBubble(s) && eligible(s)).length;
 
   function capOf(s) {
     if (s.type === 'slide') {
@@ -129,7 +132,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     if (!replay) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
     if (s.prompt && !replay) { marker = safe(() => host.mark(), { runs: 0 }, `"${s.key}": the run counter could not be read`); safe(() => host.prefill(s), undefined, `"${s.key}": the question could not be filled in`); }   // Back never refills a prompt the viewer may have edited
     st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.stalledAt = -1;
-    st.n = st.pos + 1; st.total = shown.length + remainingAfter(shown[shown.length - 1]);
+    st.kind = s.type; st.n = shown.slice(0, st.pos + 1).filter((i) => isBubble(steps[i])).length; st.total = shown.filter((i) => isBubble(steps[i])).length + remainingAfter(shown[shown.length - 1]);
     if (s.type === 'slide') {
       overlay.slide({ ...cap, image: cap.image && host.assetUrl ? host.assetUrl(cap.image) : null });
       curSecs = slideHold(cap);
@@ -201,7 +204,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   async function start() {
     gen += 1; clearHold(); await leave(); overlay.clear();
     shown = []; marker = null; passed = new Set();
-    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, stalledAt: -1 });
+    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, stalledAt: -1 });
     emit();
     return advance(0);
   }

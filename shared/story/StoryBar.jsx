@@ -41,7 +41,7 @@ export default function StoryBar({ story, mock = false, isManual = trusted }) {
     <div className="story-bar" ref={bar} role="region" aria-label="Story controls" data-testid="story-bar" data-status={s.status}>
       {mock ? <span className="story-chip" data-testid="story-simulated">Simulated</span> : null}
       <span className="story-msg" role="status" aria-live="polite" data-testid="story-msg">
-        {s.message || (s.status === "waiting" ? "Waiting for the run…" : done ? "End of the story." : s.n ? `${s.n} of ${s.total}` : "")}
+        {s.message || (s.status === "waiting" ? "Waiting for the run…" : done ? "End of the story." : s.kind === "slide" ? "Slide" : s.n ? `${s.n} of ${s.total}` : "")}
       </span>
       <button type="button" onClick={() => story.back()} disabled={!s.canBack} data-testid="story-back">Back</button>
       <button type="button" onClick={() => story.next()} disabled={!s.canNext} data-testid="story-next">Next</button>
