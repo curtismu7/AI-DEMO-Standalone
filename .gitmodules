@@ -342,3 +342,9 @@
 [submodule "standalone/privilege-semantic-cache-lab-LAB"]
 	path = standalone/privilege-semantic-cache-lab-LAB
 	url = https://github.com/curtismu7/privilege-semantic-cache-lab.git
+[submodule "standalone/privilege-model-fallback-LAB"]
+	path = standalone/privilege-model-fallback-LAB
+	url = https://github.com/curtismu7/privilege-model-fallback-LAB.git
+[submodule "standalone/privilege-rate-limit-LAB"]
+	path = standalone/privilege-rate-limit-LAB
+	url = https://github.com/curtismu7/privilege-rate-limit-LAB.git

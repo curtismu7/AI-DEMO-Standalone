@@ -20,6 +20,13 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.15 (2026-11-24)
+
+**New labs**
+
+- privilege-model-fallback-LAB (Demo, D146, port 7836): an LLM key names an ordered chain of models, and the next one answers when the first is down, overloaded or out of budget, charged on its own budget. Nine scripted scenarios and a named refusal when nothing in the chain can answer. Mock only (Real is not built). Beyond the one sentence in the 2026-11-21 Privilege release notes, everything is the lab's own model and UNVERIFIED.
+- privilege-rate-limit-LAB (Demo, D147, port 7837): a refilling bucket, an in-flight cap, a limit shared across a gateway cluster and the app-wide MCP and A2A caps, on a lab clock, with a chart and a verdict. Seven scripted scenarios. Mock only (Real is not built). Only four features are sourced from the 2026-11-21 release notes; the rest is UNVERIFIED.
+
 ## 3.14 (2026-11-23)
 
 **Improved**

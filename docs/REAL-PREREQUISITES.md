@@ -40,6 +40,7 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
   `agent-identity-academy-LAB` (13 lessons, one per agent type and per control, over the discover/register/authenticate/authorize/govern lifecycle; Mock only, every token a labelled mock sample, no live mode),
   `meridian-air-LAB` (the airline day as 11 chat-first scenes; Mock runs offline, Real needs a llama.cpp brain and is owner-run),
   `ciba-approval-sequence-LAB` (the 71-message CIBA booking sequence as a clickable diagram; Mock only).
+- Mock only, Real not built (the toggle is disabled with the reason): `privilege-model-fallback-LAB` (an ordered model chain with fallback; nine scenarios) and `privilege-rate-limit-LAB` (refilling bucket, in-flight cap, cluster-shared and app-wide limits; seven scenarios). Both are simulated and UNVERIFIED beyond the 2026-11-21 release notes.
 - Live is a local simulation, no credential: `agent-governance-LAB`, `ai-policies-LAB`, `coding-agents-LAB`,
   `data-protection-LAB`, `federated-identity-LAB`, `intent-purpose-behaviour-LAB`, `mcp-surface-LAB`,
   `saas-access-LAB`, `secrets-vault-LAB`.
