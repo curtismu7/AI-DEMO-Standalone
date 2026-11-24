@@ -1,0 +1,48 @@
+# Gateway log lines posted by the log-tailer sidecars (LLM request, AIGuard, A2A accepted, A2A policy denied).
+# The sidecar already shortens VirtualKeyID and strips Headers; this is the second layer, in case a chart or sidecar change misses one.
+# Lines without a VirtualKeyID (A2A accepted / A2A policy denied) skip the first step.
+asyncFuncTimeout: 1000
+functions:
+  # First, shorten a long VirtualKeyID to prefix...last4 (so a full key is never lost to the generic mask below, and the readers keep the same shape).
+  - id: eval
+    filter: "typeof VirtualKeyID === 'string'"
+    disabled: false
+    conf:
+      add:
+        - name: VirtualKeyID
+          value: "VirtualKeyID.indexOf('...') < 0 && VirtualKeyID.length > 13 ? VirtualKeyID.slice(0, 9) + '...' + VirtualKeyID.slice(-4) : VirtualKeyID"
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      remove:
+        - Headers
+  - id: mask
+    filter: "true"
+    disabled: false
+    conf:
+      rules:
+        - matchRegex: /("\w*(?:password|passwd|secret|token|apikey|api_key|accesskey|virtualkey|providerkey)\w*"\s*:\s*")[^"]+(")/gi
+          replaceExpr: "`${g1}***${g2}`"
+        - matchRegex: /sk-[A-Za-z0-9_-]{16,}/g
+          replaceExpr: "'sk-***'"
+        - matchRegex: /Bearer\s+[A-Za-z0-9._~+\/=-]{8,}/g
+          replaceExpr: "'Bearer ***'"
+        - matchRegex: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g
+          replaceExpr: "'***jwt***'"
+      fields:
+        - "*"
+      depth: 5
+      flags: []
+  # Kibana needs @timestamp (the gateway's lines carry `time`); the index is fixed; Cribl's _time is not stored.
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      add:
+        - name: "'@timestamp'"
+          value: time
+        - name: __index
+          value: "'gateway-events'"
+      remove:
+        - _time

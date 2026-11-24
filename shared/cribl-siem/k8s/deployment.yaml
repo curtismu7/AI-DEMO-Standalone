@@ -30,6 +30,14 @@ spec:
             - name: IN_APIKEY
               valueFrom: {secretKeyRef: {name: cribl-siem-privilege-apikey, key: password}}
             - {name: NGINX_CONF, value: /nginx-conf}
+            # Gateway events: the log-tailer sidecars sign in with this on POST /<index>/_doc only.
+            - name: GW_USER
+              valueFrom: {secretKeyRef: {name: cribl-siem-gateway-login, key: username}}
+            - name: GW_PASS
+              valueFrom: {secretKeyRef: {name: cribl-siem-gateway-login, key: password}}
+            # OpenSearch copy of the gateway events: leave "false" until the cut-over (the sidecar still posts there itself).
+            - {name: OS_URL, value: "http://opensearch:9200/_bulk"}
+            - {name: GW_OPENSEARCH, value: "false"}
             - name: OUT_USER
               valueFrom: {secretKeyRef: {name: cribl-siem-es-writer, key: username}}
             - name: OUT_PASS
