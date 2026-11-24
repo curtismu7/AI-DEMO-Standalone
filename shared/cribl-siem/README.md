@@ -1,7 +1,7 @@
 # cribl-siem: Cribl Stream between Privilege's SIEM feed and Elasticsearch
 
 Privilege's SIEM setting sends console audit events to an Elasticsearch URL (see `AI-DEMO2/privilege/GATEWAY-LOGGING-WITH-ELASTICSEARCH.md`).
-This puts Cribl Stream at that URL. Cribl masks secrets in the events, then writes them to the same index, `ping-siem-events`,
+This puts Cribl Stream at that URL. Cribl masks secrets in the events, then always writes them to the index `ping-siem-events-v2` (where the existing history is; Privilege's sender itself names `audit-log`, which Cribl overrides),
 in the same Elasticsearch (`elasticsearch-siem`, namespace `ping-devops-curtismuir`, context `us`).
 
 ```text
@@ -30,7 +30,7 @@ The older Secret `elasticsearch-siem-privilege-credentials` (user `privilege_sie
 ## What is proven, and what is not
 
 Proven here (`test/run-local.sh`, 14 checks, run 2026-11-23): Cribl 4.13.0 in front of a mock Elasticsearch refuses missing and wrong credentials (401),
-accepts a `_bulk` request, writes it to `ping-siem-events` with the ingestion user's credentials, masks `password`/`*token*`/`*apikey*`/`virtualkey`-style
+accepts a `_bulk` request, writes it to `ping-siem-events-v2` (even when the sender names `audit-log`) with the writer user's credentials, masks `password`/`*token*`/`*apikey*`/`virtualkey`-style
 values in `Data`, `sk-` keys, Bearer values and JWTs, keeps the other fields, and strips Cribl's `_time`. Passwords with `' & \ $` render correctly.
 The manifests pass `kubectl apply -k . --dry-run=server` against `us`.
 
@@ -63,11 +63,20 @@ kubectl --context us -n ping-devops-curtismuir rollout status deploy/cribl-siem
 curl -s -u "$USER:$PASS" https://cmuir-cribl.ping-devops.com/ | head -c 200   # Cribl answers like Elasticsearch
 ```
 
-Then in the Privilege console: SIEM configuration, **Elastic**, set URL to `https://cmuir-cribl.ping-devops.com`, keep index `ping-siem-events` and the same user and password, run the health check,
-and change something small. Check the count (`GET /ping-siem-events/_count`) rises, and that `Data` shows `***` where a key would be.
+Then in the Privilege console: SIEM configuration, **Elastic**, set URL to `https://cmuir-cribl.ping-devops.com`, enter the `cribl-siem-privilege-login` username and password (the form has no Index field now), run the health check, **Save Changes**,
+and change something small. Check the count (`GET /ping-siem-events-v2/_count`) rises, and that `Data` shows `***` where a key would be.
 
 Open Cribl's UI with `kubectl --context us -n ping-devops-curtismuir port-forward deploy/cribl-siem 9000:9000`, then <http://127.0.0.1:9000>
 (`admin` / `admin` at first start: change it). The UI has no Service or Ingress on purpose.
+
+## Test it
+
+1. Health check in the console passes (Cribl logs a `GET /`, `HEAD /audit-log` and a `POST /_bulk`, all 200). That health check writes one event.
+2. **Save Changes**, then change something harmless in the console (rename an app description and put it back).
+3. Count and read the newest events (needs the Elasticsearch `elastic` login; port-forward `svc/elasticsearch-siem` 9200):
+   `GET /ping-siem-events-v2/_search?size=3&sort=@timestamp:desc`. The `cribl_siem` user itself is write-only, so it cannot read.
+4. In the newest event, `Data` must show `***` for any password, key or token, and the event has `cribl_pipe: siem_mask`.
+5. Cribl's own view: `kubectl --context us -n ping-devops-curtismuir logs deploy/cribl-siem -c cribl | grep "Destination failed"` prints nothing when writes succeed.
 
 ## Roll back
 

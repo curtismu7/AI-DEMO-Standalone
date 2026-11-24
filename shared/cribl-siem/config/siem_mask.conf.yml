@@ -24,9 +24,14 @@ functions:
       depth: 5
       flags: []
   # Cribl adds _time (epoch seconds); the events already carry @timestamp.
+  # Privilege's sender names the target index itself ("audit-log"); the cribl_siem user may only write ping-siem-events*,
+  # and the existing history is in ping-siem-events-v2, so always write there.
   - id: eval
     filter: "true"
     disabled: false
     conf:
+      add:
+        - name: __index
+          value: "'ping-siem-events-v2'"
       remove:
         - _time
