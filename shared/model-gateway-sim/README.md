@@ -8,9 +8,9 @@ Every state, status code, latency and unit in these files is **the lab's own mod
 
 | File | Vendor to | What |
 |---|---|---|
-| `labClock.js` | `server/src/model-gateway-sim/labClock.js` | virtual time in ms, moved only by the lab; rejects negative and non-numeric time |
-| `providerStub.js` | `server/src/model-gateway-sim/providerStub.js` | mock provider, states `healthy`, `down` (503), `overloaded` (429), `timeout` (504), `slow` (10x latency); charges each call's latency to the clock; refuses non-string or over-20000-character prompts |
-| `llmKey.js` | `server/src/model-gateway-sim/llmKey.js` | `createLlmKey({ id, budgetTokens })` with a ledger (never overdraws) and a Usage counter (Requests, From cache, Saved tokens); the key has no credential field |
+| `labClock.js` | `server/src/model-gateway-sim/labClock.js` | virtual time in ms, moved only by the lab; rejects negative and non-numeric time; `set` can only move forward |
+| `providerStub.js` | `server/src/model-gateway-sim/providerStub.js` | mock provider, states `healthy`, `down` (503), `overloaded` (429), `timeout` (504), `slow` (10x latency, and a timeout if that reaches `timeoutMs`); every failure carries `origin: 'provider'`; charges each call's latency to the clock; needs a clock at construction; refuses non-string or over-20000-character prompts |
+| `llmKey.js` | `server/src/model-gateway-sim/llmKey.js` | `createLlmKey({ id, budgetTokens })` with a ledger (never overdraws; `limit` is read-only; a zero-token spend always succeeds) and a Usage counter (Requests, From cache, Saved tokens); the key has no credential field |
 | `model-gateway-sim.sha256` | beside the lab's pin test | byte-for-byte pin; re-pin after any change |
 | `model-gateway-sim.test.mjs` | not vendored | runs here: `node --test shared/model-gateway-sim/*.test.mjs` |
 

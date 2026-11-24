@@ -7,7 +7,9 @@ export function createLedger(limitTokens) {
     if (!Number.isFinite(n) || n < 0) throw new RangeError('amount must be a non-negative number');
   };
   return {
-    limit: limitTokens,
+    // A getter, so the shown limit and the enforced limit cannot differ. A zero-token spend is a no-op and always succeeds:
+    // a lab that wants "out of budget" at zero must check remaining() before it charges a real cost.
+    get limit() { return limitTokens; },
     spent: () => spent,
     remaining: () => limitTokens - spent,
     canSpend(n) { check(n); return spent + n <= limitTokens; },

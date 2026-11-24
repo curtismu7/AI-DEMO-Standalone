@@ -9,8 +9,9 @@ export function createClock(start = 0) {
       t += ms;
       return t;
     },
+    // Time never goes backwards: bucket refill and cache TTL maths depend on it. Reset by making a new clock.
     set(ms) {
-      if (!Number.isFinite(ms) || ms < 0) throw new RangeError('set needs a non-negative number of ms');
+      if (!Number.isFinite(ms) || ms < t) throw new RangeError('set cannot move the clock backwards');
       t = ms;
       return t;
     },
