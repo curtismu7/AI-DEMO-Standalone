@@ -17,16 +17,21 @@ functions:
           replaceExpr: "'Bearer ***'"
         - matchRegex: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g
           replaceExpr: "'***jwt***'"
+      # All fields: Privilege now puts the changed object in DataText (older events used Data) and in nested Resources/User/Device
+      # objects, and a field list missed arrays. Volume is tiny, so scanning everything is cheap.
       fields:
-        - Data
-        - Status
-        - Message
+        - "*"
       depth: 5
       flags: []
   # Cribl adds _time (epoch seconds); the events already carry @timestamp.
+  # Privilege's sender names the target index itself ("audit-log"); the cribl_siem user may only write ping-siem-events*,
+  # and the existing history is in ping-siem-events-v2, so always write there.
   - id: eval
     filter: "true"
     disabled: false
     conf:
+      add:
+        - name: __index
+          value: "'ping-siem-events-v2'"
       remove:
         - _time

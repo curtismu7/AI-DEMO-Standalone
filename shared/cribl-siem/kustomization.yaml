@@ -8,6 +8,7 @@ configMapGenerator:
   - name: cribl-siem-config
     files:
       - render-config.sh
+      - set-admin-password.sh
       - config/cribl.yml
       - config/route.yml
       - config/siem_mask.conf.yml

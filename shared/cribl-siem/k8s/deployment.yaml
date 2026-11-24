@@ -13,8 +13,9 @@ spec:
       labels: {app: cribl-siem}
     spec:
       initContainers:
-        # Renders Cribl's config into the emptyDir. The credentials come from the existing Secret that holds the
-        # Privilege ingestion user; they are never written to git or to a ConfigMap.
+        # Renders Cribl's config into the emptyDir. Two Secrets (see README, "Credentials"): cribl-siem-privilege-login is
+        # what Privilege signs in to Cribl with; cribl-siem-es-writer is what Cribl signs in to Elasticsearch with.
+        # They are never written to git or to a ConfigMap.
         - name: render-config
           image: cribl/cribl:4.13.0
           command: ["sh", "/cfg/render-config.sh"]
@@ -23,13 +24,13 @@ spec:
             - {name: CRIBL_LOCAL, value: /opt/cribl/local}
             - {name: ES_URL, value: "http://elasticsearch-siem:9200/_bulk"}
             - name: IN_USER
-              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: username}}
+              valueFrom: {secretKeyRef: {name: cribl-siem-privilege-login, key: username}}
             - name: IN_PASS
-              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: password}}
+              valueFrom: {secretKeyRef: {name: cribl-siem-privilege-login, key: password}}
             - name: OUT_USER
-              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: username}}
+              valueFrom: {secretKeyRef: {name: cribl-siem-es-writer, key: username}}
             - name: OUT_PASS
-              valueFrom: {secretKeyRef: {name: elasticsearch-siem-privilege-credentials, key: password}}
+              valueFrom: {secretKeyRef: {name: cribl-siem-es-writer, key: password}}
           volumeMounts:
             - {name: cfg, mountPath: /cfg, readOnly: true}
             - {name: local, mountPath: /opt/cribl/local}
@@ -47,6 +48,18 @@ spec:
           resources:
             requests: {cpu: 250m, memory: 1Gi}
             limits: {memory: 3Gi}
+        # Keeps Cribl's admin UI login off the default admin/admin: sets it from Secret cribl-siem-admin (see set-admin-password.sh).
+        - name: set-admin-password
+          image: cribl/cribl:4.13.0
+          command: ["sh", "/cfg/set-admin-password.sh"]
+          env:
+            - name: ADMIN_PASS
+              valueFrom: {secretKeyRef: {name: cribl-siem-admin, key: password}}
+          volumeMounts:
+            - {name: cfg, mountPath: /cfg, readOnly: true}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
       volumes:
         - name: cfg
           configMap: {name: cribl-siem-config}

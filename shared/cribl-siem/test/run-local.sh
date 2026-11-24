@@ -39,8 +39,8 @@ JWT="eyJ""hbGciOiJIUzI1NiJ9.eyJ""zdWIiOiJ1LTEyMyJ9.abcDEF123456xyz"
 python3 - "$JWT" > "$TMP/bulk.ndjson" <<'PY'
 import json, sys
 data = json.dumps({"name": "a1", "password": "hunter2", "virtualKey": "sk-ant-abcdefghijklmnop1234", "apiKeyValue": "zzz", "note": "keep me", "jwt": sys.argv[1]})
-doc = {"@timestamp": "2026-11-23T22:00:00Z", "Message": "HTTP PUT Request x/api/agentaccesskeys/k1 Bearer abcdefgh12345678", "Status": "HTTP Status Code 200", "Module": "apigw", "User": {"Name": "u-123"}, "Data": data}
-print(json.dumps({"index": {"_index": "ping-siem-events"}})); print(json.dumps(doc))
+doc = {"@timestamp": "2026-11-23T22:00:00Z", "Message": "HTTP PUT Request x/api/agentaccesskeys/k1 Bearer abcdefgh12345678", "Status": "HTTP Status Code 200", "Module": "apigw", "User": {"Name": "u-123"}, "Data": data, "DataText": data, "Resources": [{"Kind": "X", "Spec": {"Token": "sk-ant-abcdefghijklmnop1234", "Name": "keep"}}]}
+print(json.dumps({"index": {"_index": "audit-log"}})); print(json.dumps(doc))
 PY
 curl -s -m 5 -H "$(basic "$IN_USER" "$IN_PASS")" -X POST http://127.0.0.1:$PORT/_bulk -H 'Content-Type: application/x-ndjson' --data-binary @"$TMP/bulk.ndjson" >/dev/null
 for i in $(seq 1 30); do [ -s "$TMP/data/received.ndjson" ] && break; sleep 2; done
@@ -54,12 +54,14 @@ if not check("an event reached Elasticsearch", len(rows) >= 1): sys.exit(1)
 r = rows[0]; lines = r["body"].splitlines(); action = json.loads(lines[0]); doc = json.loads(lines[1])
 good = [check("sent to /_bulk", r["path"].endswith("/_bulk")),
         check("uses the ingestion user's credentials", base64.b64decode(r["authorization"].split()[1]).decode() == "ingest:" + sys.argv[2]),
-        check("index is ping-siem-events", action.get("create", action.get("index", {})).get("_index") == "ping-siem-events"),
+        check("index is forced to ping-siem-events-v2 even though Privilege sends audit-log", action.get("create", action.get("index", {})).get("_index") == "ping-siem-events-v2"),
         check("Data.password masked", '"password": "***"' in doc["Data"] and "hunter2" not in doc["Data"]),
         check("Data.virtualKey masked", "sk-ant-abcdefghijklmnop1234" not in doc["Data"]),
         check("Data.apiKeyValue masked", '"apiKeyValue": "***"' in doc["Data"]),
         check("JWT masked", "eyJhbGci" not in doc["Data"]),
         check("Bearer in Message masked", "abcdefgh12345678" not in doc["Message"] and "Bearer ***" in doc["Message"]),
+        check("DataText masked too", "hunter2" not in doc["DataText"] and "sk-ant-abcdefghijklmnop1234" not in doc["DataText"]),
+        check("nested Resources masked, other values kept", "sk-ant-abcdefghijklmnop1234" not in json.dumps(doc["Resources"]) and doc["Resources"][0]["Spec"]["Name"] == "keep"),
         check("harmless field kept", '"note": "keep me"' in doc["Data"]),
         check("original fields kept", doc["@timestamp"] == "2026-11-23T22:00:00Z" and doc["User"]["Name"] == "u-123" and doc["Module"] == "apigw"),
         check("Cribl's _time removed", "_time" not in doc)]
