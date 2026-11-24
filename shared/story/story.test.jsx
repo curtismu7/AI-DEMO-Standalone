@@ -126,6 +126,19 @@ describe("createOverlay", () => {
     } finally { HTMLElement.prototype.getBoundingClientRect = orig; }
   });
 
+  test("follow: false (the recorded video) draws a caption once and leaves it exactly there: no redraw on resize or scroll", async () => {
+    document.body.innerHTML = '<button id="send">Send</button>';
+    const t = document.getElementById("send"); let top = 100;
+    t.getBoundingClientRect = () => ({ left: 50, top, width: 80, height: 30, right: 130, bottom: top + 30 });
+    const o = mk({ follow: false });
+    o.cap({ n: 1, total: 1, title: "t", text: "x", target: t });
+    const bub = document.querySelector(".story-bub"); expect(document.querySelector(".story-hl").style.top).toBe("95px");
+    top = 300; window.dispatchEvent(new Event("resize")); document.dispatchEvent(new Event("scroll")); await new Promise((r) => setTimeout(r, 60));
+    expect(document.querySelector(".story-hl").style.top).toBe("95px");          // still where it was drawn
+    expect(document.querySelector(".story-bub")).toBe(bub);                      // the very same node: nothing was redrawn
+    o.destroy();
+  });
+
   test("regression: the highlight follows a resize, and stops following once cleared", async () => {
     document.body.innerHTML = '<button id="send">Send</button>';
     const t = document.getElementById("send"); let top = 100;
@@ -226,6 +239,12 @@ describe("StoryBar", () => {
     expect(screen.queryByTestId("story-simulated")).toBeNull();
     fireEvent.click(screen.getByTestId("story-pause")); expect(s.calls.at(-1)[0]).toBe("pause");
     act(() => s.set({ paused: true })); fireEvent.click(screen.getByTestId("story-play")); expect(s.calls.at(-1)[0]).toBe("resume");
+  });
+
+  test("a slide is labelled Slide (it has no number); a bubble shows its number among the bubbles", () => {
+    const s = fakeStory({ kind: "slide", n: 2, total: 27 }); render(<StoryBar story={s} />);
+    expect(screen.getByTestId("story-msg")).toHaveTextContent("Slide"); expect(screen.getByTestId("story-msg")).not.toHaveTextContent("of 27");
+    act(() => s.set({ kind: "bubble", n: 3 })); expect(screen.getByTestId("story-msg")).toHaveTextContent("3 of 27");
   });
 
   test("Next is disabled while a run is in flight and Back at the first step", () => {

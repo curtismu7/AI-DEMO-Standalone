@@ -35,7 +35,7 @@ Each step has a **target** (a CSS selector) and a **trigger**:
 
 A **prompt** step pre-fills the exact question. Its bubble says "press Send". The viewer presses Send, and the story continues when the run lands.
 
-A step whose target is missing is **skipped**. The "n of N" counter counts only the steps shown in that run.
+A step whose target is missing is **skipped**. The "n of N" counter numbers the **bubbles** only, as the video does (1 to 27); a slide is not numbered (the bar says "Slide"). N counts the bubbles shown so far plus the ones still to come that apply to this run, so it falls as steps are skipped.
 
 Live values (the answer's first sentence, states, challenge parameters) are read by one small page function that uses the same DOM selectors as the video.
 
