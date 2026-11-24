@@ -30,7 +30,23 @@ functions:
           replaceExpr: "'Bearer ***'"
         - matchRegex: /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g
           replaceExpr: "'***jwt***'"
+      # Cribl's mask turns every value it visits into a string, even when no rule matches, so the typed fields are left out
+      # (the list is the numeric and boolean fields of OpenSearch's gateway-events mapping, which has the right types).
+      # Cribl evaluates a field list in order and the first match wins: the exclusions go BEFORE the wildcard.
       fields:
+        - "!HTTPStatus"
+        - "!UpstreamStatus"
+        - "!PromptTokens"
+        - "!CompletionTokens"
+        - "!TotalTokens"
+        - "!CacheReadTokens"
+        - "!CacheWriteTokens"
+        - "!LatencyMs"
+        - "!ElapsedMs"
+        - "!CostUSD"
+        - "!TopScore"
+        - "!Streaming"
+        - "!EndUserResolved"
         - "*"
       depth: 5
       flags: []
