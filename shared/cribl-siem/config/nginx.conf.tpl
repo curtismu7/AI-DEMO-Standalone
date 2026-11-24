@@ -10,9 +10,30 @@ map $http_authorization $siem_authed {
     "ApiKey __APIKEY__"      1;
 }
 
+# The gateways' log-tailer sidecars post one JSON line per event to /<index>/_doc with their own Basic login
+# (Secret cribl-siem-gateway-login). That login works on that path only; the Privilege credentials above work everywhere else.
+map $http_authorization $gw_authed {
+    default                  0;
+    "Basic __GWBASIC__"      1;
+}
+
 server {
     listen 9200;
     client_max_body_size 20m;
+
+    # Gateway events: Cribl's own Elasticsearch source refuses single-document writes, so rewrite to its NDJSON HTTP source.
+    location ~ ^/[^/]+/_doc/?$ {
+        limit_except POST { deny all; }
+        if ($gw_authed = 0) {
+            add_header Content-Type application/json always;
+            return 401 '{"message":"Access denied"}';
+        }
+        proxy_set_header Authorization "";
+        proxy_set_header Content-Type application/json;
+        proxy_http_version 1.1;
+        rewrite ^ /cribl/_bulk break;
+        proxy_pass http://127.0.0.1:10080;
+    }
 
     location / {
         if ($siem_authed = 0) {

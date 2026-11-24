@@ -1,36 +1,47 @@
 #!/usr/bin/env bash
-# Local proof (OrbStack) that the Cribl config works: renders the config with render-config.sh, starts Cribl in front of a
-# mock Elasticsearch, posts a SIEM-style _bulk request with secrets in it, and checks what reaches Elasticsearch.
+# Local proof (OrbStack) that the Cribl config works: renders the config with render-config.sh, starts Cribl + nginx in front of a
+# mock Elasticsearch and a mock OpenSearch, posts a SIEM-style _bulk request and gateway log lines (POST /<index>/_doc) with secrets in them,
+# and checks what reaches each. Gateway events are checked twice: OpenSearch route off (phase 1), then on (cut-over).
 # Usage: test/run-local.sh        (needs docker context orbstack; pulls cribl/cribl and python:3-alpine)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 IMG=${CRIBL_IMAGE:-cribl/cribl:4.13.0}
 NET=cribl-siem-test; TMP=$(mktemp -d); PORT=${PORT:-19200}
-cleanup() { docker rm -f cribl-siem-test nginx-siem-test mock-es-test >/dev/null 2>&1 || true; docker network rm $NET >/dev/null 2>&1 || true; rm -rf "$TMP"; }
+cleanup() { docker rm -f cribl-siem-test nginx-siem-test mock-es-test mock-os-test >/dev/null 2>&1 || true; docker network rm $NET >/dev/null 2>&1 || true; rm -rf "$TMP"; }
 trap cleanup EXIT
 basic() { printf 'Authorization: Basic %s' "$(printf '%s:%s' "$1" "$2" | base64 | tr -d '\n')"; }
-mkdir -p "$TMP/local" "$TMP/data" "$TMP/nginx"; : > "$TMP/data/received.ndjson"
+mkdir -p "$TMP/local" "$TMP/data" "$TMP/osdata" "$TMP/nginx"; : > "$TMP/data/received.ndjson"; : > "$TMP/osdata/received.ndjson"
 docker network create $NET >/dev/null
 
 # A password with characters that break naive templating: ' & \ $ and a space
 APIKEY=$(printf 'testid:%s' "$(openssl rand -hex 16)" | base64 | tr -d '\n=')
 IN_USER=privilege; IN_PASS="in'p&ss\\w \$rd"; OUT_PASS="out'p&ss\\w \$rd"
-docker run --rm --network $NET --entrypoint sh \
-  -e IN_USER="$IN_USER" -e IN_PASS="$IN_PASS" -e IN_APIKEY="$APIKEY" -e NGINX_CONF=/nginx-conf -e OUT_USER=ingest -e OUT_PASS="$OUT_PASS" -e ES_URL=http://mock-es-test:9200/_bulk \
-  -e CFG=/cfg -e CRIBL_LOCAL=/opt/cribl/local \
-  -v "$PWD/config:/cfg:ro" -v "$PWD/render-config.sh:/render-config.sh:ro" -v "$TMP/local:/opt/cribl/local" -v "$TMP/nginx:/nginx-conf" \
-  "$IMG" /render-config.sh
+GW_USER=gateway; GW_PASS="gw'p&ss\\w \$rd"
+render_cfg() { # render_cfg <GW_OPENSEARCH true|false>
+  docker run --rm --network $NET --entrypoint sh \
+    -e IN_USER="$IN_USER" -e IN_PASS="$IN_PASS" -e IN_APIKEY="$APIKEY" -e GW_USER="$GW_USER" -e GW_PASS="$GW_PASS" -e GW_OPENSEARCH="$1" \
+    -e NGINX_CONF=/nginx-conf -e OUT_USER=ingest -e OUT_PASS="$OUT_PASS" -e ES_URL=http://mock-es-test:9200/_bulk -e OS_URL=http://mock-os-test:9200/_bulk \
+    -e CFG=/cfg -e CRIBL_LOCAL=/opt/cribl/local \
+    -v "$PWD/config:/cfg:ro" -v "$PWD/render-config.sh:/render-config.sh:ro" -v "$TMP/local:/opt/cribl/local" -v "$TMP/nginx:/nginx-conf" \
+    "$IMG" /render-config.sh
+}
+render_cfg false
 
 docker run -d --name mock-es-test --network $NET -v "$TMP/data:/data" -v "$PWD/test/mock_es.py:/m.py:ro" python:3-alpine python /m.py >/dev/null
+docker run -d --name mock-os-test --network $NET -v "$TMP/osdata:/data" -v "$PWD/test/mock_es.py:/m.py:ro" python:3-alpine python /m.py >/dev/null
 docker run -d --name cribl-siem-test --network $NET -p 127.0.0.1:$PORT:9200 -v "$TMP/local:/opt/cribl/local" "$IMG" >/dev/null
 # nginx shares Cribl's network namespace, like the two containers in the pod (nginx on :9200, Cribl on 127.0.0.1:9201)
 docker run -d --name nginx-siem-test --network container:cribl-siem-test -v "$TMP/nginx:/etc/nginx/conf.d:ro" nginx:1.27-alpine >/dev/null
 
-echo "waiting for Cribl on :$PORT ..."
-for i in $(seq 1 60); do
-  [ "$(curl -s -m 2 -o /dev/null -w '%{http_code}' -H "$(basic "$IN_USER" "$IN_PASS")" http://127.0.0.1:$PORT/ || true)" = 200 ] && break
-  sleep 2; [ "$i" = 60 ] && { echo "FAIL: Cribl did not answer"; docker logs cribl-siem-test 2>&1 | tail -8 | cut -c1-250; echo "--- nginx"; docker logs nginx-siem-test 2>&1 | tail -12; exit 1; }
-done
+wait_ready() {
+  echo "waiting for Cribl on :$PORT ..."
+  for i in $(seq 1 60); do
+    [ "$(curl -s -m 2 -o /dev/null -w '%{http_code}' -H "$(basic "$IN_USER" "$IN_PASS")" http://127.0.0.1:$PORT/ || true)" = 200 ] && return 0
+    sleep 2
+  done
+  echo "FAIL: Cribl did not answer"; docker logs cribl-siem-test 2>&1 | tail -8 | cut -c1-250; echo "--- nginx"; docker logs nginx-siem-test 2>&1 | tail -12; exit 1
+}
+wait_ready
 
 fail=0; ok() { echo "PASS: $1"; }; bad() { echo "FAIL: $1"; fail=1; }
 post_status() { curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST --data '{}' "$@" http://127.0.0.1:$PORT/_bulk; }
@@ -79,4 +90,63 @@ good = [check("sent to /_bulk", r["path"].endswith("/_bulk")),
         check("the API-key write was masked too", len(rows) >= 2 and "hunter2" not in rows[1]["body"])]
 sys.exit(0 if all(good) else 1)
 PY
-[ $fail = 0 ] && echo "ALL PASSED" || { echo "SOME FAILED"; docker logs cribl-siem-test 2>&1 | tail -15 | cut -c1-300; exit 1; }
+
+# ---------------- gateway events: POST /<index>/_doc with the gateways' own login ----------------
+cat > "$TMP/gw.json" <<'JSON'
+{"time":"2026-11-24T12:00:00.123Z","level":"info","msg":"LLM request","Provider":"openai","Model":"gpt-x","HTTPStatus":200,"TotalTokens":12,"VirtualKeyID":"sk-orion-ABCDEFGHIJKLMNOPQRSTUVWXYZ1234","User":"u-1","Headers":{"Authorization":"Bearer abcdefgh12345678"},"Note":"called with Bearer zzzzzzzz9999 ok","keep":"me"}
+JSON
+gw_post() { curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary @"$TMP/gw.json" "$@" http://127.0.0.1:$PORT/gateway-events/_doc; }
+[ "$(gw_post)" = 401 ] && ok "gateway path: no credential is refused (401)" || bad "gateway path accepted no credential"
+[ "$(gw_post -H "$(basic "$GW_USER" wrong)")" = 401 ] && ok "gateway path: wrong password is refused (401)" || bad "gateway path accepted a wrong password"
+[ "$(gw_post -H "$(basic "$IN_USER" "$IN_PASS")")" = 401 ] && ok "gateway path: the Privilege login is refused (401)" || bad "gateway path accepted the Privilege login"
+[ "$(gw_post -H "Authorization: ApiKey $APIKEY")" = 401 ] && ok "gateway path: the Privilege API key is refused (401)" || bad "gateway path accepted the API key"
+[ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H "$(basic "$GW_USER" "$GW_PASS")" --data '{}' http://127.0.0.1:$PORT/_bulk)" = 401 ] && ok "the gateway login is refused on /_bulk (401)" || bad "gateway login works on /_bulk"
+[ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "$(basic "$GW_USER" "$GW_PASS")" http://127.0.0.1:$PORT/gateway-events/_doc)" = 403 ] && ok "GET on the gateway path is refused (403)" || bad "GET on the gateway path was allowed"
+[ "$(gw_post -H "$(basic "$GW_USER" "$GW_PASS")")" = 200 ] && ok "gateway login: POST /gateway-events/_doc is accepted" || bad "gateway login refused on its own path"
+GW_BEFORE=$(grep -c . "$TMP/data/received.ndjson")
+for i in $(seq 1 30); do [ "$(grep -c . "$TMP/data/received.ndjson")" -gt "$(( ${SIEM_ROWS:-2} ))" ] && break; sleep 2; done
+python3 - "$TMP/data/received.ndjson" "$TMP/osdata/received.ndjson" "phase 1: OpenSearch route off" 0 <<'PY' || fail=1
+import json, sys
+def docs(path):
+    out = []
+    for l in open(path):
+        r = json.loads(l); ls = r["body"].splitlines()
+        for i in range(0, len(ls) - 1, 2): out.append((json.loads(ls[i]), json.loads(ls[i + 1]), r))
+    return out
+def check(name, cond):
+    print(("PASS: " if cond else "FAIL: ") + name); return cond
+es = [d for d in docs(sys.argv[1]) if d[1].get("msg") == "LLM request"]; osd = [d for d in docs(sys.argv[2]) if d[1].get("msg") == "LLM request"]
+if not check("[%s] exactly one gateway event reached Elasticsearch" % sys.argv[3], len(es) == 1): sys.exit(1)
+a, d, r = es[0]
+good = [check("index gateway-events", a.get("create", a.get("index", {})).get("_index") == "gateway-events"),
+        check("@timestamp set from time", d.get("@timestamp") == "2026-11-24T12:00:00.123Z"),
+        check("long VirtualKeyID shortened to prefix...last4", d.get("VirtualKeyID") == "sk-orion-...1234"),
+        check("Headers removed", "Headers" not in d and "abcdefgh12345678" not in json.dumps(d)),
+        check("Bearer in Note masked, text kept", "zzzzzzzz9999" not in d.get("Note", "") and d.get("Note") == "called with Bearer *** ok"),
+        check("other fields kept, _time removed", d.get("keep") == "me" and d.get("Model") == "gpt-x" and "_time" not in d),
+        check("[%s] OpenSearch copies: %d (expected %s)" % (sys.argv[3], len(osd), sys.argv[4]), len(osd) == int(sys.argv[4]))]
+sys.exit(0 if all(good) else 1)
+PY
+
+# ---------------- cut-over: switch the OpenSearch route on, restart, post again ----------------
+render_cfg true
+docker restart cribl-siem-test nginx-siem-test >/dev/null; wait_ready
+: > "$TMP/data/received.ndjson"; : > "$TMP/osdata/received.ndjson"
+[ "$(gw_post -H "$(basic "$GW_USER" "$GW_PASS")")" = 200 ] && ok "cut-over: gateway login accepted" || bad "cut-over: gateway post refused"
+for i in $(seq 1 30); do [ -s "$TMP/data/received.ndjson" ] && [ -s "$TMP/osdata/received.ndjson" ] && break; sleep 2; done
+python3 - "$TMP/data/received.ndjson" "$TMP/osdata/received.ndjson" "phase 2: OpenSearch route on" 1 <<'PY' || fail=1
+import json, sys
+def docs(path):
+    out = []
+    for l in open(path):
+        r = json.loads(l); ls = r["body"].splitlines()
+        for i in range(0, len(ls) - 1, 2): out.append((json.loads(ls[i]), json.loads(ls[i + 1]), r))
+    return out
+def check(name, cond):
+    print(("PASS: " if cond else "FAIL: ") + name); return cond
+es = [d for d in docs(sys.argv[1]) if d[1].get("msg") == "LLM request"]; osd = [d for d in docs(sys.argv[2]) if d[1].get("msg") == "LLM request"]
+good = [check("[%s] one copy in Elasticsearch" % sys.argv[3], len(es) == 1),
+        check("[%s] one copy in OpenSearch, same shape, no credentials sent" % sys.argv[3], len(osd) == 1 and osd[0][2]["authorization"] == "" and osd[0][1].get("VirtualKeyID") == "sk-orion-...1234" and osd[0][0].get("create", osd[0][0].get("index", {})).get("_index") == "gateway-events")]
+sys.exit(0 if all(good) else 1)
+PY
+[ $fail = 0 ] && echo "ALL PASSED" || { echo "SOME FAILED"; docker logs cribl-siem-test 2>&1 | grep -E '"level":"(warn|error)"|in_gateway|gateway|pipe:' | grep -v -E "MetricsStore|Cloud domain" | tail -12 | cut -c1-400; exit 1; }

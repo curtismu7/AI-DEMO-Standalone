@@ -92,6 +92,17 @@ Copy the key to the clipboard without printing it:
 Create the Secret once, by hand, before deploying: `kubectl -n ping-devops-curtismuir create secret generic cribl-siem-privilege-apikey --from-literal=username=apikey --from-literal=password="$(printf 'cribl-siem:%s' "$(openssl rand -hex 24)" | base64 | tr -d '\n')"`.
 Verified (local test and live): no credential, wrong password, wrong key and `Bearer <key>` are all 401; Basic and ApiKey are 200 and both writes arrive masked. Not yet verified: what Privilege itself sends in API-key mode (expected `ApiKey`, the Elastic standard).
 
+## Gateway traffic lines (LLM request, AIGuard, A2A)
+
+The gateways' `log-tailer` sidecars post one JSON line per event to `/<index>/_doc`. Cribl's Elasticsearch source refuses that, so nginx accepts `POST /<index>/_doc` (and only that path) with the **gateway login**
+(Secret `cribl-siem-gateway-login`, user `gateway`) and rewrites it to a loopback Cribl HTTP source (`in_gateway`, `/cribl/_bulk`). Route `gateway-events` runs pipeline `gateway_mask` (shorten `VirtualKeyID` to `prefix...last4`,
+remove `Headers`, mask `sk-` keys / Bearer / JWT, `@timestamp` from `time`) and the router `gw_router` sends to Elasticsearch `gateway-events` and, when `GW_OPENSEARCH=true`, to OpenSearch `gateway-events`.
+The gateway login works on that path only, and the Privilege logins do not work on it (both checked).
+Elasticsearch: user `cribl_siem` has a second role `cribl_gateway_writer` (write on `gateway-events*`, no read).
+
+Phase 1 (now): the sidecar keeps posting to OpenSearch itself, plus to Cribl, so Cribl writes Elasticsearch only (no duplicates in OpenSearch). Phase 2 (cut-over, own go): the sidecar posts to Cribl only and `GW_OPENSEARCH` is set to `true` in `k8s/deployment.yaml`.
+Spec: `docs/specs/2026-11-24-cribl-gateway-events.md`. If Cribl or Elasticsearch is down, the Cribl copy of those events is lost (no queue); the OpenSearch copy is unaffected in phase 1.
+
 ## Roll back
 
 Put the previous URL back in the Privilege SIEM form, then `kubectl --context us delete -k .`.
