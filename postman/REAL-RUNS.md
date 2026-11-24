@@ -56,7 +56,7 @@ requests hit real Ping:
 | **mock-authorize-LAB** | The mock authorization server IS the lab; point it at a real AS and it would be a different lab |
 | **wimse-lab-LAB** | No WIMSE issuer exists as a product yet; the lab mints with its own key by design |
 | **session-LAB** | The cookie/MFA/widget story needs browser-assisted pi.flow collectors Postman cannot complete; the collection covers the read surface and the mode-refusal contract |
-| **intent-par-inspector-LAB**, **delegation-lab-LAB**, **gateway-claims-LAB**, **pf-array-claims-LAB**, **mcp-gateway-lab-LAB**, **p1-third-party-exchange-LAB**, **ciba-approval-sequence-LAB**, **saas-access-LAB** | The lab's simulated engine is the subject (intent rules, consent chain, claims mapping, gateway policy, vendor JWT profiles, sequence story, live platforms). Real counterparts exist elsewhere: real PAR + real PingOne exchange ride inside the id-jag/token-workbench real modes; real CIBA is `ping-postman-packages/ciba-backchannel/`; real SaaS is `salesforce-privilege-LAB` |
+| **intent-par-inspector-LAB**, **delegation-lab-LAB**, **gateway-claims-LAB**, **pf-array-claims-LAB**, **mcp-gateway-lab-LAB**, **p1-third-party-exchange-LAB**, **ciba-approval-sequence-LAB**, **saas-access-LAB** | The lab's simulated engine is the subject (intent rules, consent chain, claims mapping, gateway policy, vendor JWT profiles, sequence story, live platforms). Real counterparts exist elsewhere: real PAR + real PingOne exchange ride inside the id-jag/token-workbench real modes; **real CIBA is proven and documented in [REAL-CIBA-RUN.md](REAL-CIBA-RUN.md)** (via pingfederate-LAB + `ciba-backchannel/`); real SaaS is `salesforce-privilege-LAB` |
 
 ---
 
