@@ -1,0 +1,101 @@
+<title>Privilege SIEM to Cribl Test Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, sticky-free contents bar, code and tables scroll inside their own boxes. */
+:root { --bg:#f6f8fa; --surface:#ffffff; --fg:#17202a; --muted:#5b6876; --line:#dbe2e9; --accent:#0b6b7a; --accent-soft:#e0f1f3;
+  --pass:#17692f; --pass-bg:#e2f4e7; --warn:#8a5300; --warn-bg:#fdf0d8; --bad:#9d2222; --bad-bg:#fbe4e4; --info:#274f8f; --info-bg:#e5edf9; --code-bg:#eef2f6;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f151b; --surface:#17202a; --fg:#e6ebf0; --muted:#98a5b3; --line:#2b3745; --accent:#5cc4d3; --accent-soft:#14323a;
+  --pass:#7bd391; --pass-bg:#163423; --warn:#f0b95a; --warn-bg:#3a2c12; --bad:#f08b8b; --bad-bg:#3c1b1b; --info:#8fb4ee; --info-bg:#1a2a45; --code-bg:#0f1a24; color-scheme:dark; } }
+:root[data-theme="dark"] { --bg:#0f151b; --surface:#17202a; --fg:#e6ebf0; --muted:#98a5b3; --line:#2b3745; --accent:#5cc4d3; --accent-soft:#14323a;
+  --pass:#7bd391; --pass-bg:#163423; --warn:#f0b95a; --warn-bg:#3a2c12; --bad:#f08b8b; --bad-bg:#3c1b1b; --info:#8fb4ee; --info-bg:#1a2a45; --code-bg:#0f1a24; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font:15px/1.6 var(--font); padding-block:28px 64px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+.wrap { max-width:960px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr); gap:24px; }
+header { display:grid; gap:10px; }
+.kicker { font:500 12px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+h1 { font-size:clamp(26px,4.6vw,36px); line-height:1.15; margin:0; letter-spacing:-.01em; text-wrap:balance; }
+h2 { font-size:20px; margin:0 0 12px; text-wrap:balance; } h3 { font-size:15px; margin:18px 0 6px; }
+p { margin:0 0 10px; max-width:76ch; } ul,ol { margin:0 0 10px; padding-left:22px; } li { margin:4px 0; max-width:76ch; }
+.meta { display:flex; flex-wrap:wrap; gap:6px 18px; color:var(--muted); font-size:13px; } .meta b { color:var(--fg); font-weight:600; }
+section { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:22px max(16px,3vw); min-width:0; }
+nav { display:flex; flex-wrap:wrap; gap:6px; } nav a { font-size:13px; color:var(--accent); text-decoration:none; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 12px; }
+nav a:hover,nav a:focus-visible { background:var(--accent-soft); outline:none; }
+.scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; margin:6px 0 12px; }
+table { border-collapse:collapse; width:100%; min-width:620px; font-size:13.5px; } th,td { text-align:left; vertical-align:top; padding:9px 12px; border-bottom:1px solid var(--line); }
+th { background:var(--bg); font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); } tr:last-child td { border-bottom:0; }
+code { font:12.5px/1.4 var(--mono); background:var(--code-bg); border:1px solid var(--line); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
+pre { font:12.5px/1.55 var(--mono); background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow-x:auto; margin:8px 0 12px; max-width:100%; } pre code { border:0; padding:0; background:none; }
+.cap { font:600 11px/1 var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:12px 0 -4px; }
+.tag { display:inline-block; font:600 11px/1 var(--font); letter-spacing:.03em; text-transform:uppercase; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+.pass{color:var(--pass);background:var(--pass-bg)} .warn{color:var(--warn);background:var(--warn-bg)} .bad{color:var(--bad);background:var(--bad-bg)} .info{color:var(--info);background:var(--info-bg)}
+.callout { border-left:3px solid var(--warn); background:var(--warn-bg); border-radius:0 8px 8px 0; padding:12px 16px; margin:8px 0 12px; max-width:80ch; } .callout.note { border-left-color:var(--info); background:var(--info-bg); }
+.flow { display:grid; gap:8px; margin:6px 0; } .flow .row { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+.flow .node { border:1px solid var(--line); background:var(--bg); border-radius:8px; padding:6px 10px; font-size:13px; } .flow .node.hi { border-color:var(--accent); background:var(--accent-soft); } .flow .arrow { color:var(--muted); font:12px var(--mono); }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; } .tile { border:1px solid var(--line); border-radius:8px; padding:12px 14px; background:var(--bg); } .tile .n { font:600 26px/1.1 var(--font); } .tile .l { color:var(--muted); font-size:12.5px; margin-top:4px; }
+footer { color:var(--muted); font-size:12.5px; } @media (max-width:520px){ section{padding:18px 14px;} } @media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth;} }
+</style>
+<div class="wrap">
+<header><div class="kicker">Final report</div><h1>PingOne Privilege events through Cribl Stream to Elasticsearch: what was tested and what we found</h1><div class="meta"><span><b>Audience</b> Technical and security leads</span><span><b>Date</b> 24 Nov 2026</span><span><b>Environment</b> Test tenant, live Cribl and Elasticsearch</span></div><nav aria-label="Sections"><a href="#summary">Summary</a><a href="#scope">Scope</a><a href="#results">Results</a><a href="#findings">Findings</a><a href="#prompt">Prompt logging</a><a href="#limits">Restrictions</a><a href="#recs">Recommendations</a><a href="#untested">Not tested</a></nav></header>
+<section id="summary"><h2>Summary</h2>
+<ul>
+<li>PingOne Privilege's <b>SIEM</b> setting can send to Elasticsearch <b>through Cribl Stream</b>, using either a username and password or an API key. Events arrive masked, tagged and searchable, in the index you choose.</li>
+<li>Everything that was planned was tested and works, with the limits listed below. The two that matter most: <b>there is no queue by default</b> (events are lost while Elasticsearch is down or the pipeline restarts), and <b>the SIEM holds your sealed prompt records</b>, so protect the index and the private key together.</li>
+<li><b>Prompt logging reaches the SIEM sealed.</b> In a control test with a real prompt, no part of the prompt appeared in any event; the content arrived only as ciphertext, with the user, agent, app and request id in the clear.</li>
+<li>Not completed: opening a real sealed record end to end (it needs the private key for the tenant's key and the record layout, which is not published). Other items not tested are listed in section 7.</li>
+</ul>
+<div class="tiles">
+<div class="tile"><div class="n">54</div><div class="l">automated checks passing</div></div>
+<div class="tile"><div class="n">69 of 69</div><div class="l">live events scanned, no secrets found</div></div>
+<div class="tile"><div class="n">2</div><div class="l">sign-in modes working (Basic, API key)</div></div>
+<div class="tile"><div class="n">159</div><div class="l">sealed prompt records seen in the first 66 minutes</div></div>
+</div></section>
+<section id="scope"><h2>Scope and method</h2>
+<p><b>In scope:</b> delivering Privilege's SIEM events to Elasticsearch through Cribl Stream; the two authentication options; masking and enrichment in Cribl; least-privilege access; the optional gateway log path; and what the SIEM receives when prompt logging is on.</p>
+<p><b>Method:</b> an automated local test (Cribl and nginx against stand-in Elasticsearch servers) with 54 checks, plus live runs against a test Privilege tenant, a live Cribl deployment and a live Elasticsearch, using real traffic from demo agents. Where something was checked only with simulated input, the table says so.</p>
+<div class="scroll"><table><thead><tr><th>Component</th><th>Version</th></tr></thead><tbody><tr><td>Cribl Stream</td><td>4.13</td></tr><tr><td>nginx</td><td>1.27</td></tr><tr><td>Elasticsearch</td><td>9.1</td></tr><tr><td>Privilege SIEM provider</td><td>Elastic</td></tr><tr><td>Deployment</td><td>Kubernetes (live); Docker (automated test)</td></tr></tbody></table></div></section>
+<section id="results"><h2>Results</h2><div class="scroll"><table><thead><tr><th>#</th><th>What</th><th>How</th><th>Result</th></tr></thead><tbody><tr><td>1</td><td>Privilege can send to the endpoint</td><td>Console Health Check and Save</td><td><span class="pass tag">Passed</span> Health Check passes. The first Save attempts failed with HTTP 500 from the console; saving as an update to the existing config worked.</td></tr><tr><td>2</td><td>What Privilege sends</td><td>Ingress and Cribl logs</td><td><span class="info tag">Observed</span> <code>GET /</code>, <code>HEAD /&lt;index&gt;</code> and <code>POST /_bulk</code> from a Go Elasticsearch 7.x client. It names the index itself and the form has no Index field.</td></tr><tr><td>3</td><td>Event delivery</td><td>Count and read back</td><td><span class="pass tag">Passed</span> Console changes, guardrail verdicts, policy decisions and accepted requests arrive, each tagged with its kind.</td></tr><tr><td>4</td><td>Username and password</td><td>Automated and live</td><td><span class="pass tag">Passed</span> No credential and a wrong password are refused (401).</td></tr><tr><td>5</td><td>API key</td><td>Automated and live</td><td><span class="pass tag">Passed</span> The <code>ApiKey</code> scheme works, including lower-case scheme names. A wrong key and a key sent as <code>Bearer</code> are refused.</td></tr><tr><td>6</td><td>Secret masking</td><td>Automated, then a scan of stored events</td><td><span class="pass tag">Passed</span> Passwords, token and key fields, API keys, Bearer values and JWTs are masked, also inside nested objects. A scan of 69 live events found no secret.</td></tr><tr><td>7</td><td>Fields for filtering</td><td>Automated, then a live event</td><td><span class="pass tag">Passed</span> User, agent key, app, policy ids, decision, reason, target and request id are copied to top-level <code>gw_*</code> fields; the original payload is left intact.</td></tr><tr><td>8</td><td>Sensitive headers</td><td>Automated; 27 live events</td><td><span class="pass tag">Passed</span> Authorization, cookie and API-key headers are removed if they appear. None appeared in live events (Privilege removes them upstream).</td></tr><tr><td>9</td><td>Least privilege</td><td>Live</td><td><span class="pass tag">Passed</span> The ingestion user can write the index family and cannot read it, or write any other index (both 403).</td></tr><tr><td>10</td><td>Pipeline isolation</td><td>Automated, with a deliberate fault</td><td><span class="pass tag">Passed</span> Cribl listens on loopback only. Binding it to all interfaces makes the test fail, as it should.</td></tr><tr><td>11</td><td>Optional gateway log path</td><td>Live, on a running gateway</td><td><span class="pass tag">Passed</span> One real model call produced the gateway's log line; it reached the destination store and Elasticsearch through Cribl exactly once each, with the key shortened and no headers. <b>Found and fixed:</b> numeric and boolean fields reached Elasticsearch as text because Cribl's mask function stringifies values; excluding those fields fixed it and the mapping is now numeric.</td></tr><tr><td>12</td><td>Prompt logging in the SIEM</td><td>Live; control run with a unique marker</td><td><span class="info tag">Observed</span> 159 sealed <code>prompt-log</code> records in 66 minutes. The marker appeared in none of the SIEM index, the gateway-event stores or the gateway's own log line. See section 5.</td></tr><tr><td>13</td><td>Opening a sealed record</td><td>Not completed</td><td><span class="warn tag">Not done</span> Needs the private key for the tenant's key id and the record layout, which is not published. A demonstration of the mechanism (generate a key pair, seal and open) was built and tested separately; it does not use Privilege's exact wire format.</td></tr><tr><td>14</td><td>Loss during restart or outage</td><td>Known limitation</td><td><span class="info tag">Limit</span> No queue by default. A deploy of a single replica leaves about a minute with no delivery.</td></tr></tbody></table></div></section>
+<section id="findings"><h2>Findings that shaped the design</h2><div class="scroll"><table><thead><tr><th>Finding</th><th>Consequence</th></tr></thead><tbody><tr><td>Cribl's Elasticsearch source accepts only <code>_bulk</code> requests, and one authentication mode</td><td>Privilege uses <code>_bulk</code>, so it works. nginx in front checks Basic or ApiKey and Cribl listens on loopback.</td></tr><tr><td>Cribl's source does not accept the <code>ApiKey</code> scheme</td><td>The nginx front also handles the API-key option.</td></tr><tr><td>Privilege names the index itself and the form has no Index field</td><td>The pipeline forces the destination index. The writer role only needs that index family.</td></tr><tr><td>A write-only user cannot make Cribl's startup version call</td><td>Name the Elasticsearch version in the destination.</td></tr><tr><td>Cribl's mask function stringifies every value it visits</td><td>Harmless for audit events; for events with real numbers, exclude those fields (before the wildcard, because the first match wins).</td></tr><tr><td>Long credential strings exceed nginx's default map bucket</td><td>Raise <code>map_hash_bucket_size</code>.</td></tr><tr><td>Cribl regenerates its admin user as admin/admin when its configuration directory is empty</td><td>Persist the directory, or set the password from a secret on every start.</td></tr><tr><td>Events appear up to about a minute after the action</td><td>Wait before concluding anything is missing.</td></tr></tbody></table></div></section>
+<section id="prompt"><h2>Prompt logging: what the SIEM receives</h2>
+<p>The Prompt Logging page says that recorded prompts, tool calls and (optionally) responses are encrypted to a public key the customer holds, and that Privilege cannot read them. We checked what reaches the SIEM:</p>
+<ul>
+<li><b>159 records in 66 minutes</b> of light demo traffic: 81 on LLM traffic, 42 agent-to-agent, 36 MCP. A request and its response are separate records; both carry the same encapsulated key.</li>
+<li><b>In the clear:</b> app, user, agent key, key type, principal kind, tenant, request id, direction, surface, size and the number of units.</li>
+<li><b>Sealed:</b> <code>Content</code> (ciphertext) and <code>Enc</code>, with <code>Alg</code> = <code>HPKE-X25519-SHA256-AES256GCM-EXPORT</code> and a <code>KeyID</code> naming the key.</li>
+<li><b>Marker test:</b> a real model call whose prompt contained a unique marker string. The marker was absent from the SIEM index, from both gateway-event stores and from the gateway's own log line, and sample words from the prompt were not visible in any record.</li>
+<li><b>Key change:</b> after the key was regenerated in the console, the next call's records carried a new key id. Each record names the key that sealed it, so old records need the old key.</li>
+</ul>
+<div class="callout"><b>What this means.</b> The SIEM never receives the plaintext, but it does hold the encrypted content of every recorded prompt. Anyone who has the private key and can read the index can open all of it. Treat the index and the private key as one security domain, and keep the private key out of the SIEM's reach. Cribl does not alter the ciphertext.</div>
+<p>Volume: about 2.4 records a minute here, at most about 3.4 KB each so far. The size limit allows up to 131,072 bytes per record, so plan retention and storage for real use.</p></section>
+<section id="limits"><h2>Restrictions</h2>
+<ul>
+<li><b>No queue by default</b> in Cribl: events are lost while Elasticsearch is down or the pipeline restarts. A persistent queue is possible (not tested here).</li>
+<li><b>A short gap on each deploy</b> of a single replica; two replicas with a rolling update would avoid it (not tested here).</li>
+<li><b>Privilege sends from its cloud</b>, so the endpoint must be reachable from the internet over HTTPS.</li>
+<li><b>Cribl's Elasticsearch source</b> is <code>_bulk</code> only and takes one authentication mode.</li>
+<li><b>The index name is chosen by Privilege</b> and cannot be set in the form; the pipeline overrides it.</li>
+<li><b>Client IP addresses and a session identifier</b> remain in gateway request events. Treat the index as sensitive.</li>
+<li><b>Prompt-log events</b> carry sealed content, user ids and agent names in the clear.</li>
+</ul></section>
+<section id="recs"><h2>Recommendations</h2>
+<ol>
+<li>Use the layout in the setup guide as is: nginx front, Cribl on loopback, a write-only Elasticsearch user.</li>
+<li>Decide on loss tolerance. If audit events must not be lost, enable a persistent queue and run two replicas before go-live.</li>
+<li>Generate every credential randomly, store it in a secret manager, and rotate it on a schedule; test the refusals after each rotation.</li>
+<li>Restrict who can read the index, and keep prompt-logging private keys apart from the SIEM.</li>
+<li>Size the index for prompt-log volume and set a retention policy before turning on more surfaces.</li>
+<li>Add the field names of any new numeric field to the mask exclusion list so it keeps its type.</li>
+<li>Re-run the verification steps after every Privilege, Cribl or Elasticsearch upgrade.</li>
+</ol></section>
+<section id="untested"><h2>Not tested</h2>
+<ul>
+<li>Opening a real sealed prompt record end to end (needs the private key and the record layout).</li>
+<li>The <b>coding agents</b> surface of prompt logging: no traffic of that kind was generated.</li>
+<li>Alerting and dashboards on top of the events.</li>
+<li>High availability, persistent queues, load and long-running volume.</li>
+<li>Index lifecycle management and retention.</li>
+<li>Other SIEM destinations through Cribl.</li>
+</ul></section>
+<footer>Companion to the setup guide. Hosts, tenants and credentials are not included. Counts are from the test environment on the date shown.</footer>
+</div>
