@@ -170,3 +170,33 @@ Source: `docs/privilege-feature-demo-options-2026-11-24.md`, on branch `docs/pri
 
 Build approach for #1 to #5: same rules as above for extending an existing lab (keep its Mock/Real toggle and unverified labels, claim only what a real run showed, worktree per lab, browser check). Real measurements only after the owner's go in the conversation. Owner decisions 2026-11-24: #1 to #5 are in scope as mock tabs (#4 and #5 together as one item); #6 and #7 need no build. Start order for the real measurements is still open; #5 is the suggested first, and every real run waits for the owner's go.
 
+## 9. Build status and never-repeat lessons (2026-11-24)
+
+### Where the five labs stand
+All five repos are public under `curtismu7`, each with a step-1 core on `main` and a step-2 web PR (open, under review). Ports are claimed on the board and provisional until the shelf registry PR (step 3).
+
+| Lab | Port | Notes |
+|---|---|---|
+| `privilege-model-fallback-LAB` | 7836 | |
+| `privilege-rate-limit-LAB` | 7837 | |
+| `privilege-bedrock-assume-role-LAB` | 7838 | includes the Vertex tab |
+| `privilege-model-armor-LAB` | 7846 | moved from 7839 |
+| `privilege-semantic-cache-LAB` | 7847 | moved from 7840; no cross-user leak scenario, scope is an open question |
+
+The diagrams (`model-fallback`, `semantic-cache`, `model-armor-inspector`, `bedrock-assumed-role`, `rate-limit-bucket`) are merged in diagram-studio-LAB (`c662412`). Each lab pins its exported copy; re-export after any diagram change.
+
+### Never-repeat lessons
+Found by independent `/code-review` of the first labs; each was copied into the next lab before it was caught. Every lab's `CLAUDE.md` carries the same list.
+
+- **Ports:** before claiming a port, check running containers and compose files (`docker ps`), not only the shelf registry. The `ap-*` labs run on 7839 to 7843 and are not in the registry; two claims had to move.
+- **Docker:** a Dockerfile `COPY` source must not be excluded by `.dockerignore`. A compose test checks every COPY source, and a real OrbStack build is the proof; a text grep is not.
+- **Branding:** the first story and talk-track load sends no `vertical`; a default parameter that turns undefined into `retail` hides the configured customer.
+- **Hash scenarios:** Reset, mode switch and vertical change clear the scenario hash. A page runs a hash scenario only on a deliberate navigation, so Reset does not re-run it.
+- **Mock button:** pressing the already-active Mock button changes nothing.
+- **Workspace ids:** the client pattern equals the server's, and the random fallback fills its array in place (`Uint8Array.map` returns a new array).
+- **`npm run reset`:** it takes a workspace id and sends `X-Workspace`; otherwise it resets only `default`.
+- **Netguard:** allow literal IPs for an opted-in bind; the guarded `dns.lookup` otherwise blocks them.
+- **Shortcut keys:** ignore Ctrl, Cmd and Alt, repeats and focused controls.
+- **Tests:** they pass with and without `web/dist`. Static scans skip `.github/` and the shared attribution script.
+- **Reading stored runs:** presenter and link code uses the stored run's real field names, with a test that has a run present.
+

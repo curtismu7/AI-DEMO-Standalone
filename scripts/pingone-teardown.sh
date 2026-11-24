@@ -45,6 +45,7 @@ if [[ -f "$CRED_FILE" ]]; then
   set +a
 fi
 
+ALLOW_PRIVILEGE_ENV=""   # only --delete-privilege-env sets it: a value exported in the caller's shell must not switch the protection off
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
@@ -68,6 +69,9 @@ Options:
   --client-secret <secret>
   --yes                         skip the confirmation (ASSUME_YES=1 also works)
   --keep-env-file               do not touch ~/Development/.env
+  --delete-privilege-env        allow deleting an environment that has a PingID deployment or PingOne Privilege (what an environment you
+                                made in the console looks like). Refused otherwise, even with --yes: the PingID account and the
+                                Privilege Administrator role cannot be recreated or granted again.
   --dry-run                     resolve and show the target, delete nothing
 
 Deleting an environment is irreversible: its users, applications, populations,
@@ -82,6 +86,7 @@ USAGE
     --client-secret) PINGONE_ADMIN_CLIENT_SECRET="$2"; shift 2 ;;
     --yes) ASSUME_YES=1; shift ;;
     --keep-env-file) KEEP_ENV_FILE=1; shift ;;
+    --delete-privilege-env) ALLOW_PRIVILEGE_ENV=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     *) err "unknown argument: $1 (see --help)"; exit 2 ;;
   esac
@@ -189,9 +194,10 @@ print(hits[0]["id"] if hits else "")' 2>/dev/null || true)"
 fi
 [[ -z "${TARGET_ENV_ID:-}" ]] && fatal "no target environment: pass --env-id, --name, or have PINGONE_ENVIRONMENT_ID in $ENV_FILE."
 
-env_json="$(curl -s --max-time 30 -o /tmp/p1-lookup-$$ -w '%{http_code}' "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
-lookup_body="$(cat /tmp/p1-lookup-$$ 2>/dev/null || true)"
-: > /tmp/p1-lookup-$$ 2>/dev/null || true
+lookup_file="$(mktemp)"
+env_json="$(curl -s --max-time 30 -o "$lookup_file" -w '%{http_code}' "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
+lookup_body="$(cat "$lookup_file" 2>/dev/null || true)"
+rm -f "$lookup_file"
 if [[ "$env_json" == "401" || "$env_json" == "403" ]]; then
   err "the org worker cannot read environment $TARGET_ENV_ID (HTTP $env_json)."
   fatal "check that the worker has an organization-wide admin role and that the region is right."
@@ -203,6 +209,38 @@ fi
 env_name="$(printf '%s' "$lookup_body" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name",""))' 2>/dev/null || true)"
 if [[ -z "$env_name" ]]; then
   fatal "environment $TARGET_ENV_ID not found in region $PINGONE_REGION (or the org worker cannot see it)."
+fi
+
+# A console-made environment holds the owner's PingID account and the Privilege Administrator role (nobody can grant it again).
+# The tenant is the source of truth, not a local file: a PingID deployment or the Privilege product means a person set it up.
+# --yes does not lift this: only --delete-privilege-env does. An unreadable bill of materials is refused too (fail closed).
+if [[ -z "${ALLOW_PRIVILEGE_ENV:-}" ]]; then
+  bom_file="$(mktemp)"
+  bom_code="$(curl -s --max-time 30 -o "$bom_file" -w '%{http_code}' "$api/environments/$TARGET_ENV_ID/billOfMaterials" -H "authorization: Bearer $access")" || bom_code="curl-failed"
+  bom_body="$(cat "$bom_file" 2>/dev/null || true)"
+  rm -f "$bom_file"
+  bom_verdict="$(printf '%s' "$bom_body" | python3 -c '
+import sys, json
+try:
+    products = json.load(sys.stdin).get("products")
+except Exception:
+    products = None
+if not isinstance(products, list):   # a 200 without a product list (an error envelope, a proxy page) tells us nothing
+    print("unreadable"); sys.exit()
+found = []
+for p in products:
+    if not isinstance(p, dict): continue
+    if p.get("type") == "PING_ONE_PAM": found.append("PingOne Privilege")
+    if p.get("type") == "PING_ONE_ID" and (p.get("deployment") or {}).get("id"): found.append("a PingID deployment")
+print(", ".join(found) if found else "none")' 2>/dev/null || echo unreadable)"
+  if [[ "$bom_code" != "200" || "$bom_verdict" == "unreadable" ]]; then
+    err "could not read the products of $env_name ($TARGET_ENV_ID): HTTP $bom_code. Not deleting without knowing."
+    fatal "check the org worker's role, or pass --delete-privilege-env if you are sure."
+  elif [[ "$bom_verdict" != "none" ]]; then
+    err "$env_name ($TARGET_ENV_ID) has $bom_verdict. That is what an environment you set up in the console looks like."
+    err "The PingID account and the PingOne Privilege Administrator role cannot be recreated or granted again. Not deleting it."
+    fatal "delete it in the console yourself, or pass --delete-privilege-env if you really mean it."
+  fi
 fi
 
 echo ""
@@ -227,9 +265,10 @@ fi
 
 # ── 3. delete ─────────────────────────────────────────────────────────────────
 info "Deleting environment $TARGET_ENV_ID..."
-del_code="$(curl -s --max-time 60 -o /tmp/p1-teardown-$$ -w '%{http_code}' -X DELETE "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
-del_body="$(cat /tmp/p1-teardown-$$ 2>/dev/null || true)"
-: > /tmp/p1-teardown-$$ 2>/dev/null || true
+del_file="$(mktemp)"
+del_code="$(curl -s --max-time 60 -o "$del_file" -w '%{http_code}' -X DELETE "$api/environments/$TARGET_ENV_ID" -H "authorization: Bearer $access")"
+del_body="$(cat "$del_file" 2>/dev/null || true)"
+rm -f "$del_file"
 # 202 accepted (async delete) and 204 are successes; 404 already gone is fine.
 # 409 = deletion already in progress from an earlier run: nothing to do but report it.
 if [[ "$del_code" == "202" || "$del_code" == "204" ]]; then

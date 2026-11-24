@@ -81,8 +81,9 @@ async function roleIds(api) {
 // its creator (Organization Admin, Identity Data Admin on every environment). PingOne allows one assignment of a role per
 // app whatever its scope, so an inherited "Environment Admin" at organization scope blocks adding it on this environment:
 // extras are removed FIRST, then the missing kept roles are added, then everything is read back. Failing to ADD a kept role
-// is fatal (ok=false); failing to REMOVE an extra is reported in `leftover` and does not stop the setup.
-export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_ROLES, expectName = WORKER_APP_NAME }) {
+// is fatal (ok=false); failing to REMOVE an extra is reported in `leftover` and does not stop the setup, unless `strict`
+// (used when the creating worker held only Environment Admin: a leftover organization-wide role would end up in the labs' settings file).
+export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_ROLES, expectName = WORKER_APP_NAME, strict = false }) {
   const { byName, byId } = await roleIds(api);
   const base = `/environments/${envId}/applications/${appId}/roleAssignments`;
   const res = { ok: true, added: [], removed: [], errors: [], leftover: [] };
@@ -108,6 +109,7 @@ export async function ensureWorkerRoles(api, { envId, appId, keep = KEEP_WORKER_
   }
   const after = await listAll(api, base, 'roleAssignments');
   res.leftover = after.filter((x) => !isKept(x)).map(label);
+  if (strict && res.leftover.length) { res.ok = false; res.errors.push(`the worker still holds ${res.leftover.join(', ')}`); }
   const heldNames = after.filter(isKept).map((a) => byId[a.role.id]);
   for (const n of keep) if (!heldNames.includes(n)) { res.ok = false; if (!res.errors.some((e) => e.includes(n))) res.errors.push(`${n} is not held on the environment after the run`); }
   return res;
@@ -158,6 +160,64 @@ export async function setPrivilegeMode(api, { envId, mode, backupDir = path.join
   const back = (await api('GET', `/environments/${envId}/billOfMaterials`)).body.products?.find((p) => p.type === 'PING_ONE_PAM');
   const ok = put.status === 200 && back?.tags?.[0] === tag;
   return { ok, changed: true, backup: bk, detail: ok ? `now ${mode}` : `HTTP ${put.status} ${msg(put.body)}` };
+}
+
+// Flags that take no value. Any other `--name` takes the next argument (a bare one at the end or before another flag reads as '').
+const BOOLEAN_FLAGS = new Set(['dry-run', 'no-privilege', 'strict']);
+export function parseArgs(argv) {
+  const o = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--') && BOOLEAN_FLAGS.has(a.slice(2))) o[a.slice(2) === 'dry-run' ? 'dryRun' : a.slice(2)] = true;
+    else if (a.startsWith('--')) o[a.slice(2)] = argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? '' : argv[++i];
+    else o._.push(a);
+  }
+  return o;
+}
+
+// Checks an environment a PERSON made in the console (Workforce, PingID "create new", Privilege). Read-only.
+// Why it exists: through the API PingOne accepts PING_ONE_ID in the bill of materials but never provisions the PingID
+// deployment (measured 2026-11-24: no `deployment` on the product, and a PINGID_AUTHENTICATION sign-on action is refused with
+// LICENSE_EXCEEDED "PingID is disabled for environment"), so a script cannot create a working PingID environment itself.
+// Statuses: PASS / WARN (carry on) / FAIL (stop). exitCode 1 when any FAIL; 2 when the environment or its products could not
+// be READ (a caller deciding whether an environment is PingID + Privilege must not treat "could not tell" as "no").
+export async function checkWorkforceEnv(api, { envId, requirePrivilege = true }) {
+  const checks = [];
+  const add = (status, name, detail = '') => checks.push({ status, name, detail });
+  const env = await api('GET', `/environments/${envId}`);
+  if (env.status !== 200) {
+    add('FAIL', 'environment', `HTTP ${env.status}: check the id and that this worker can see it (Environment Admin or Organization Admin)`);
+    return { checks, exitCode: 2 };
+  }
+  if (env.body.type !== 'SANDBOX') {
+    add('FAIL', 'environment type', `${env.body.type}: the labs create apps and users and rewrite worker roles in this environment, so only a SANDBOX is accepted`);
+    return { checks, exitCode: 1 };
+  }
+  add('PASS', 'environment', `"${env.body.name}" (${env.body.type}, ${env.body.region})`);
+  const bom = await api('GET', `/environments/${envId}/billOfMaterials`);
+  if (bom.status !== 200) {
+    add('FAIL', 'bill of materials', `HTTP ${bom.status}`);
+    return { checks, exitCode: 2 };
+  }
+  const products = bom.body.products || [];
+  const of = (t) => products.find((p) => p.type === t);
+  if (of('PING_ONE_MFA')) add('FAIL', 'no PingOne MFA', 'PingID cannot share an environment with PingOne MFA: create the environment again without it');
+  else add('PASS', 'no PingOne MFA');
+  const pid = of('PING_ONE_ID');
+  if (!pid) add('FAIL', 'PingID', 'not in this environment: create it in the console with PingID (Workforce, "create new"); an API call cannot add a working PingID');
+  else if (pid.subtype !== 'WORKFORCE') add('FAIL', 'PingID Workforce', `subtype is ${pid.subtype || 'none'}, expected WORKFORCE`);
+  else if (!pid.deployment?.id) add('FAIL', 'PingID deployment', 'PingID is listed but has no deployment, so it stays disabled (this is what an API-made environment looks like): create the environment in the console with PingID "create new"');
+  else add('PASS', 'PingID (Workforce)', 'deployment present');
+  const pam = of('PING_ONE_PAM');
+  if (!pam) add(requirePrivilege ? 'FAIL' : 'WARN', 'Privilege', 'not in this environment: add it in the console (Add Services, PingOne Privilege, No Endpoint Controller); only the person who adds it becomes Privilege Administrator');
+  else add('PASS', 'Privilege', (pam.tags || []).join(', ') || 'no mode tag');
+  let names = null;
+  try { names = new Set((await listAll(api, `/environments/${envId}/signOnPolicies`, 'signOnPolicies')).map((p) => p.name)); } catch (e) { add('WARN', 'sign-on policies', e.message); }
+  if (names) {
+    add(names.has('Multi_Factor') ? 'PASS' : 'WARN', 'Multi_Factor sign-on policy', names.has('Multi_Factor') ? '' : 'missing: PingID approvals need it (a console-made PingID environment has it)');
+    add(names.has('Single_Factor') ? 'PASS' : 'WARN', 'Single_Factor sign-on policy', names.has('Single_Factor') ? '' : 'missing: `privilege-prepare` creates it');
+  }
+  return { checks, exitCode: checks.some((c) => c.status === 'FAIL') ? 1 : 0 };
 }
 
 // Finds people by username or email, in any environment (the Administrators environment for console logins).
