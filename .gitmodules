@@ -327,18 +327,6 @@
 	path = standalone/salesforce-privilege-LAB
 	url = https://github.com/curtismu7/salesforce-privilege-LAB.git
 	branch = main
-[submodule "standalone/privilege-bedrock-assume-role-lab-LAB"]
-	path = standalone/privilege-bedrock-assume-role-lab-LAB
-	url = https://github.com/curtismu7/privilege-bedrock-assume-role-lab.git
-[submodule "standalone/privilege-model-armor-lab-LAB"]
-	path = standalone/privilege-model-armor-lab-LAB
-	url = https://github.com/curtismu7/privilege-model-armor-lab.git
-[submodule "standalone/privilege-model-fallback-lab-LAB"]
-	path = standalone/privilege-model-fallback-lab-LAB
-	url = https://github.com/curtismu7/privilege-model-fallback-lab.git
-[submodule "standalone/privilege-rate-limit-lab-LAB"]
-	path = standalone/privilege-rate-limit-lab-LAB
-	url = https://github.com/curtismu7/privilege-rate-limit-lab.git
 [submodule "standalone/privilege-semantic-cache-lab-LAB"]
 	path = standalone/privilege-semantic-cache-lab-LAB
 	url = https://github.com/curtismu7/privilege-semantic-cache-lab.git
