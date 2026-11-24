@@ -1,9 +1,9 @@
 # HITL test case: hold a tool call for human approval (door `opensearch-hitl2`)
 
-**Status:** stage 1 verified 2026-11-24 (no PingID). Stage 2 (PingID step-up) not started.   **Owner:** Curtis
+**Status:** stage 1 verified 2026-11-24 on `ea040334` (retired 2026-11-24, no PingID); NOT yet re-run on `5bfb4e12` — do that before trusting the result. Stage 2 (PingID step-up) not started.   **Owner:** Curtis
 
 ## Goal
-A repeatable check that Privilege holds a tool call for a human, and that the call goes through only after an approver acts, on the rebuilt tenant `ea040334`.
+A repeatable check that Privilege holds a tool call for a human, and that the call goes through only after an approver acts, on the current Privilege tenant `5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege"). (History: stage 1 first ran on `ea040334`, retired.)
 
 ## Setup (`scripts/step20_hitl_door.py`, dry run by default, `--apply` writes, idempotent)
 - Door `opensearch-hitl2` (existing, auth `user-token`, upstream `opensearch-mcp-server` on mesh cluster `ai-demo-cmuir`).

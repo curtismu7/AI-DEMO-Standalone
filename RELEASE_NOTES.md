@@ -20,6 +20,19 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.17 (2026-11-24)
+
+**New labs**
+
+- privilege-semantic-cache-LAB (Demo, D150, port 7847): a semantic cache in front of the model — the embedding score against the strictness decides hit or miss, a hit is answered from the cache and never reaches the model, and the Similarity card and the run trace show the score that decided. Eleven scripted scenarios. Mock only (Real is not built). Beyond the one sentence in the 2026-11-21 Privilege release notes, everything is the lab's own model and UNVERIFIED.
+
+## 3.16 (2026-11-24)
+
+**New labs**
+
+- privilege-bedrock-assume-role-LAB (Demo, D148, port 7838): an LLM key reaches Bedrock under an assumed IAM role and stores no cloud credential, with metering, AI Guard and audit still on the call. Thirteen scripted scenarios, each failure named with its fix, plus a Vertex tab. Mock only (Real is not built). Beyond the one sentence in the 2026-11-21 Privilege release notes, everything is the lab's own model and UNVERIFIED.
+- privilege-model-armor-LAB (Demo, D149, port 7846): one external inspector per LLM key (Model Armor, with Azure and Bedrock stubs) and the authority cap: the same finding blocks when enforcing and is only logged when advisory, with fail open or closed, a timeout and a named error. Eleven scripted scenarios. A fork of ai-guard-sidecar-LAB (it keeps only that lab's text-cleaning and PII helpers and finding shape). Mock only (Real is not built). Only the one-inspector-per-key and authority idea comes from the 2026-11-21 release notes; the rest is UNVERIFIED.
+
 ## 3.15 (2026-11-24)
 
 **New labs**
