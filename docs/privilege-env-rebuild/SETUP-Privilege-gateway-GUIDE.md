@@ -223,6 +223,14 @@ Lessons:
 - A role-assignment API listing can show one row per environment; count by scope id before concluding "duplicates".
 - PingID itself was not paired on this environment; tenant MFA stays off until stage 2 of the HITL test case.
 
+Replay into `5bfb4e12` (2026-11-24), in this order, each read back from the tenant: step 13 (10 identities, 31 apps, 24 permits, 15 AI policies, 18 tag policies, 9 shadow-AI policies; run `--kinds applications --apply` a second time for the 4 aggregate apps), 13b (54 objects), 13 `--kinds agentaccesskeys --keys` (22 keys; un-revoke `agg-guest` and `agg-delegate` with a whole-key PUT; `google` is refused until a valid `GOOGLE_API_KEY` is filled), 14 (doors `lab-banking-full|limited|blocked`, permits, keys `lab-banking-<variant>-key` and grants, `pgc-agent-llm`), 17a (`lab-agent`, cloned from `audit-test`; no export has it), 17 (three grants), 18 (`priv-log-agent`). Totals afterwards: 34 apps, 32 policies, 28 keys.
+- Users are matched to the new tenant by `EmailID` (then two confirmed aliases) in `map-users.mjs`, because `buildMaps` compares usernames and they differ after the move (12 of 12 map).
+- `step14` no longer touches the lab `.env` or `pgc-hosted.env` unless `--write-env` is passed: those writes repoint the lab, and must wait until the gateways serve this tenant (step 15).
+- A key whose custodian is a person has `UserRef` only; a template key's `CustodianRef` (NonHumanIdentity) must be cleared or the POST is a 400.
+- **The local console listener wedges under a burst of calls** (after a few hundred in a row it stopped accepting for about 30 s, then recovered). Run replay steps one at a time and retry a failed read once.
+- 13b renews an already-past `NotAfter` by 90 days on every run, so it always reports two updates; the `lab-agent-*` grants end 2026-12-08 and need a longer window set by hand before then.
+- Not done on `5bfb4e12`: `apply-tag-schema.mjs` (needs the tenant API key; `orphan 0` unchecked), the cluster cutover (gateways still enrolled to `ea040334`), `step15` repointing, the HITL door (`step20`), the secrets that must be re-entered by hand.
+
 ## Lockout rules (learned the hard way)
 - **Keep Privilege tenant MFA (`EnableMFA`) off** until a full agent Disconnect/Connect with MFA on has been proven. The console and its API only exist while the agent is connected. If the agent's MFA fails, nothing can turn MFA off again except the Privilege team.
 - Never use an onboarding link from another tenant on the demo Mac: it re-binds the device (2026-11-23 04:25 moved it to the old tenants).
