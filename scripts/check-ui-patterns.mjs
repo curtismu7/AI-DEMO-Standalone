@@ -108,6 +108,8 @@ export const RULES = {
 export const RULE_IDS = Object.keys(RULES);
 // Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
 // their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
+// B1 (brand font-size in app CSS, header standard 2026-11-24) is advisory-only (WARN status) during the rollout; it is not in this set because
+// it never reports DRIFT until the rollout completes.
 const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
