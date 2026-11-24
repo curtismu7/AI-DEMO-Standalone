@@ -1,6 +1,6 @@
 # Story mode (shared pattern)
 
-> **Scope: AI-DEMO-Standalone apps only, for now** (the `standalone/*-LAB` labs and new standalone apps in this family). Not AI-DEMO2 or any other repo yet; ask the owner before using it elsewhere. **Adding it to a lab: follow `ADDING-TO-A-LAB.md`** (the steps, the files to copy, the mistakes already made, the browser tools). This file is the contract.
+> **Scope: AI-DEMO-Standalone apps only, for now.** The target is a `standalone/*-LAB` app: each lab is its own `curtismu7/<name>-LAB` repo and a submodule of AI-DEMO-Standalone, the shared code is vendored from `AI-DEMO-Standalone/shared/story`, and the PR goes in the **lab's** repo. A new standalone app counts once it exists as a `standalone/*-LAB` under the standalone-demo rules. **Out of scope: AI-DEMO2 and any repo that is not a `standalone/*-LAB` lab.** Anything else needs the owner's say-so first: stop and ask. **Adding it to a lab: follow `ADDING-TO-A-LAB.md`** (the steps, the files to copy, the mistakes already made, the browser tools). This file is the contract.
 
 **Status:** engine built and merged (PR #553); first used in the A2A lab (`privilege-a2a-anthropic-demo-LAB`, the reference implementation). Agreed 2026-11-24 (PR #552 merged) (spec: `docs/specs/2026-11-24-story-mode.md`; each lab keeps its own copy of that spec). Amended 2026-11-24: optional **Play for me** with a speed control. This file is the contract every demo follows once it adopts Story mode. Canonical copy lives here; labs vendor a byte-for-byte copy and pin it.
 

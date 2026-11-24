@@ -62,17 +62,56 @@ describe("createOverlay", () => {
     expect(document.querySelector(".story-hl")).toBeNull();
   });
 
-  test("a bubble that would run under the Story bar is moved above it (or beside it), so no line is hidden", () => {
+  // helper: a page with a target, a Story bar and a bubble of a known size (jsdom has no layout)
+  const stage = ({ target, bar, bubble = { width: 400, height: 200 } }) => {
     document.body.innerHTML = '<button id="t">t</button><div class="story-bar"></div>';
-    const t = document.getElementById("t"); t.getBoundingClientRect = () => ({ left: 300, top: 700, width: 100, height: 30, right: 400, bottom: 730 });
-    const bar = document.querySelector(".story-bar"); bar.getBoundingClientRect = () => ({ left: 400, top: 700, width: 600, height: 50, right: 1000, bottom: 750 });
+    const rect = (x) => ({ left: x.left, top: x.top, width: x.width, height: x.height, right: x.left + x.width, bottom: x.top + x.height });
+    document.getElementById("t").getBoundingClientRect = () => rect(target);
+    const barEl = document.querySelector(".story-bar"); barEl.getBoundingClientRect = () => rect(bar);
     const orig = HTMLElement.prototype.getBoundingClientRect;
-    HTMLElement.prototype.getBoundingClientRect = function () { return this.classList.contains("story-bub") ? { left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 } : orig.call(this); };
+    HTMLElement.prototype.getBoundingClientRect = function () { return this.classList.contains("story-bub") ? rect({ left: 0, top: 0, ...bubble }) : orig.call(this); };
+    return { barEl, restore: () => { HTMLElement.prototype.getBoundingClientRect = orig; }, bar };
+  };
+  const placed = () => { const b = document.querySelector(".story-bub"); return { left: parseFloat(b.style.left), top: parseFloat(b.style.top), tail: !!b.querySelector(".story-tail") }; };
+  const under = (p, bar, w = 400, h = 200) => p.left < bar.left + bar.width && p.left + w > bar.left && p.top < bar.top + bar.height && p.top + h > bar.top;
+
+  test("a bubble that would run under the Story bar moves above it, and its tail still points at the target", () => {
+    const bar = { left: 400, top: 700, width: 600, height: 50 };
+    const s = stage({ target: { left: 300, top: 700, width: 100, height: 30 }, bar });
     try {
-      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: t, prefer: "right" });   // right of the target = x 426..826, y 615..815: under the bar
-      const b = document.querySelector(".story-bub"); const top = parseFloat(b.style.top); const left = parseFloat(b.style.left);
-      const under = left < 1000 && left + 400 > 400 && top < 750 && top + 200 > 700;
-      expect(under).toBe(false); expect(top + 200).toBeLessThanOrEqual(700 - 8 + 0.001);   // moved above the bar
+      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: document.getElementById("t"), prefer: "right" });   // right of the target would be under the bar
+      const p = placed(); expect(under(p, bar)).toBe(false); expect(p.top + 200).toBeLessThanOrEqual(692.001);
+    } finally { s.restore(); }
+  });
+
+  test("with no room above the bar it goes beside it, and never onto the highlighted target when a clear place exists", () => {
+    const bar = { left: 500, top: 100, width: 500, height: 50 };
+    const s = stage({ target: { left: 100, top: 110, width: 100, height: 30 }, bar, bubble: { width: 300, height: 200 } });
+    try {
+      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: document.getElementById("t"), prefer: "right" });
+      const p = placed(); expect(under(p, bar, 300, 200)).toBe(false);
+      const onTarget = p.left < 205 && p.left + 300 > 95 && p.top < 145 && p.top + 200 > 105; expect(onTarget).toBe(false);
+    } finally { s.restore(); }
+  });
+
+  test("when nothing clears the bar the bubble stays where it was drawn, without throwing", () => {
+    const s = stage({ target: { left: 300, top: 300, width: 100, height: 30 }, bar: { left: 0, top: 0, width: 1024, height: 768 } });
+    try { const o = mk(); expect(() => o.cap({ n: 1, total: 1, title: "t", text: "x", target: document.getElementById("t") })).not.toThrow(); expect(document.querySelector(".story-bub")).not.toBeNull(); }
+    finally { s.restore(); }
+  });
+
+  test("regression: a bar that was not there (or was a different size) when the bubble was drawn is avoided on the next frame", async () => {
+    document.body.innerHTML = '<button id="t">t</button>';
+    const rect = (x) => ({ left: x.left, top: x.top, width: x.width, height: x.height, right: x.left + x.width, bottom: x.top + x.height });
+    document.getElementById("t").getBoundingClientRect = () => rect({ left: 300, top: 700, width: 100, height: 30 });
+    const orig = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () { return this.classList.contains("story-bub") ? rect({ left: 0, top: 0, width: 400, height: 200 }) : orig.call(this); };
+    try {
+      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: document.getElementById("t"), prefer: "right" });   // no bar yet: the bubble is drawn right of the target
+      const bar = { left: 400, top: 700, width: 600, height: 50 };
+      document.body.insertAdjacentHTML("beforeend", '<div class="story-bar"></div>'); document.querySelector(".story-bar").getBoundingClientRect = () => rect(bar);   // the bar mounts a moment later
+      await new Promise((r) => setTimeout(r, 60));
+      expect(under(placed(), bar)).toBe(false);
     } finally { HTMLElement.prototype.getBoundingClientRect = orig; }
   });
 

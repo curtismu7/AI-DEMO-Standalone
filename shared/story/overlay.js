@@ -77,7 +77,11 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
   const listen = () => { view.addEventListener('resize', reflow); view.addEventListener('scroll', reflow, true); };
   const unlisten = () => { view.removeEventListener('resize', reflow); view.removeEventListener('scroll', reflow, true); };
 
-  function cap(o) { lastCap = o; listen(); draw(o, true); }
+  // The bar changes size as its message changes, and may not be mounted yet when the first bubble is drawn: watch it, and draw once more on the next frame.
+  let ro = null; let watched = null;
+  const watch = (bar) => { if (watched === bar || typeof ResizeObserver === 'undefined') return; if (!ro) ro = new ResizeObserver(() => reflow()); ro.observe(bar); watched = bar; };
+
+  function cap(o) { lastCap = o; listen(); draw(o, true); reflow(); }
 
   function draw(o, scroll) {
     ensure(); wipe();
@@ -108,11 +112,23 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
       else { left = r.left + r.width / 2 - W / 2; top = r.top - GAP - H; }
     }
     left = Math.max(M, Math.min(vw - W - M, left)); top = Math.max(M, Math.min(vh - H - M, top));
-    // The Story bar sits on top of everything: a bubble that would run under it goes above it (or, with no room above, beside it), so no line is ever hidden.
+    // The Story bar sits on top of everything. A bubble that would run under it moves to the nearest place that clears the bar and, if it can, the highlighted
+    // target too; with no room it stays (nothing better exists). The bubble's side of its target follows where it ended up, so the tail points at the target,
+    // or is left off when the bubble sits on it.
     const bar = doc.querySelector('.story-bar'); const bb = bar ? bar.getBoundingClientRect() : null;
-    if (bb && bb.width && left < bb.right && left + W > bb.left && top < bb.bottom && top + H > bb.top) {
-      if (bb.top - 8 - H >= M) top = bb.top - 8 - H;
-      else if (bb.left - 8 - W >= M) left = bb.left - 8 - W;
+    if (bar) watch(bar);
+    const hit = (a, c) => !!a && !!c && a.left < c.right && a.right > c.left && a.top < c.bottom && a.bottom > c.top;
+    const box = (l, t2) => ({ left: l, top: t2, right: l + W, bottom: t2 + H });
+    const ring = r ? { left: r.left - 5, top: r.top - 5, right: r.right + 5, bottom: r.bottom + 5 } : null;
+    if (bb && bb.width && hit(box(left, top), bb)) {
+      const tries = [[left, bb.top - 8 - H], [bb.left - 8 - W, top], [bb.left - 8 - W, bb.top - 8 - H], [left, bb.bottom + 8], [bb.right + 8, top], [left, M], [M, top]];   // above, beside, below and the far side of the bar, then the screen's edges
+      const clearsBar = (c) => c[0] >= M && c[1] >= M && c[0] + W <= vw - M && c[1] + H <= vh - M && !hit(box(c[0], c[1]), bb);
+      const pick = tries.find((c) => clearsBar(c) && !hit(box(c[0], c[1]), ring)) || tries.find(clearsBar);
+      if (pick) { left = pick[0]; top = pick[1]; }
+    }
+    if (r && o.place !== 'bl') {
+      const fin = box(left, top);
+      side = fin.left >= r.right ? 'right' : fin.right <= r.left ? 'left' : fin.top >= r.bottom ? 'below' : fin.bottom <= r.top ? 'above' : null;
     }
     b.style.left = `${left}px`; b.style.top = `${top}px`; b.style.visibility = 'visible';
     if (r && side && o.place !== 'bl') {
@@ -131,6 +147,6 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     const c = doc.querySelector('.story-slide .card');
     if (c && c.scrollHeight > c.clientHeight + 4 && c.scrollTo) c.scrollTo({ top: c.scrollHeight - c.clientHeight, behavior: 'smooth' });
   };
-  const destroy = () => { unlisten(); clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
+  const destroy = () => { unlisten(); if (ro) { ro.disconnect(); ro = null; watched = null; } clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
   return { cap, slide, clear, scrollSlide, destroy };
 }
