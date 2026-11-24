@@ -13,4 +13,13 @@ if [ -n "$BAD" ]; then
   echo "$BAD" >&2
   exit 1
 fi
+# A DNS label is at most 63 characters. A compose container name <project>-<service>-1 is over that for a lab whose name is 33+ characters
+# (privilege-bedrock-assume-role-lab, 2026-11-24): Docker DNS answers "Format error" and the lab 502s/hangs. Use the service name instead
+# (compose registers it as an alias on the lab's network).
+LONG=$(grep -nE '[A-Za-z0-9-]{64,}:[0-9]+' "$CONF" || true)
+if [ -n "$LONG" ]; then
+  echo "FAIL: an upstream host name is longer than 63 characters (not a valid DNS label); use the compose service name:" >&2
+  echo "$LONG" >&2
+  exit 1
+fi
 echo "ok: every proxy_pass resolves at request time"
