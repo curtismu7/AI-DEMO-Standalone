@@ -57,7 +57,7 @@ Kibana example: `gw_decision : "hitl"` finds approval-required decisions; `gw_ag
 
 ## 4. Restrictions and things to know
 
-- **Prompt logs.** "Unencrypted prompt logs delivery to SIEM" is in production as part of the 11/20 release (owner note). In the six event kinds seen so far **no field carries prompt text**, so nothing masks it. If it is turned on for the tenant, prompt text will pass through Cribl into Elasticsearch **in clear**. Limit who can read the index, and add a masking rule once the field names are known. Cribl today masks secrets, not personal data or prompts.
+- **Prompt logs: two statements that do not match, not yet verified.** (1) Privilege's own **Prompt Logging** page (Agent Insights) says prompts, tool calls and (optionally) responses are **encrypted to a public key you hold** (X25519, HPKE RFC 9180, one encapsulation per record), that Privilege cannot read them, and that "a SIEM receives the metadata and the request id, never the content". Settings: record prompts and tool calls, record responses, surfaces (LLM traffic, MCP tool calls, agent-to-agent, coding agents), a size limit (default 65,536 bytes, maximum 131,072), a public key and a key id. (2) The owner noted that "unencrypted prompt logs delivery to SIEM" is in production as part of the 11/20 release. That option is not on the Prompt Logging page. Neither has been tested live: no key is set, and none of the six event kinds seen so far carries prompt text. Until one is tested, assume the worst case: any prompt text that did arrive would pass through Cribl into Elasticsearch **unmasked**, because Cribl masks secrets, not prompts or personal data. Limit who can read the index.
 - **Request shape.** Cribl's Elasticsearch source accepts only `_bulk` and takes one auth mode, and it refuses the `ApiKey` scheme. An nginx container in the same pod therefore checks Basic or ApiKey and talks to Cribl on localhost.
 - **Index name.** Privilege's current form has no Index field and sends the index `audit-log`. Cribl overrides it and always writes `ping-siem-events-v2`.
 - **No queue.** Cribl holds no persistent queue. If Elasticsearch is down, or the pod restarts, events in that window are lost. The pod uses a `Recreate` strategy, so each deploy leaves about a minute with no feed.
@@ -73,7 +73,7 @@ Kibana example: `gw_decision : "hitl"` finds approval-required decisions; `gw_ag
 | Merge #561, #568 (AI-DEMO-Standalone) and #3696 (AI-DEMO2) | **Done** 24 Nov, after review. CI green except the unrelated `gh-labs-drift` |
 | Sidecar on a real gateway (`agentless-mcpgw3`, then `agentless-mcpgw-pingid`) | **Not done.** `mcpgw3` is annotated "Leave parked" (old tenant), so it was not started. `pingid` is one replica on `Recreate`: about 1-2 minutes of outage. Needs the owner's go-ahead. The sidecar script itself passed a live test (row 15) |
 | Phase 2: sidecar posts to Cribl only; set `GW_OPENSEARCH=true` | Needs the owner's go-ahead; follows a real gateway rollout |
-| Prompt text masking | Waiting for the field names once the feature is on |
+| Prompt logging: confirm what the SIEM receives (metadata only, or content) | Not tested. Needs prompt logging switched on with a public key. Planned as a test in the Privilege logging lab |
 | Logins saved to Bitwarden | Done by the owner |
 | Persistent queue in Cribl | Not built |
 
