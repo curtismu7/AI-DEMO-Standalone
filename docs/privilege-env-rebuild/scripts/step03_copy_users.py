@@ -14,7 +14,8 @@ from p1lib import (api, token, load_env_file, read_state, write_state, write_sec
                    NEW_ENV_CREDS, ORG_ADMIN_CREDS, q)
 
 DRY = "--dry-run" in sys.argv
-# Overrides for a later move (2026-11-24: ea040334 -> 5bfb4e12). Defaults keep the 2026-11-23 behaviour.
+# Overrides for the 2026-11-24 move (ea040334 -> 5bfb4e12). ea040334 is RETIRED; for a copy INTO the current
+# tenant set DST_CREDS=~/.config/demo-kit/privilege-env-5bfb4e12.env and a fresh IDMAP.
 #   SRC_CREDS  source env file: PINGID_ENV_ID/PINGID_WORKER_* keys, or ENV_ID/WORKER_CLIENT_* keys
 #   DST_CREDS  target env file (ENV_ID/WORKER_CLIENT_* keys)
 #   IDMAP      old->new id map file (use a new one per move; the old map holds another move's ids)

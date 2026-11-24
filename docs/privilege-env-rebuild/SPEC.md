@@ -1,8 +1,8 @@
 # Privilege environment rebuild spec ("Pingid-privilege")
 
-> **History (2026-11-24):** this spec built `ea040334` ("Pingid-privilege") on 2026-11-23. Privilege moved on 2026-11-24 to `5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege"); the move follows `~/Development/HANDOFF-2026-11-24-privilege-move-to-5bfb4e12.md` and `HANDOFF-2026-11-24-finish-move-to-5bfb4e12.md`. Its acceptance criteria are the template; the ids are not current.
+> **History (2026-11-24):** this spec built `ea040334` ("Pingid-privilege", RETIRED 2026-11-24) on 2026-11-23. Privilege moved on 2026-11-24 to `5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege", the current tenant); the move follows `~/Development/HANDOFF-2026-11-24-privilege-move-to-5bfb4e12.md` and `HANDOFF-2026-11-24-finish-move-to-5bfb4e12.md`. Its acceptance criteria are the template; the ids are not current.
 
-**Status:** in progress (steps 1–4 built and read back; criterion 2 partly: worker inherited org-wide roles; criterion 4 awaits owner confirmation)   **Owner:** Curtis (decides every step marked GO)   **Written:** 2026-11-23
+**Status:** SUPERSEDED for ids — this spec built `ea040334`, which was RETIRED 2026-11-24 after the move to `5bfb4e12`. The method and acceptance criteria remain the template for a fresh rebuild; every id and "Done" note below is history.   **Owner:** Curtis (decides every step marked GO)   **Written:** 2026-11-23
 
 ## Goal
 Replace the locked-out `pingid` setup (PingOne env `4cb38c18`, Privilege tenant of the same id) with a new PingOne environment **Pingid-privilege** that we fully control through the API: users, groups, roles, apps, the Privilege tenant and its MFA switch. Then re-pair this Mac's desktop agent to it and point the mcpgw gateways at it. The rebuild is scripted and written up (setup guide + skill) so it can be repeated.
@@ -32,7 +32,7 @@ Replace the locked-out `pingid` setup (PingOne env `4cb38c18`, Privilege tenant 
 - **Cluster gateways are shared:** nothing on the cluster changes without GO. The old releases stay until the new tenant serves a 200.
 
 ## Key step: privilege-gateway-client-LAB keys (request from cmuir-c6 via ai-demo-standalone-0a, 2026-11-23)
-Runs AFTER the gateways are enrolled to the new tenant and the doors exist. This rebuild is the single writer of agent keys on `ea040334`.
+Runs AFTER the gateways are enrolled to the new tenant and the doors exist. This rebuild is the single writer of agent keys on the tenant it built (`ea040334`, retired; the current tenant is `5bfb4e12`).
 - Spec source: `~/Development/HANDOFF-2026-11-21-scripts/make-pgc-keys.py` (pins old tenant `4cb38c18` and the `aidemo` user ref; both need the new tenant's values) and `make-demo-doors.py` for the doors `demo-all-tools`, `demo-some-tools`, `demo-blocked`.
 - Four keys, custodian `aidemo`, expiry 2027-02-20, CTags `purpose=privilege-gateway-client-lab`: `pgc-all-tools` (scope mcp, grant `pgc-all-tools-grant` on `demo-all-tools`, tools `.*`); `pgc-some-tools` (scope mcp, grant `pgc-some-tools-grant` on `demo-some-tools`, 7 tools: list_entitlements, who_has_role, get_access_grants, get_portfolio_summary, get_investment_accounts, get_investment_balance, get_investment_transactions); `pgc-blocked` (scope mcp, NO grant, must be refused at discovery); `pgc-agent-llm` (scope llm only, provider anthropic, allowed model `claude-sonnet-4-5` per owner, upstream key and limits copied from the existing llm key).
 - Values never printed. Written to `privilege-gateway-client-LAB/.env` (only `PGC_GW_KEY_DEMO_ALL_TOOLS`, `PGC_GW_KEY_DEMO_SOME_TOOLS`, `PGC_GW_KEY_DEMO_BLOCKED`, backup first, all other lines kept) and `~/.config/demo-kit/pgc-hosted.env` (`PGC_LLM_VIRTUAL_KEY`, append). `PGC_GW_URL` updated if the host changes.
