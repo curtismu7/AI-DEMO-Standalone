@@ -1,5 +1,7 @@
 # Rebuild a PingOne Privilege environment you fully control
 
+> **Current Privilege environment (2026-11-24): `5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege"),** made by the owner in the console with PingID and Privilege (agentless, then flipped to agent). It replaces `ea040334-d50b-4ded-8d98-4d5cd14dbd4d` ("Pingid-privilege"), whose 2026-11-23 build this guide records step by step; `ea040334` is deleted after the move. The method below still applies; ids and dated "Done" notes are history. Move status and blockers: `~/Development/HANDOFF-2026-11-24-finish-move-to-5bfb4e12.md`.
+
 For: anyone who needs a fresh PingOne environment with PingOne Privilege (agent mode), PingID, users and admins, and who wants to avoid getting locked out again. Written during the 2026-11-23 rebuild of `pingid` into **Pingid-privilege** (`645f6ca6-a107-404d-99ae-1f908f84a9bb`). Steps 1–6 are done and verified; later steps are filled in as they are done.
 
 Scripts: `~/Development/privilege-env-rebuild/scripts/`. Run each with `python3 -I <script>`. Every script is safe to re-run: it matches by name and reuses what already exists. Ids (no secrets) are kept in `state.json` next to this guide.
