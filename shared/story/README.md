@@ -58,6 +58,27 @@ Story works offline. It labels itself **simulated** and makes **no network calls
 ## The parity test
 A test checks that every `# Step:` and `# Slide:` key in `captions.md` has a matching step in the demo, and the reverse. A mismatch **fails the build**. It must never fail silently at runtime.
 
+## Files (built 2026-11-24)
+| File | Vendor to | What |
+|---|---|---|
+| `hold.js` | `web/src/story/` **and** `server/src/story/` (same bytes) | the video's hold formulas, the speeds, `bubbleHold`, `slideHold`, `holdMs`. Pure |
+| `captions.js` | `server/src/story/` | `parseCaptions(text)` (the wording file -> what `/api/story` serves) and `parity(captions, scriptKeys)`. Pure; the lab reads the file |
+| `overlay.js` | `web/src/story/` | the bubbles and slide cards, ported from the video's overlay; text only, no network |
+| `engine.js` | `web/src/story/` | the walker: steps, triggers, skip, counter, Next/Back/Exit, Play for me, speed, Pause. No DOM: the lab passes a `host` |
+| `StoryToggle.jsx`, `StoryBar.jsx`, `story.css` | `web/src/story/` | the Demo / Story control and the Story bar |
+| `story.test.jsx` | `web/src/story/` | vitest + Testing Library; runs in the lab |
+| `story.sha256`, `checkPin.mjs` | `web/src/story/story.sha256`, `scripts/story-checkPin.mjs` | the pin and its check (`node checkPin.mjs --write` here re-pins) |
+| `*.test.mjs` | not vendored | `node --test shared/story/*.test.mjs` (a glob, never a directory) |
+
+`StoryPanel.jsx` and `fill.js` in this folder are the older talk-track panel (2026-11-13). They are separate from Story mode and are not part of this pin.
+
+## Wiring it into a lab
+1. The lab's server reads `captions.md`, runs `parseCaptions`, and serves the result at `GET /api/story` (the page and the video both read that).
+2. The lab writes its **script**: one entry per caption key, with the target, trigger and live values (`engine.js` documents the fields). A test calls `parity(captions, scriptKeys)` and asserts no problems.
+3. The lab's `host` gives the engine `mode()`, `query(selector)`, `mark()` and `waitForRun(marker, timeoutMs)` (the page's own run-finished event), `prefill(step)`, `send(step)`, `switchTab(tab)` and optionally `assetUrl(name)`. `send` must click the real Send button with a script-made event (not a trusted one), so Play for me never counts as the viewer's own input.
+4. The toggle goes in the shell's extra slot. When Story is on, the lab lazy-loads its story module, builds `createStory({ steps, captions, overlay: createOverlay(), host, store: localStorage, prefix })` and renders `<StoryBar story={...} mock={...} />`.
+5. Next/Back controls are never awaited by the page: a step that waits for a run only settles when the run ends.
+
 ## Vendoring and the pin
 1. Canonical code lives in `shared/story/` of AI-DEMO-Standalone.
 2. A lab copies it in byte-for-byte, with `cp`, and records the pin (the source commit).
