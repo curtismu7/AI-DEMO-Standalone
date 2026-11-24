@@ -60,3 +60,12 @@ Docs part, built 2026-11-24:
 - Criterion 5, public-safe: grep for hostnames, tenant ids, keys and UUIDs finds nothing in the doc or the skill. The only hit is this spec quoting the grep patterns. Pass.
 - Criterion 6, traceable: each rule in the doc maps to the pasted plan or the owner's answers (toggle default, lazy load, storage, Mock/Real independence, one overlay and one parser, parity test, viewer pacing, prompt "press Send", missing-target skip, live values, simulated Mock, public-safe slides, browser check sizes). Added from owner standards, not the plan: the 40-word slide limit and the 10 s hold (video standards), and the tier rule (global rule 12). Nothing else added. Pass.
 Not built yet at this point: the shared code, the toggle, the parser, the parity test, Play for me and the hold function. They are built in the PRs `feat/story-engine` (AI-DEMO-Standalone) and `feat/story-mode` (A2A lab), after the owner approves.
+
+### Status update, 2026-11-24 (engine built)
+- **Scope (owner, 2026-11-24): AI-DEMO-Standalone apps only, for now.** Not AI-DEMO2 or any other repo; ask the owner first.
+- Built and merged: PR #553 (the engine: overlay, walker, Play for me with speed and Pause, toggle, bar, parser, parity, pin), two independent code reviews, every finding fixed with a regression test. First lab: `privilege-a2a-anthropic-demo-LAB` (slice 1 merged as #55).
+- Browser-verified in the A2A lab (Mock, 1920x1080 and 1800x1169): the full walk-through, Back, Esc, Demo unchanged; Play for me (Next never moves by itself, hold, Pause, Resume, a real click stops Play, a full unattended run reaches the end).
+- Found in the browser and fixed in the shared code: a bubble could run under the Story bar (the overlay now moves it above the bar).
+- Written for the agents who add Story to other labs: `shared/story/ADDING-TO-A-LAB.md` (runbook, files to copy, mistakes already made) and `shared/story/tools/walk.py` and `play.py` (the real-browser checks).
+- Not done: Real mode walked in the A2A lab, the observability slide (live panel), the video's `take.py` using the shared code, a Mock replay for labs whose Mock needs a model, the video's bubble numbering in the counter.
+
