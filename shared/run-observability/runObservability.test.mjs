@@ -12,7 +12,7 @@ import {
   createMasker, keepPattern, maskRules, createRunObservability, ReaderError, RunObsError, layerMatchers, classify, defaultLayers, saasLayer, assertRunObservability, LAYERS, LIMITS,
 } from './runObservability.js';
 import { DockerLogReader, ElasticsearchReader, readersFromEnv } from './runObservabilityReaders.js';
-import { mockRecord, realRecord, longRecord, emptyRecord, partialRecord } from './fixtures.js';
+import { mockRecord, realRecord, longRecord, emptyRecord, partialRecord, chainRecord } from './fixtures.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const T0 = Date.parse('2026-11-22T10:00:00Z'); const T1 = Date.parse('2026-11-22T10:00:09Z');
@@ -1084,4 +1084,144 @@ test('no vendored file names another project, a person or a local path (the file
     const text = fs.readFileSync(path.join(HERE, f), 'utf8').toLowerCase();
     for (const word of banned) assert.ok(!text.includes(word), `${f} contains "${word}": move the citation to the README Evidence section`);
   }
+});
+
+// ---- The chain: User -> Agent -> Scopes -> Policies, linked only by a shared, linkable identifier (SPEC-chain-view-2026-11-24) ----
+const at = (s) => `2026-11-22T10:00:0${s}Z`;
+const OK = 'allowed';
+const chainOf = (responses) => createRunObservability().collectRun({ runId: 'chain-1', startedAt: T0, endedAt: T1, source: 'real', layers: [{ layer: 'agent', responses }] });
+
+test('chain: rows that share the agent id form one chain; each step is linked only on the shared identifier', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued to agent', detail: { user: 'user-7', agent: 'agent-client-42', scopes: ['pay.read', 'tuition.read'] } },
+    { at: at(2), product: 'privilege-siem', outcome: OK, message: 'Privilege policy permit', detail: { agent: 'agent-client-42', policy: { product: 'privilege', decision: 'PERMIT', id: 'pol-1' } } },
+    { at: at(3), product: 'pinggateway', outcome: OK, message: 'P1AZ permit', detail: { agent: 'agent-client-42', policy: { product: 'p1az', decision: 'PERMIT', id: 'p1az-9' } } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains.length, 1);
+  const [c] = rec.chain.chains;
+  assert.deepEqual(c.links, { userAgent: true, agentScopes: true, scopesPolicy: true });
+  assert.equal(c.user.value, 'user-7');
+  assert.equal(c.agent.value, 'agent-client-42');
+  assert.deepEqual(c.scopes.values, ['pay.read', 'tuition.read']);
+  assert.deepEqual(c.policies.map((p) => p.product), ['privilege', 'p1az'], 'Privilege and P1AZ are separate policy nodes');
+  assert.deepEqual(c.policies.map((p) => p.decision), ['PERMIT', 'PERMIT']);
+});
+
+test('chain: a name match alone never draws a link (the same user name under different agent ids, or with no agent id)', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'agent-A', scopes: ['pay.read'] } },
+    { at: at(2), product: 'privilege-siem', outcome: OK, message: 'Policy permit for user-7', detail: { agent: 'agent-B', policy: { product: 'privilege', decision: 'PERMIT', id: 'pol-2' } } },
+    { at: at(3), product: 'pinggateway', outcome: OK, message: 'P1AZ permit for user-7', detail: { user: 'user-7', policy: { product: 'p1az', decision: 'PERMIT', id: 'p1az-3' } } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains.length, 3, 'agent-A, agent-B, and the rows with no agent id');
+  for (const c of rec.chain.chains) assert.equal(c.links.scopesPolicy, false, 'no scopes and policy share an identifier');
+  assert.equal(rec.chain.chains.find((c) => c.agent?.value === 'agent-A').policies.length, 0);
+});
+
+test('chain: an identifier the masker changes is shown masked and no link is drawn from it', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'ops.agent@corp-example.com', scopes: ['pay.read'] } },
+    { at: at(2), product: 'privilege-siem', outcome: OK, message: 'Policy permit', detail: { agent: 'ops.agent@corp-example.com', policy: { product: 'privilege', decision: 'PERMIT', id: 'pol-1' } } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  const [c] = rec.chain.chains;
+  assert.equal(c.agent.linkable, false);
+  assert.deepEqual(c.links, { userAgent: false, agentScopes: false, scopesPolicy: false });
+  assert.doesNotMatch(JSON.stringify(rec.chain), /corp-example|ops\.agent@/);
+});
+
+test('chain: a token row with no scope claim says so, and the scopes links are not drawn', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'agent-client-42' } },
+    { at: at(2), product: 'privilege-siem', outcome: OK, message: 'Policy permit', detail: { agent: 'agent-client-42', policy: { product: 'privilege', decision: 'PERMIT', id: 'pol-1' } } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  const [c] = rec.chain.chains;
+  assert.equal(c.scopes, null);
+  assert.equal(c.noScopeClaim, true);
+  assert.equal(c.links.agentScopes, false);
+  assert.equal(c.links.scopesPolicy, false);
+});
+
+test('chain: a P1AZ decision with no decision id keeps the decision and shows the id as missing', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pinggateway', outcome: OK, message: 'P1AZ permit', detail: { agent: 'agent-client-42', policy: { product: 'p1az', decision: 'PERMIT' } } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains[0].policies[0].decision, 'PERMIT');
+  assert.equal(rec.chain.chains[0].policies[0].id, null);
+});
+
+test('chain: two agents in one run give one chain each, each with its own user', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'agent-A', scopes: ['pay.read'] } },
+    { at: at(2), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-8', agent: 'agent-B', scopes: ['tuition.read'] } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.deepEqual(rec.chain.chains.map((c) => [c.agent.value, c.user.value]), [['agent-A', 'user-7'], ['agent-B', 'user-8']]);
+});
+
+test('chain: a row that names only the agent (no user, no scopes) still says no scope claim', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued to agent', detail: { agent: 'agent-only-9' } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  const [c] = rec.chain.chains;
+  assert.equal(c.scopes, null);
+  assert.equal(c.noScopeClaim, true, 'the token row is there; its scope claim is not');
+});
+
+test('chain: two distinct agent ids that mask to the same value stay two chains, each with its own scopes', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { agent: 'ops.agent@corp-example.com', scopes: ['pay.read'] } },
+    { at: at(2), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { agent: 'dev.agent@corp-example.com', scopes: ['tuition.read'] } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains.length, 2, 'one chain per agent id, not one per masked value');
+  assert.deepEqual(rec.chain.chains.map((c) => c.scopes.values), [['pay.read'], ['tuition.read']]);
+  assert.deepEqual(rec.chain.chains.map((c) => c.agent.linkable), [false, false]);
+  assert.doesNotMatch(JSON.stringify(rec.chain), /corp-example|ops\.agent@|dev\.agent@/);
+});
+
+test('chain: adding chain keys never changes a row outcome or the summary', async () => {
+  const policy = { product: 'privilege', decision: 'DENY', id: 'pol-3' };
+  const plain = await chainOf([{ at: at(1), product: 'privilege-siem', outcome: 'refused', message: 'Policy deny', detail: { policy } }]);
+  const keyed = await chainOf([{ at: at(1), product: 'privilege-siem', outcome: 'refused', message: 'Policy deny', detail: { agent: 'agent-client-42', user: 'user-7', policy } }]);
+  assert.deepEqual(keyed.summary, plain.summary);
+  assert.deepEqual(keyed.rows.map((r) => r.outcome), plain.rows.map((r) => r.outcome));
+  assert.equal(keyed.chain.chains[0].policies[0].outcome, 'refused');
+});
+
+test('chain (mock): steps carry the origin of their rows, so a simulated value is labelled simulated', async () => {
+  const rec = await createRunObservability().collectRun({ runId: 'm-chain', startedAt: T0, endedAt: T1, source: 'mock', layers: [
+    { layer: 'agent', simulated: [{ at: at(1), product: 'lab mock IdP', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'agent-client-42', scopes: ['pay.read'] } }] },
+  ] });
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains[0].agent.origin, 'simulated');
+  assert.equal(rec.chain.chains[0].scopes.origin, 'simulated');
+});
+
+test('chain: no chain keys means chain is null and the record still validates', async () => {
+  const rec = await chainOf([{ at: at(1), product: 'pinggateway', outcome: OK, message: 'Access audit', detail: { status: 200 } }]);
+  assert.equal(rec.chain, null);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.deepEqual(assertRunObservability(mockRecord), []);
+});
+
+test('chain: the contract refuses a link with no shared identifier, and a secret inside the chain', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { user: 'user-7', agent: 'agent-client-42', scopes: ['pay.read'] } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  const noAgent = structuredClone(rec); noAgent.chain.chains[0].agent = null;
+  assert.ok(assertRunObservability(noAgent).some((p) => /link/.test(p)), 'a link with no agent identifier is refused');
+  const leak = structuredClone(rec); leak.chain.chains[0].user = { value: JWT, origin: 'logged', at: at(1) };
+  assert.ok(assertRunObservability(leak).some((p) => /JWT/.test(p)), 'a token inside the chain is refused');
+});
+
+test('chain: the CSS for the chain uses tokens only (no colour literals)', () => {
+  const css = fs.readFileSync(path.join(HERE, 'run-observability.css'), 'utf8');
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/);
 });
