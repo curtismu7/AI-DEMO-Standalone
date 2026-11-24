@@ -42,7 +42,7 @@ test('the hand-off names the reference lab, the runbook and the rules the next a
 
 test('the video hand-off names the gates that keep a real value out of a public video', () => {
   const doc = read('VIDEO.md');
-  for (const want of ['sourceSha256', 'ALLOW_STALE_WORDING', 'onscreen_mask.py', '.redacted', 'public_image', 'mask_leaks', 'guarded_take.py', 'owner approves', 'gh release create', 'privilege-a2a-anthropic-demo-LAB']) assert.ok(doc.includes(want), `VIDEO.md mentions ${want}`);
+  for (const want of ['sourceSha256', 'ALLOW_STALE_WORDING', 'onscreen_mask.py', '.redacted', 'public_image', 'mask_leaks', 'guarded_take.py', 'owner approves', 'gh release create', 'privilege-a2a-anthropic-demo-LAB', 'clip_window', 'image_leaks', 'Frame review']) assert.ok(doc.includes(want), `VIDEO.md mentions ${want}`);
   assert.ok(read('ADDING-TO-A-LAB.md').includes('VIDEO.md') && read('README.md').includes('VIDEO.md'), 'the runbook and the contract point to VIDEO.md');
 });
 
