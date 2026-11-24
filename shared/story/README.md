@@ -75,6 +75,7 @@ A test checks that every `# Step:` and `# Slide:` key in `captions.md` has a mat
 | `tools/walk.py`, `tools/play.py` | not vendored | the real-browser checks (walk every step as a viewer at both screen sizes; Play for me, speed, Pause). Run them, then read the screenshots. See `ADDING-TO-A-LAB.md` section 7 |
 | `ADDING-TO-A-LAB.md` | not vendored | the runbook for agents adding Story to a lab |
 | `ROLLOUT.md` | not vendored | the hand-off for rolling Story out to the other labs: the brief to paste to an agent, the candidate labs and order, the status table |
+| `VIDEO.md` | not vendored | the hand-off for re-recording a lab's video for public release on the shared code: the brief to paste, the gates (served wording, page masking, redacted and OCR-checked screenshots), recording both cuts, the checks, the release |
 
 `StoryPanel.jsx` and `fill.js` in this folder are the older talk-track panel (2026-11-13). They are separate from Story mode and are not part of this pin.
 
