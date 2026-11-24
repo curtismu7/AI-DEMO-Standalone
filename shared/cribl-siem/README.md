@@ -129,6 +129,11 @@ Phase 1 (now): the sidecar keeps posting to OpenSearch itself, plus to Cribl, so
 
 Spec: `docs/specs/2026-11-24-cribl-gateway-events.md`. If Cribl or Elasticsearch is down, the Cribl copy of those events is lost (no queue); the OpenSearch copy is unaffected in phase 1.
 
+## Field types
+
+Cribl's mask function turns every value it visits into a string, even when no rule matches. For **gateway events** that would make `HTTPStatus`, the token counts, `CostUSD`, `LatencyMs` and the booleans text in Elasticsearch (found on a real gateway call, 24 Nov), so `config/gateway_mask.conf.yml` excludes those 13 fields (the numeric and boolean fields of OpenSearch's `gateway-events` mapping) and lists the exclusions **before** the `*`, because Cribl takes the first match. The local test checks `int`, `float` and `bool` survive.
+For **SIEM events** nested values are still stringified, but `ping-siem-events-v2` already maps every `Data.*` leaf as `text` (also for events from before Cribl), so nothing changes there. A new typed field in the gateway log needs adding to that exclusion list.
+
 ## Roll back
 
 Put the previous URL back in the Privilege SIEM form, then `kubectl --context us delete -k .`.
