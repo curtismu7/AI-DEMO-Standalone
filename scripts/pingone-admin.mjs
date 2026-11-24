@@ -4,11 +4,12 @@
 //   pingone-admin.mjs grant-admin --env <id> --admin-env <id> --user <login>  (token: PINGONE_ACCESS_TOKEN, an org admin token)
 //   pingone-admin.mjs privilege-prepare --users a,b [--create-admin LOGIN] [--password-file F] [--dry-run] [--group G]   (the env's own worker, read from the settings file)
 //   pingone-admin.mjs set-privilege-mode --env <id> --mode agent|agentless   (token: PINGONE_ACCESS_TOKEN, an org admin token)
+//   pingone-admin.mjs check-env --env <id> [--no-privilege]   read-only: a console-made environment has PingID (Workforce, with its deployment), Privilege, no PingOne MFA (token: PINGONE_ACCESS_TOKEN)
 // Region (TLD) comes from PINGONE_REGION (default com). Tokens and secrets are never printed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ensureWorkerRoles, generatePassword, grantAdminRoles, makeApi, mintToken, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
+import { checkWorkforceEnv, ensureWorkerRoles, generatePassword, grantAdminRoles, makeApi, mintToken, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 function readEnvFile(file) {
   const out = {};
@@ -83,8 +84,16 @@ async function main() {
     const r = await setPrivilegeMode(api, { envId: need(o.env, '--env'), mode: o.mode });
     console.log(`privilege mode: ${r.detail}${r.backup ? ` (bill of materials backed up to ${r.backup})` : ''}`);
     process.exit(r.ok ? 0 : 1);
+  } else if (cmd === 'check-env') {
+    const api = makeApi({ base, token: need(cfg.PINGONE_ACCESS_TOKEN, 'PINGONE_ACCESS_TOKEN') });
+    const envId = need(o.env, '--env');
+    const r = await checkWorkforceEnv(api, { envId, requirePrivilege: !o['no-privilege'] });
+    console.log(`Environment check for ${envId}`);
+    show(r.checks.map((c) => [c.status, c.name, c.detail]));
+    console.log(r.exitCode === 0 ? 'Environment is ready.' : 'Fix the FAIL lines in the PingOne console, then run this again.');
+    process.exit(r.exitCode);
   } else {
-    console.error('usage: pingone-admin.mjs ensure-worker-roles|grant-admin|privilege-prepare|set-privilege-mode (see the header of this file)');
+    console.error('usage: pingone-admin.mjs ensure-worker-roles|grant-admin|privilege-prepare|set-privilege-mode|check-env (see the header of this file)');
     process.exit(64);
   }
 }

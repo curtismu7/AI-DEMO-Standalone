@@ -1,6 +1,6 @@
 # Privilege in one PingOne environment: setup spec
 
-**Status:** draft   **Owner:** Curtis (decides before any push or PR)   **Repos:** AI-DEMO-Standalone (this file, setup + prepare script + docs), AI-DEMO2 (`syncPrivilegeUsers.js`)
+**Status:** draft (addendum 2026-11-24 below)   **Owner:** Curtis (decides before any push or PR)   **Repos:** AI-DEMO-Standalone (this file, setup + prepare script + docs), AI-DEMO2 (`syncPrivilegeUsers.js`)
 
 ## Goal
 A colleague who downloads the demos gets **one** PingOne environment that also runs PingOne Privilege (agent mode, AI gateways, PingID), with the admin access, group, sign-in policy and app settings that the Pingid-privilege rebuild (2026-11-23) proved are required. Today the setup script creates an environment without Privilege and with PingOne MFA, gives the per-environment worker every role its creator had, and AI-DEMO2's Privilege user sync does nothing when Privilege shares the demo environment.
@@ -51,3 +51,18 @@ Existing flags and the mock-mode path of every lab; `pingone-teardown.sh`; AI-DE
 
 ## Verification plan
 Unit tests with an injected fake PingOne API; the jest file; the throwaway real run; independent `/code-review` of each branch diff. Nothing is pushed, no PR opened, and nothing merged until the owner says so in the conversation.
+
+
+## Addendum 2026-11-24: the environment is created in the console, with PingID, and the script adopts it
+**Owner request:** bootstrap must set up the environment with PingID (Workforce, "create new") at creation, because the API-made environment (no PingID, no Privilege) does not work for the PingID approval demos or Privilege.
+**Measured (throwaway environment, deleted):** `PING_ONE_ID` subtype `WORKFORCE` is accepted in the bill of materials via the API and the PingID apps appear after about a minute, but the product has no `deployment` and `PINGID_AUTHENTICATION` is refused (HTTP 403 `LICENSE_EXCEEDED`, "PingID is disabled for environment"). A console-made environment (`5bfb4e12`) has `solutionType WF_TRIAL`, `PING_ONE_ID` with a `deployment`, Privilege tagged agentless, and both `Multi_Factor` and `Single_Factor` policies. So a script cannot create it; a person does, and the script adopts it. This replaces "5. ... a script cannot add PingID" as a side note with the actual path, and moves PingID from "add it last" to "choose it at creation".
+**Today's default was not PingOne MFA** (that is `--with-pingone-mfa`, off by default); it was no second factor at all.
+
+Acceptance criteria (each a runnable check):
+10. `checkWorkforceEnv` (`node scripts/pingone-admin.mjs check-env --env <id> [--no-privilege]`, read-only) PASSes a console-made environment and FAILs, with the console fix in the message: PingID missing, PingID not Workforce, PingID without a deployment, PingOne MFA present, Privilege missing (WARN with `--no-privilege`), unknown environment. Missing sign-on policies only WARN. Check: five node tests with a fake API, and a real run against `5bfb4e12` (all PASS, exit 0) and an unknown id (FAIL, exit 1).
+11. `scripts/pingone-setup.sh --existing-env <id>` checks the environment first, stops with exit 1 on any FAIL, creates no environment and does no licence lookup, finds an existing lab worker instead of making a second, and rejects an id that is not 8-4-4-4-12 hex before it reaches a URL. Check: a node test that the licence lookup and the create POST sit only inside the "no --existing-env" guard; `bash -n`.
+12. With a terminal, no flag and no `ASSUME_YES`, the script prints the console steps and asks for the environment ID (Enter = basic API environment). With no terminal, `ASSUME_YES=1`, or `--api-create`, it never asks and behaves as before. `--existing-env` also comes from `PINGONE_EXISTING_ENV_ID`. Check: node test of the guard condition. Bootstrap reaches the question through `pingone-setup.sh` (step 6), unchanged.
+13. `docs/PRIVILEGE-ONE-ENV.md` gives the new order (console creates, script adopts) and says why.
+
+Unhappy paths: the id is a real environment in another organization or region (check-env FAILs on the GET); the environment has PingOne MFA (FAIL: create it again); PingID exists but Privilege does not (FAIL, or WARN with `--no-privilege`); the person picked "Use existing" PingID (still has a deployment: PASS; the account is theirs); re-running adopt (finds the existing "Standalone Labs Worker", re-mints its secret as the reuse path already does).
+Not verified: a full adopt run against a console-made throwaway (worker creation, `.env` write) because an agent cannot create the console environment; the worker/`.env` part of the script is unchanged and was exercised on 2026-11-23.

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
+import { checkWorkforceEnv, ensureAdminUser, ensureWorkerRoles, generatePassword, grantAdminRoles, listAll, makeApi, preparePrivilege, setPrivilegeMode } from './lib/pingone-admin.mjs';
 
 const ENV = 'env-new', OTHER = 'env-other', ADMIN = 'env-admin', WORKER = 'app-worker';
 const ROLES = [['r-ida', 'Identity Data Admin'], ['r-env', 'Environment Admin'], ['r-org', 'Organization Admin'], ['r-pa', 'PingOne Privilege Administrator']];
@@ -423,4 +423,81 @@ test('setPrivilegeMode refuses a bad mode and an environment without Privilege, 
   assert.equal(none.ok, false); assert.match(none.detail, /not in this environment/);
   const bad = await setPrivilegeMode(fakePingOne({ bomPutStatus: 400 }).api, { envId: ENV, mode: 'agent', backupDir: tmp() });
   assert.equal(bad.ok, false);
+});
+
+// ---- check-env: an environment a person made in the console (Workforce, PingID "create new", Privilege) ----
+function envApi({ env = { status: 200, body: { name: 'Demo', type: 'SANDBOX', region: 'NA' } }, products, policies = ['Multi_Factor', 'Single_Factor'] }) {
+  return async (method, p) => {
+    if (p === '/environments/e1') return env;
+    if (p === '/environments/e1/billOfMaterials') return { status: 200, body: { products } };
+    if (p === '/environments/e1/signOnPolicies') return { status: 200, body: { _embedded: { signOnPolicies: policies.map((name) => ({ name })) } } };
+    return { status: 404, body: {} };
+  };
+}
+const CONSOLE_MADE = [
+  { type: 'PING_ONE_BASE' }, { type: 'PING_ONE_DAVINCI' }, { type: 'PING_ONE_AUTHORIZE' },
+  { type: 'PING_ONE_ID', subtype: 'WORKFORCE', deployment: { id: 'dep-1' } },
+  { type: 'PING_ONE_PAM', tags: ['AUTHENTICATION_MODE_AGENTLESS'] },
+];
+const status = (r, name) => r.checks.find((c) => c.name === name)?.status;
+
+test('checkWorkforceEnv: a console-made Workforce environment with PingID and Privilege passes', async () => {
+  const r = await checkWorkforceEnv(envApi({ products: CONSOLE_MADE }), { envId: 'e1' });
+  assert.equal(r.exitCode, 0);
+  assert.ok(r.checks.every((c) => c.status === 'PASS'), JSON.stringify(r.checks.filter((c) => c.status !== 'PASS')));
+});
+
+test('checkWorkforceEnv: PingID without a deployment fails (what an API-made environment looks like: PingID stays disabled)', async () => {
+  const products = CONSOLE_MADE.map((p) => (p.type === 'PING_ONE_ID' ? { type: 'PING_ONE_ID', subtype: 'WORKFORCE' } : p));
+  const r = await checkWorkforceEnv(envApi({ products }), { envId: 'e1' });
+  assert.equal(r.exitCode, 1);
+  assert.equal(status(r, 'PingID deployment'), 'FAIL');
+  assert.match(r.checks.find((c) => c.name === 'PingID deployment').detail, /console/);
+});
+
+test('checkWorkforceEnv: no PingID, a non-Workforce PingID and PingOne MFA each fail', async () => {
+  const noId = await checkWorkforceEnv(envApi({ products: CONSOLE_MADE.filter((p) => p.type !== 'PING_ONE_ID') }), { envId: 'e1' });
+  assert.equal(status(noId, 'PingID'), 'FAIL');
+  const cust = await checkWorkforceEnv(envApi({ products: CONSOLE_MADE.map((p) => (p.type === 'PING_ONE_ID' ? { ...p, subtype: 'CUSTOMER' } : p)) }), { envId: 'e1' });
+  assert.equal(status(cust, 'PingID Workforce'), 'FAIL');
+  const mfa = await checkWorkforceEnv(envApi({ products: [...CONSOLE_MADE, { type: 'PING_ONE_MFA' }] }), { envId: 'e1' });
+  assert.equal(status(mfa, 'no PingOne MFA'), 'FAIL');
+  assert.equal(mfa.exitCode, 1);
+});
+
+test('checkWorkforceEnv: missing Privilege fails by default and only warns with requirePrivilege false', async () => {
+  const products = CONSOLE_MADE.filter((p) => p.type !== 'PING_ONE_PAM');
+  assert.equal(status(await checkWorkforceEnv(envApi({ products }), { envId: 'e1' }), 'Privilege'), 'FAIL');
+  const soft = await checkWorkforceEnv(envApi({ products }), { envId: 'e1', requirePrivilege: false });
+  assert.equal(status(soft, 'Privilege'), 'WARN');
+  assert.equal(soft.exitCode, 0);
+});
+
+test('checkWorkforceEnv: missing sign-on policies only warn; an unknown environment fails and stops', async () => {
+  const r = await checkWorkforceEnv(envApi({ products: CONSOLE_MADE, policies: [] }), { envId: 'e1' });
+  assert.equal(r.exitCode, 0);
+  assert.equal(status(r, 'Multi_Factor sign-on policy'), 'WARN');
+  assert.equal(status(r, 'Single_Factor sign-on policy'), 'WARN');
+  const gone = await checkWorkforceEnv(envApi({ env: { status: 404, body: {} }, products: [] }), { envId: 'e1' });
+  assert.equal(gone.exitCode, 1);
+  assert.equal(gone.checks.length, 1);
+});
+
+test('pingone-setup.sh: adopting a console-made environment skips the license lookup and creation, and never asks without a terminal', () => {
+  const sh = fs.readFileSync(new URL('./pingone-setup.sh', import.meta.url), 'utf8');
+  assert.match(sh, /--existing-env\) ADOPT_ENV="\$2"/);
+  assert.match(sh, /--api-create\) API_CREATE=1/);
+  assert.match(sh, /check-env --env "\$ADOPT_ENV"/);
+  // the license lookup and the creation POST both sit inside the "no --existing-env" guard
+  const guardOpen = sh.indexOf('if [[ -z "$ADOPT_ENV" ]]; then\n\n# ── 2. license');
+  const guardClose = sh.indexOf('fi  # end of: no --existing-env');
+  assert.ok(guardOpen > 0 && guardClose > guardOpen, 'guard present');
+  const guarded = sh.slice(guardOpen, guardClose);
+  assert.match(guarded, /organizations\/\$org_id\/licenses/);
+  assert.match(guarded, /-X POST "\$api\/environments"/);
+  assert.doesNotMatch(sh.slice(0, guardOpen) + sh.slice(guardClose), /organizations\/\$org_id\/licenses|-X POST "\$api\/environments"/);
+  // the question is only asked with a terminal, no flag and no ASSUME_YES
+  assert.match(sh, /-z "\$ADOPT_ENV" && "\$API_CREATE" != "1" && "\$\{ASSUME_YES:-\}" != "1" && \( -t 0 \|\| -r \/dev\/tty \)/);
+  // the id is validated before it reaches a URL
+  assert.match(sh, /\^\[0-9a-fA-F\]\{8\}\(-\[0-9a-fA-F\]\{4\}\)\{3\}-\[0-9a-fA-F\]\{12\}\$/);
 });

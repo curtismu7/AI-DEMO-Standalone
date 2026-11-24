@@ -160,6 +160,47 @@ export async function setPrivilegeMode(api, { envId, mode, backupDir = path.join
   return { ok, changed: true, backup: bk, detail: ok ? `now ${mode}` : `HTTP ${put.status} ${msg(put.body)}` };
 }
 
+// Checks an environment a PERSON made in the console (Workforce, PingID "create new", Privilege). Read-only.
+// Why it exists: through the API PingOne accepts PING_ONE_ID in the bill of materials but never provisions the PingID
+// deployment (measured 2026-11-24: no `deployment` on the product, and a PINGID_AUTHENTICATION sign-on action is refused with
+// LICENSE_EXCEEDED "PingID is disabled for environment"), so a script cannot create a working PingID environment itself.
+// Statuses: PASS / WARN (carry on) / FAIL (stop). exitCode 1 when any FAIL.
+export async function checkWorkforceEnv(api, { envId, requirePrivilege = true }) {
+  const checks = [];
+  const add = (status, name, detail = '') => checks.push({ status, name, detail });
+  const env = await api('GET', `/environments/${envId}`);
+  if (env.status !== 200) {
+    add('FAIL', 'environment', `HTTP ${env.status}: check the id and that this worker can see it (Organization Admin)`);
+    return { checks, exitCode: 1 };
+  }
+  add('PASS', 'environment', `"${env.body.name}" (${env.body.type}, ${env.body.region})`);
+  const bom = await api('GET', `/environments/${envId}/billOfMaterials`);
+  if (bom.status !== 200) {
+    add('FAIL', 'bill of materials', `HTTP ${bom.status}`);
+    return { checks, exitCode: 1 };
+  }
+  const products = bom.body.products || [];
+  const of = (t) => products.find((p) => p.type === t);
+  if (of('PING_ONE_MFA')) add('FAIL', 'no PingOne MFA', 'PingID cannot share an environment with PingOne MFA: create the environment again without it');
+  else add('PASS', 'no PingOne MFA');
+  const pid = of('PING_ONE_ID');
+  if (!pid) add('FAIL', 'PingID', 'not in this environment: create it in the console with PingID (Workforce, "create new"); an API call cannot add a working PingID');
+  else if (pid.subtype !== 'WORKFORCE') add('FAIL', 'PingID Workforce', `subtype is ${pid.subtype || 'none'}, expected WORKFORCE`);
+  else if (!pid.deployment?.id) add('FAIL', 'PingID deployment', 'PingID is listed but has no deployment, so it stays disabled (this is what an API-made environment looks like): create the environment in the console with PingID "create new"');
+  else add('PASS', 'PingID (Workforce)', 'deployment present');
+  const pam = of('PING_ONE_PAM');
+  if (!pam) add(requirePrivilege ? 'FAIL' : 'WARN', 'Privilege', 'not in this environment: add it in the console (Add Services, PingOne Privilege, No Endpoint Controller); only the person who adds it becomes Privilege Administrator');
+  else add('PASS', 'Privilege', (pam.tags || []).join(', ') || 'no mode tag');
+  const pol = await api('GET', `/environments/${envId}/signOnPolicies`);
+  const names = new Set((pol.body._embedded?.signOnPolicies || []).map((p) => p.name));
+  if (pol.status !== 200) add('WARN', 'sign-on policies', `HTTP ${pol.status}`);
+  else {
+    add(names.has('Multi_Factor') ? 'PASS' : 'WARN', 'Multi_Factor sign-on policy', names.has('Multi_Factor') ? '' : 'missing: PingID approvals need it (a console-made PingID environment has it)');
+    add(names.has('Single_Factor') ? 'PASS' : 'WARN', 'Single_Factor sign-on policy', names.has('Single_Factor') ? '' : 'missing: `privilege-prepare` creates it');
+  }
+  return { checks, exitCode: checks.some((c) => c.status === 'FAIL') ? 1 : 0 };
+}
+
 // Finds people by username or email, in any environment (the Administrators environment for console logins).
 export async function findUser(api, envId, login) {
   const l = safeLiteral(login);
