@@ -1,5 +1,7 @@
 # Privilege environment rebuild spec ("Pingid-privilege")
 
+> **History (2026-11-24):** this spec built `ea040334` ("Pingid-privilege") on 2026-11-23. Privilege moved on 2026-11-24 to `5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege"); the move follows `~/Development/HANDOFF-2026-11-24-privilege-move-to-5bfb4e12.md` and `HANDOFF-2026-11-24-finish-move-to-5bfb4e12.md`. Its acceptance criteria are the template; the ids are not current.
+
 **Status:** in progress (steps 1–4 built and read back; criterion 2 partly: worker inherited org-wide roles; criterion 4 awaits owner confirmation)   **Owner:** Curtis (decides every step marked GO)   **Written:** 2026-11-23
 
 ## Goal
