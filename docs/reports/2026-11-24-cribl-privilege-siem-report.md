@@ -1,13 +1,13 @@
 # Privilege SIEM through Cribl to Elasticsearch: test report
 
 **Date:** 2026-11-24 · **Environment:** SE cluster `us`, namespace `ping-devops-curtismuir` · **Status:** live for the SIEM feed; gateway sidecar path built, not deployed
-**Code:** `shared/cribl-siem` in AI-DEMO-Standalone (PRs #561, #568) and the `agentless-mcpgw` chart option in AI-DEMO2 (PR #3696) · **Spec:** `docs/specs/2026-11-24-cribl-gateway-events.md`
+**Code:** `shared/cribl-siem` in AI-DEMO-Standalone (PRs #561, #568, merged) and the `agentless-mcpgw` chart option in AI-DEMO2 (PR #3696, merged) · **Numbers as of 24 Nov 2026, 14:10 UTC** · **Spec:** `docs/specs/2026-11-24-cribl-gateway-events.md`
 
 ## 1. Summary
 
 - Privilege's SIEM setting (Provider: Elastic) now sends to **Cribl Stream** instead of straight to Elasticsearch. Cribl masks secrets, adds searchable fields, and writes to the same index, `ping-siem-events-v2`.
 - Both sign-in options in the Privilege form work: **Username and password** and **API key**.
-- It passed a 53-check local test and live checks. 66 real Privilege events have gone through so far, with **0 secrets found** in a scan of all of them.
+- It passed a 53-check local test and live checks. 69 real Privilege events have gone through so far, with **0 secrets found** in a scan of all of them.
 - Privilege's own feed already carries the gateway runtime logs (policy decisions, guardrail verdicts, accepted requests), including **user, agent key, policy ids and decision**. Cribl promotes those to top-level `gw_*` fields.
 - Not done yet: a sidecar on a real gateway (the script was tested live with a simulated log source), and masking of prompt text, because no prompt field has appeared yet (see section 4).
 
@@ -27,9 +27,9 @@ Gateway log-tailer sidecar --POST /_doc (own login)--> nginx --> Cribl --> Elast
 | 4 | Events land in Elasticsearch | Count and read back | **Passed.** Console, guardrail, policy-decision and proxy-audit events arrive with `cribl_pipe: siem_mask` set |
 | 5 | Username and password auth | Local test and live HTTPS | **Passed.** No credential, a wrong password and the wrong user are refused (401) |
 | 6 | API key auth | Local test and live HTTPS | **Passed** with `Authorization: ApiKey ...`. A wrong key and a key sent as `Bearer` are refused (401). Lower-case scheme names (`apikey`, `basic`) also work |
-| 7 | Secret masking | Local test, then a live scan | Passwords, `*token*`/`*apikey*`/`virtualkey` values, `sk-` keys, Bearer values and JWTs are masked, including inside `DataText` and nested `Resources`. **66 of 66** live Cribl-written events scanned: 0 possible leaks |
+| 7 | Secret masking | Local test, then a live scan | Passwords, `*token*`/`*apikey*`/`virtualkey` values, `sk-` keys, Bearer values and JWTs are masked, including inside `DataText` and nested `Resources`. **69 of 69** live Cribl-written events scanned: 0 possible leaks |
 | 8 | Fields promoted for filtering | Local test, then a live event | **Passed.** `gw_user`, `gw_agent_key`, `gw_policy_ids`, `gw_decision`, ... added; `Data` left intact; absent keys stay absent; a live `proxy-audit-log` event showed `gw_user`, `gw_path`, `gw_method`, `gw_host`, `gw_tenant` |
-| 9 | Sensitive headers | Local test; live check of 24 events | `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `Proxy-Authorization` are removed if present. **None seen** in live events: Privilege strips them upstream |
+| 9 | Sensitive headers | Local test; live check of 27 events | `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `Proxy-Authorization` are removed if present. **None seen** in live events: Privilege strips them upstream |
 | 10 | Least privilege | Live | The Elasticsearch user `cribl_siem` can write `ping-siem-events*` and `gateway-events*` only. Reading refused (403); writing any other index refused (403) |
 | 11 | Cribl's own port | Second-container test; mutation test | Cribl listens on 127.0.0.1 only; nginx is the only way in. Binding it to 0.0.0.0 makes the test fail, as it should |
 | 12 | Gateway sidecar path (Cribl side) | Local test and a live POST | Gateway login accepted on `POST /gateway-events/_doc` only; Privilege logins refused there; the gateway login is refused everywhere else. Event stored masked with `@timestamp` set (test document then deleted) |
@@ -50,7 +50,7 @@ Privilege's SIEM feed delivers several kinds of event. The `Index` field says wh
 | `aiguard-log` | Guardrail verdict, rate-limit refusal, model call | `User`, `Decision`, `Event`, `Reason`, `ControlID`, `ResourceName`, `KeyType`, `Client`, compliance mappings (NIST AI RMF, OWASP, MITRE), `RequestID` |
 | `proxy-audit-log` | A request the gateway accepted | `User`, `Method`, `Path`, `Host`, `Device`, `Headers`, `Tenant` |
 
-Seen in the index in total: 1,741 `audit-log`, 677 `aiguard-log`, 362 `proxy-audit-log`, 298 `policy-decision-log`, plus older `proxy-event-log` (219) and `event-log` (4) that stop on 18-19 Nov. The runtime kinds first appear on 12 Oct (`aiguard-log`), 13 Oct (`policy-decision-log`) and 8 Nov (`proxy-audit-log`); the October write-up of this feed described console changes only.
+Seen in the index in total: 1,741 `audit-log`, 677 `aiguard-log`, 366 `proxy-audit-log`, 298 `policy-decision-log`, plus older `proxy-event-log` (219) and `event-log` (4) that stop on 18-19 Nov. The runtime kinds first appear on 12 Oct (`aiguard-log`), 13 Oct (`policy-decision-log`) and 8 Nov (`proxy-audit-log`); the October write-up of this feed described console changes only.
 Cribl adds top-level `gw_user`, `gw_agent_key`, `gw_app`, `gw_policy_ids`, `gw_decision`, `gw_decision_reason`, `gw_decision_event`, `gw_stage`, `gw_target`, `gw_flow`, `gw_method`, `gw_path`, `gw_host`, `gw_principal`, `gw_principal_kind`, `gw_request_id`, `gw_tenant`, `gw_control_id`, `gw_resource_name`, `gw_key_type`.
 
 Kibana example: `gw_decision : "hitl"` finds approval-required decisions; `gw_agent_key : "<key name>"` follows one agent.
