@@ -345,3 +345,6 @@
 [submodule "standalone/privilege-semantic-cache-LAB"]
 	path = standalone/privilege-semantic-cache-LAB
 	url = https://github.com/curtismu7/privilege-semantic-cache-LAB.git
+[submodule "standalone/learning-hub-LAB"]
+	path = standalone/learning-hub-LAB
+	url = https://github.com/curtismu7/learning-hub-LAB.git
