@@ -40,6 +40,7 @@ Spec (`docs/specs/<date>-story-mode.md`, copy the A2A lab's) -> `captions.md` wi
 | Lab | Story | Video on shared code | First-page title | Walked Real | Walked Mock | Public video re-recorded | PRs |
 |---|---|---|---|---|---|---|---|
 | privilege-a2a-anthropic-demo-LAB | done | done | done | done (both sizes) | done (both sizes, simulated Part 1) | recording (masking #60, screenshot guard #61) | lab #55-#61; shared #553 #563 #567 #574; pin #577 |
+| cimd-LAB | done (lab #35, merged 2026-11-24) | n/a (no video) | done | done (both sizes, offline; PF-configured walk needs the owner's PF) | n/a (one wording, no Mock split) | n/a | lab #35 |
 | spiffe-issuer-LAB | - | - | - | - | - | - | |
 | hitl-mfa-lab-LAB | - | - | - | - | - | - | |
 | meridian-air-LAB | - | - | - | - | - | - | |
