@@ -43,13 +43,15 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     if (!root() || doc.getElementById('story-style')) return;
     const st = doc.createElement('style'); st.id = 'story-style'; st.textContent = css; (doc.head || root()).appendChild(st);
   };
-  const clear = () => { while (els.length) els.pop().remove(); };
+  const wipe = () => { while (els.length) els.pop().remove(); };
+  let lastCap = null; let raf = null;
+  const clear = () => { lastCap = null; wipe(); };   // an explicit clear also stops the bubble following scrolls
   const el = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const view = doc.defaultView || globalThis;
   const resolve = (t) => (typeof t === 'string' ? doc.querySelector(t) : t || null);
 
   function slide(o) {
-    ensure(); clear();
+    lastCap = null; ensure(); wipe();
     const card = el('div', 'card');
     const cols = el('div', 'cols');
     const col = (cls, c) => { const d = el('div', `col ${cls}`); d.append(el('h2', '', c.heading)); const ul = el('ul'); c.lines.forEach((l) => ul.append(el('li', '', l))); d.append(ul); return d; };
@@ -59,7 +61,8 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     if (o.image) {
       card.classList.add('withimg');
       const split = el('div', 'split'); const im = el('img'); im.src = o.image; im.alt = '';
-      im.addEventListener('error', () => { split.remove(); card.classList.remove('withimg'); });
+      // A missing image removes only the image: the columns go back into the card where they were.
+      im.addEventListener('error', () => { cols.style.gridTemplateColumns = ''; card.insertBefore(cols, split); split.remove(); card.classList.remove('withimg'); });
       if (o.wide) { split.style.gridTemplateColumns = '1fr'; cols.parentNode.insertBefore(split, cols); split.append(im); }
       else { cols.style.gridTemplateColumns = '1fr'; cols.parentNode.insertBefore(split, cols); split.append(im, cols); }
     }
@@ -68,11 +71,18 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     root().appendChild(wrap); els.push(wrap);
   }
 
-  function cap(o) {
-    ensure(); clear();
+  // The highlight and the bubble are measured when drawn; they are measured again when the page scrolls or the window is resized.
+  const reflow = () => { if (raf !== null || !lastCap) return; raf = (view.requestAnimationFrame || ((f) => view.setTimeout(f, 16)))(() => { raf = null; if (lastCap) draw(lastCap, false); }); };
+  const listen = () => { view.addEventListener('resize', reflow); view.addEventListener('scroll', reflow, true); };
+  const unlisten = () => { view.removeEventListener('resize', reflow); view.removeEventListener('scroll', reflow, true); };
+
+  function cap(o) { lastCap = o; listen(); draw(o, true); }
+
+  function draw(o, scroll) {
+    ensure(); wipe();
     const vw = view.innerWidth || 1200; const vh = view.innerHeight || 800; const W = Math.round(470 * S); const GAP = 26; const M = 12;
     const t = resolve(o.target);
-    if (t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (scroll && t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });   // instant: a smooth scroll would be measured half way
     const r = t ? t.getBoundingClientRect() : null;
     if (r) {
       const h = el('div', 'story-hl'); h.style.cssText = `left:${r.left - 5}px;top:${r.top - 5}px;width:${r.width + 10}px;height:${r.height + 10}px`;
@@ -114,6 +124,6 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     const c = doc.querySelector('.story-slide .card');
     if (c && c.scrollHeight > c.clientHeight + 4 && c.scrollTo) c.scrollTo({ top: c.scrollHeight - c.clientHeight, behavior: 'smooth' });
   };
-  const destroy = () => { clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
+  const destroy = () => { unlisten(); clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
   return { cap, slide, clear, scrollSlide, destroy };
 }

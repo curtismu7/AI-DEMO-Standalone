@@ -47,10 +47,11 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, stalledAt: -1 };
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
-  let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let curSecs = 0;
+  let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let holdSlide = false; let curSecs = 0;
 
   const mode = () => (host.mode() === 'mock' ? 'mock' : 'real');
-  const eligible = (s) => (!s.modes || s.modes.includes(mode())) && !(s.when && s.when() === false);
+  const whenOk = (s) => { if (!s.when) return true; try { return s.when() !== false; } catch { warn(`"${s.key}": its condition could not be read, so the step is shown`); return true; } };
+  const eligible = (s) => (!s.modes || s.modes.includes(mode())) && whenOk(s);
   const snapshot = () => ({ ...st, warnings: [...st.warnings], canBack: st.pos > 0 && st.status !== 'waiting', canNext: ['showing', 'stalled'].includes(st.status) });
   const emit = () => { const s = snapshot(); subs.forEach((f) => f(s)); };
 
@@ -76,6 +77,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   async function waitFor(s, my, { skipWait }) {
     if (skipWait || s.trigger === 'load' || !s.trigger) return { ok: true };
     st.status = 'waiting'; st.index = steps.indexOf(s); st.key = s.key; st.isPrompt = false;
+    clearHold(); holdAction = null; holdRemaining = 0;
     overlay.clear();
     if (s.trigger === 'run-done') {
       st.message = 'Waiting for the run to finish. Press Send if you have not.'; emit();
@@ -92,6 +94,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   // Find the next step to show, starting at index i, skipping the ones that do not apply to this run.
   async function advance(i, { skipWait = false } = {}) {
     const my = ++gen; clearHold(); await leave();
+    if (my !== gen) return undefined;   // the viewer pressed Exit, Back or Next while a pop-out was closing
     for (; i < steps.length; i += 1) {
       const s = steps[i];
       if (!eligible(s)) continue;
@@ -106,9 +109,14 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   }
 
   function present(i, my, { replay }) {
+    if (my !== gen) return undefined;
     const s = steps[i];
     const cap = capOf(s);
-    if (!cap) { warn(`no wording for "${s.key}"`); return advance(i + 1); }
+    if (!cap) {   // no wording: skip it, and close any pop-out its before() opened
+      warn(`no wording for "${s.key}"`);
+      if (s.after) { try { Promise.resolve(s.after()).catch(() => {}); } catch { /* ignore */ } }
+      return advance(i + 1);
+    }
     current = s;
     if (!replay) { shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
     if (s.tab && host.switchTab) host.switchTab(s.tab);
@@ -122,36 +130,48 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
       const values = s.live ? (() => { try { return s.live() || {}; } catch { return {}; } })() : {};
       const title = fillLive(cap.title, values); const text = fillLive(cap.text, values);
       [...title.missing, ...text.missing].forEach((m) => warn(`"${s.key}": {${m}} could not be read from the page`));
-      const lines = s.lines ? (s.lines(values) || []).filter(Boolean) : undefined;
+      let lines;
+      if (s.lines) { try { lines = (s.lines(values) || []).filter(Boolean); } catch { warn(`"${s.key}": its fact lines could not be read from the page`); lines = []; } }
       overlay.cap({ n: st.n, total: st.total, title: title.text, text: text.text, target: targetOf(s), lines, prefer: s.prefer, place: s.place });
       curSecs = bubbleHold(text.text, lines || [], s.fixedSecs ?? null);
     }
     emit();
-    if (st.playing && !st.paused) startHold(s, curSecs);
+    prepareHold(s, curSecs);
+    if (st.playing && !st.paused) startHold();
     return undefined;
   }
 
   // Show a step already shown once (Back, or Next after Back): its trigger has fired, but a pop-out has to be opened again.
   async function replayAt(pos) {
-    gen += 1; const my = gen; clearHold(); await leave(); st.pos = pos;
+    gen += 1; const my = gen; clearHold(); await leave();
+    if (my !== gen) return undefined;
+    st.pos = pos;
     const s = steps[shown[pos]];
     if (s.before) { try { await s.before(); } catch { warn(`step "${s.key}": its pop-out did not open`); } if (my !== gen) return undefined; }
     return present(shown[pos], my, { replay: true });
   }
 
   // ---- Play for me: the hold, scaled by the speed. Never used by Next/Back.
-  function startHold(s, secs) {
+  // The hold belongs to the step on screen: it is prepared (action and time) whenever a step shows, so Pause then Resume can never fire an earlier step's hold.
+  function prepareHold(s, secs) {
     clearHold();
-    const total = holdMs(secs, st.speed);
-    holdRemaining = total; holdEndsAt = T.now() + total;
+    holdRemaining = holdMs(secs, st.speed); holdEndsAt = 0;
+    const slide = s.type === 'slide';
     holdAction = async () => {
       holdTimer = null;
-      if (s.prompt) host.send(s);
+      // Send only the first time the prompt is shown: after Back the viewer may have edited or already sent the question.
+      if (s.prompt && st.pos === shown.length - 1) host.send(s);
       await next({ fromPlay: true });
     };
-    holdTimer = T.setTimeout(() => holdAction(), total);
-    if (s.type === 'slide') {   // a tall slide scrolls to its verdict at 45% of the hold (at most 6 s in), as the video does
-      const at = Math.min(Math.round(6000 * speedFactor(st.speed)), Math.round(total * 0.45));
+    holdSlide = slide;
+  }
+  function startHold() {
+    if (!holdAction) return;
+    clearHold();
+    holdEndsAt = T.now() + holdRemaining;
+    holdTimer = T.setTimeout(() => holdAction(), holdRemaining);
+    if (holdSlide) {   // a tall slide scrolls to its verdict at 45% of the hold (at most 6 s in), as the video does
+      const at = Math.min(Math.round(6000 * speedFactor(st.speed)), Math.round(holdRemaining * 0.45));
       scrollTimer = T.setTimeout(() => { scrollTimer = null; overlay.scrollSlide(); }, at);
     }
   }
@@ -196,7 +216,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   function play() {
     if (!st.active || st.status === 'done') return;
     st.playing = true; st.paused = false; st.message = ''; emit();
-    if (st.status === 'showing' && current) startHold(current, curSecs);
+    if (st.status === 'showing' && current) { prepareHold(current, curSecs); startHold(); }
   }
   function pause() {
     if (!st.playing || st.paused) return;
@@ -207,7 +227,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   function resume() {
     if (!st.playing || !st.paused) return;
     st.paused = false;
-    if (st.status === 'showing' && current) { holdEndsAt = T.now() + holdRemaining; holdTimer = T.setTimeout(() => holdAction && holdAction(), holdRemaining); }
+    if (st.status === 'showing' && current) startHold();
     emit();
   }
   function setSpeed(name) {

@@ -6,12 +6,14 @@ import StoryBar from "./StoryBar";
 import { createOverlay } from "./overlay";
 
 beforeEach(() => { localStorage.clear(); document.body.innerHTML = ""; document.querySelectorAll(".story-hl,.story-bub,.story-slide").forEach((e) => e.remove()); });
-afterEach(() => { document.getElementById("story-style")?.remove(); });
+const made = [];
+const mk = (opts) => { const o = createOverlay(opts); made.push(o); return o; };   // every overlay is destroyed after its test: a live one keeps listening for resize
+afterEach(() => { made.splice(0).forEach((o) => o.destroy()); document.getElementById("story-style")?.remove(); });
 
 describe("createOverlay", () => {
   test("a bubble shows the number, 'n of N', the title and text, and a highlight on its target", () => {
     document.body.innerHTML = '<button id="send">Send</button>';
-    const o = createOverlay();
+    const o = mk();
     o.cap({ n: 2, total: 5, title: "Ask", text: "Press Send.", target: "#send", lines: ["asks: a question"] });
     expect(document.querySelector(".story-bub h3").textContent).toBe("Ask");
     expect(document.querySelector(".story-bub .of").textContent).toBe("2 of 5");
@@ -22,7 +24,7 @@ describe("createOverlay", () => {
   });
 
   test("text is set as text: markup in a title, an answer line or a slide is never parsed", () => {
-    const o = createOverlay();
+    const o = mk();
     o.cap({ n: 1, total: 1, title: "<img src=x onerror=alert(1)>", text: "<b>bold</b>", lines: ["<script>x</script>"] });
     expect(document.querySelector(".story-bub img")).toBeNull(); expect(document.querySelector(".story-bub b")).toBeNull(); expect(document.querySelector(".story-bub script")).toBeNull();
     expect(document.querySelector(".story-bub p").textContent).toBe("<b>bold</b>");
@@ -31,13 +33,36 @@ describe("createOverlay", () => {
   });
 
   test("a missing target gives a centred bubble with no highlight and no tail; a long answer line wraps and does not throw", () => {
-    const o = createOverlay();
+    const o = mk();
     o.cap({ n: 1, total: 1, title: "t", text: "x", target: "#nope", lines: ["w".repeat(500)] });
     expect(document.querySelector(".story-hl")).toBeNull(); expect(document.querySelector(".story-tail")).toBeNull();
   });
 
+  test("regression: a slide image that fails to load removes only the image; both text columns stay", () => {
+    const o = mk();
+    o.slide({ title: "T", lead: "L", colA: { heading: "A", lines: ["a1", "a2"] }, colB: { heading: "B", lines: ["b1"] }, verdict: "V", image: "/assets/missing.jpg" });
+    fireEvent.error(document.querySelector(".story-slide img"));
+    expect(document.querySelector(".story-slide img")).toBeNull();
+    expect(document.querySelectorAll(".story-slide li")).toHaveLength(3); expect(document.querySelectorAll(".story-slide .col")).toHaveLength(2);
+    expect(document.querySelector(".story-slide .card").classList.contains("withimg")).toBe(false);
+  });
+
+  test("regression: the highlight follows a resize, and stops following once cleared", async () => {
+    document.body.innerHTML = '<button id="send">Send</button>';
+    const t = document.getElementById("send"); let top = 100;
+    t.getBoundingClientRect = () => ({ left: 50, top, width: 80, height: 30, right: 130, bottom: top + 30 });
+    const o = mk();
+    o.cap({ n: 1, total: 1, title: "t", text: "x", target: t });
+    expect(document.querySelector(".story-hl").style.top).toBe("95px");
+    top = 300; window.dispatchEvent(new Event("resize")); await new Promise((r) => setTimeout(r, 40));
+    expect(document.querySelector(".story-hl").style.top).toBe("295px");
+    o.clear(); top = 500; window.dispatchEvent(new Event("resize")); await new Promise((r) => setTimeout(r, 40));
+    expect(document.querySelector(".story-hl")).toBeNull(); expect(document.querySelector(".story-bub")).toBeNull();
+    o.destroy();
+  });
+
   test("a slide has both columns and the verdict; no image unless one is given; a broken image is removed", () => {
-    const o = createOverlay();
+    const o = mk();
     const slide = { title: "T", lead: "L", colA: { heading: "A", lines: ["a1", "a2"] }, colB: { heading: "B", lines: ["b1"] }, verdict: "V" };
     o.slide({ ...slide, image: null });
     expect(document.querySelectorAll(".story-slide li")).toHaveLength(3); expect(document.querySelector(".story-slide img")).toBeNull();
@@ -90,6 +115,13 @@ function fakeStory(over = {}) {
 }
 
 describe("StoryBar", () => {
+  test("regression: the bar picks up a story that started before it subscribed", () => {
+    const s = fakeStory({ active: false }); const real = s.state; let first = true;
+    s.state = () => { if (first) { first = false; return real(); } return { ...real(), active: true }; };   // active by the time the effect runs, with no emit
+    render(<StoryBar story={s} />);
+    expect(screen.getByTestId("story-bar")).toBeInTheDocument();
+  });
+
   test("shows nothing when Story is not active", () => {
     const s = fakeStory({ active: false }); render(<StoryBar story={s} />);
     expect(screen.queryByTestId("story-bar")).toBeNull();

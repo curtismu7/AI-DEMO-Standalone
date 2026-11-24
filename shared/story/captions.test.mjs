@@ -123,3 +123,13 @@ test('parity: matching keys give no problems; either side missing a key is repor
   assert.deepEqual(parity(c, { ...keys, steps: ['p1_intro'] }, { allowUnused: ['sample_intro'] }), []);
   assert.deepEqual(parity(c, { ...keys, slides: ['opening', 'closing'] }), ['captions.md has slide "part2" but the demo does not']);
 });
+
+test('regression: a file saved with Windows line endings parses the same as one with Unix line endings', () => {
+  assert.deepEqual(parseCaptions(FILE.replace(/\n/g, '\r\n')), parseCaptions(FILE));
+});
+
+test('regression: a closing --- with no newline after it does not leak into the last section', () => {
+  const c = parseCaptions(FILE.trimEnd() + '\n\n---');
+  assert.equal(c.steps.sample_intro.text, 'This is a local stand-in.');
+  assert.equal(parseCaptions(FILE.trimEnd() + '\n\n---\n').steps.sample_intro.text, 'This is a local stand-in.');
+});

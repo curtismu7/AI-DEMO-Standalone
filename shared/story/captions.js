@@ -14,7 +14,8 @@ export class CaptionsError extends Error {
 }
 const fail = (m) => { throw new CaptionsError(m); };
 
-const splitSections = (text) => String(text).replace(/^\s*<!--[\s\S]*?-->\s*/, '').split(/\r?\n---\r?\n/).map((s) => s.trim()).filter(Boolean);
+// Line endings are normalised first (a Windows or autocrlf checkout), and a closing --- with no newline after it still ends the last section.
+const splitSections = (text) => String(text).replace(/\r\n?/g, '\n').replace(/^\s*<!--[\s\S]*?-->\s*/, '').split(/\n---[ \t]*(?:\n|$)/).map((s) => s.trim()).filter(Boolean);
 
 function splitFields(body) {
   const fields = {};

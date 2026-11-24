@@ -12,7 +12,7 @@ const trusted = (e) => e.isTrusted;
 export default function StoryBar({ story, mock = false, isManual = trusted }) {
   const [s, setS] = useState(() => story.state());
   const bar = useRef(null);
-  useEffect(() => story.subscribe(setS), [story]);
+  useEffect(() => { const off = story.subscribe(setS); setS(story.state()); return off; }, [story]);   // re-read: the story may have started before this subscribed
 
   useEffect(() => {
     const onKey = (e) => {

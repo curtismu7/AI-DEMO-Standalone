@@ -222,3 +222,57 @@ test('the slide image is passed only when the host supplies one; the repo ships 
   const r = rig(); await go(r.story.start()); assert.equal(r.last('slide').image, null);
   const r2 = rig(); r2.host.assetUrl = (n) => `/assets/${n}`; await go(r2.story.start()); assert.equal(r2.last('slide').image, '/assets/shot.jpg');
 });
+
+// ---- regressions found by the independent review (each fails on the code before the fix)
+test('Pause while waiting for a run, then Resume after it finished: the new bubble gets its own hold, and the old prompt is not sent again', async () => {
+  const r = rig(); await r.story.start(); r.story.play(); await tick();
+  await r.clk.advance(holdMs(slideHold(r.captions.opening), 'normal') + 4500 + 5);
+  assert.deepEqual(r.host.sent, ['p_prompt']); assert.equal(r.story.state().status, 'waiting');
+  r.story.pause(); r.host.finishRun(true); await tick();
+  assert.equal(r.story.state().key, 'p_handoff'); r.story.resume();
+  await r.clk.advance(60000 * 5); await tick();
+  assert.deepEqual(r.host.sent, ['p_prompt'], 'the prompt was sent once, not again on Resume');
+  const text = `${w(30)} status 200`; const ms = holdMs(bubbleHold(text, ['status 200']), 'normal');
+  const r2 = rig(); await r2.story.start(); r2.story.play(); await tick();
+  await r2.clk.advance(holdMs(slideHold(r2.captions.opening), 'normal') + 4500 + 5); r2.story.pause(); r2.host.finishRun(true); await tick(); r2.story.resume();
+  await r2.clk.advance(ms - 1); assert.equal(r2.story.state().key, 'p_handoff', 'held for the new bubble\'s own time'); await r2.clk.advance(1); await r2.clk.advance(3000);
+  assert.notEqual(r2.story.state().key, 'p_handoff');
+});
+
+test('Back to a prompt step and then Play does not press Send again', async () => {
+  const r = rig(); await r.story.start(); await go(r.story.next()); r.host.finishRun(true); await go(r.story.next());
+  await go(r.story.back()); assert.equal(r.story.state().key, 'p_prompt');
+  r.story.play(); await r.clk.advance(4500 + 10);
+  assert.deepEqual(r.host.sent, [], 'no second run');
+  assert.equal(r.story.state().key, 'p_handoff', 'it carries on through the steps already shown');
+});
+
+test('Exit while a pop-out is still closing (on Back) keeps the story exited: no bubble is drawn after Exit', async () => {
+  let release; const slow = new Promise((res) => { release = res; });
+  const r = rig({ steps: [
+    { key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input' },
+    { key: 'p_mcp', type: 'bubble', trigger: 'load', target: '#who', after: () => slow }] });
+  await go(r.story.start()); await go(r.story.next()); const before = r.calls.length;
+  r.story.back(); await tick(); r.story.exit(); await tick(); release(); await tick(); await tick();
+  assert.equal(r.story.state().active, false); assert.equal(r.story.state().status, 'idle');
+  assert.equal(r.calls.slice(before).filter((c) => c[0] === 'cap').length, 0, 'nothing is drawn after Exit');
+});
+
+test('a step with no wording is skipped with a warning, and the pop-out it opened is closed', async () => {
+  const log = [];
+  const r = rig({ steps: [
+    { key: 'nowording', type: 'bubble', trigger: 'load', target: '#who', before: async () => log.push('open'), after: async () => log.push('close') },
+    { key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input' }] });
+  await go(r.story.start());
+  assert.deepEqual(log, ['open', 'close']); assert.equal(r.story.state().key, 'p_prompt'); assert.match(r.story.state().warnings.join(), /no wording for "nowording"/);
+});
+
+test('a script callback that throws does not stop the story: when() counts as true, lines() as none, both reported', async () => {
+  const r = rig({ steps: [
+    { key: 'p_handoff', type: 'bubble', trigger: 'load', target: '#who', lines: () => { throw new Error('no node'); } },
+    { key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input', when: () => { throw new Error('no node'); } }] });
+  await go(r.story.start()); assert.equal(r.story.state().key, 'p_handoff');
+  assert.deepEqual(r.last('cap').lines, []);
+  await go(r.story.next()); assert.equal(r.story.state().key, 'p_prompt');
+  const w2 = r.story.state().warnings.join('\n'); assert.match(w2, /fact lines could not be read/); assert.match(w2, /condition could not be read/);
+});
