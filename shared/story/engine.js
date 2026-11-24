@@ -17,7 +17,8 @@
 //     frameTimeoutMs,  // trigger 'frame': how long to wait for the target (default 2500)
 //     tab, before, after,  // host.switchTab(tab); before(): may open a pop-out (may be async); after(): closes it when the step is left
 //     transform }      // (slide, mode) => slide : a last tweak to a slide's wording
-// host: { mode(), query(selector) -> Element|null, mark(), waitForRun(marker, timeoutMs) -> Promise<{ok, reason?}>, prefill(step), send(step), switchTab(tab), assetUrl(name) }
+// host: { mode(), query(selector) -> Element|null, mark(), waitForRun(marker, timeoutMs) -> Promise<{ok, reason?}>, prefill(step), send(step), switchTab(tab), assetUrl(name),
+//         runStarted(marker) -> boolean }   runStarted (optional, recommended): true when a run began since mark(), so Play never sends a question the viewer already sent
 
 import { bubbleHold, slideHold, holdMs, speedFactor, SPEED_NAMES } from './hold.js';
 
@@ -48,21 +49,26 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
   let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let holdSlide = false; let curSecs = 0;
+  let passed = new Set();   // steps the story has moved past: a prompt in here was already asked, so Play never sends it again
 
   const mode = () => (host.mode() === 'mock' ? 'mock' : 'real');
   const whenOk = (s) => { if (!s.when) return true; try { return s.when() !== false; } catch { warn(`"${s.key}": its condition could not be read, so the step is shown`); return true; } };
   const eligible = (s) => (!s.modes || s.modes.includes(mode())) && whenOk(s);
-  const snapshot = () => ({ ...st, warnings: [...st.warnings], canBack: st.pos > 0 && st.status !== 'waiting', canNext: ['showing', 'stalled'].includes(st.status) });
+  const cleared = () => st.status === 'done' || st.status === 'stalled';   // the last step is no longer on screen, so Back shows it again
+  const snapshot = () => ({ ...st, warnings: [...st.warnings], canBack: cleared() ? st.pos >= 0 : st.pos > 0 && st.status !== 'waiting', canNext: ['showing', 'stalled'].includes(st.status) });
   const emit = () => { const s = snapshot(); subs.forEach((f) => f(s)); };
 
   const clearHold = () => { if (holdTimer !== null) T.clearTimeout(holdTimer); if (scrollTimer !== null) T.clearTimeout(scrollTimer); holdTimer = scrollTimer = null; };
+  const closeAfter = (s) => { if (s.after) { try { Promise.resolve(s.after()).catch(() => {}); } catch { /* closing a pop-out must not stop the story */ } } };
   const leave = async () => { const c = current; current = null; if (c && c.after) { try { await c.after(); } catch { /* closing a pop-out must not stop the story */ } } };
   const warn = (m) => { if (!st.warnings.includes(m)) st.warnings.push(m); };
+  // A host or script callback that throws must never wedge the story: it is reported and the story carries on.
+  const safe = (fn, fallback, message) => { try { return fn(); } catch { if (message) warn(message); return fallback; } };
 
-  const targetOf = (s) => {
+  const targetOf = (s) => safe(() => {
     const t = typeof s.target === 'function' ? s.target() : s.target;
     return typeof t === 'string' ? host.query(t) : t || null;
-  };
+  }, null, `"${s.key}": its target could not be found on the page`);
   const remainingAfter = (i) => steps.slice(i + 1).filter(eligible).length;
 
   function capOf(s) {
@@ -81,7 +87,8 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     overlay.clear();
     if (s.trigger === 'run-done') {
       st.message = 'Waiting for the run to finish. Press Send if you have not.'; emit();
-      const r = await host.waitForRun(marker, waitTimeoutMs);
+      let r;
+      try { r = await host.waitForRun(marker, waitTimeoutMs); } catch { r = { ok: false, reason: 'The run could not be checked. Press Next to carry on, or Exit.' }; }
       return my === gen ? r : { ok: false, stale: true };
     }
     // 'frame': poll for the target. A target that never appears means the step does not apply to this run: it is skipped, not an error.
@@ -98,11 +105,12 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     for (; i < steps.length; i += 1) {
       const s = steps[i];
       if (!eligible(s)) continue;
+      if (s.tab && host.switchTab) safe(() => host.switchTab(s.tab), undefined, `"${s.key}": its tab could not be opened`);   // before the target is looked for: it may live in that tab
       const w = await waitFor(s, my, { skipWait: skipWait && i === st.stalledAt });
       if (w.stale || my !== gen) return;
       if (!w.ok) { st.status = 'stalled'; st.stalledAt = i; st.message = w.reason || 'The run did not finish. Press Next to carry on, or Exit.'; if (st.playing) stopPlay(`Play stopped: ${st.message}`); emit(); return; }
-      if (s.before) { try { await s.before(); } catch { warn(`step "${s.key}": its pop-out did not open`); } if (my !== gen) return; }
-      if (s.type === 'bubble' && !targetOf(s)) { if (s.after) { try { await s.after(); } catch { /* ignore */ } } continue; }   // the target is not on this run: skip
+      if (s.before) { try { await s.before(); } catch { warn(`step "${s.key}": its pop-out did not open`); } if (my !== gen) { closeAfter(s); return; } }
+      if (s.type === 'bubble' && !targetOf(s)) { closeAfter(s); continue; }   // the target is not on this run: skip
       return present(i, my, { replay: false });
     }
     return finish();
@@ -114,13 +122,12 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     const cap = capOf(s);
     if (!cap) {   // no wording: skip it, and close any pop-out its before() opened
       warn(`no wording for "${s.key}"`);
-      if (s.after) { try { Promise.resolve(s.after()).catch(() => {}); } catch { /* ignore */ } }
+      closeAfter(s);
       return advance(i + 1);
     }
     current = s;
-    if (!replay) { shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
-    if (s.tab && host.switchTab) host.switchTab(s.tab);
-    if (s.prompt && !replay) { marker = host.mark(); host.prefill(s); }   // Back never refills a prompt the viewer may have edited
+    if (!replay) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
+    if (s.prompt && !replay) { marker = safe(() => host.mark(), { runs: 0 }, `"${s.key}": the run counter could not be read`); safe(() => host.prefill(s), undefined, `"${s.key}": the question could not be filled in`); }   // Back never refills a prompt the viewer may have edited
     st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.stalledAt = -1;
     st.n = st.pos + 1; st.total = shown.length + remainingAfter(shown[shown.length - 1]);
     if (s.type === 'slide') {
@@ -132,7 +139,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
       [...title.missing, ...text.missing].forEach((m) => warn(`"${s.key}": {${m}} could not be read from the page`));
       let lines;
       if (s.lines) { try { lines = (s.lines(values) || []).filter(Boolean); } catch { warn(`"${s.key}": its fact lines could not be read from the page`); lines = []; } }
-      overlay.cap({ n: st.n, total: st.total, title: title.text, text: text.text, target: targetOf(s), lines, prefer: s.prefer, place: s.place });
+      overlay.cap({ n: st.n, total: st.total, title: title.text, text: text.text, target: () => targetOf(s), lines, prefer: s.prefer, place: s.place });
       curSecs = bubbleHold(text.text, lines || [], s.fixedSecs ?? null);
     }
     emit();
@@ -147,7 +154,8 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     if (my !== gen) return undefined;
     st.pos = pos;
     const s = steps[shown[pos]];
-    if (s.before) { try { await s.before(); } catch { warn(`step "${s.key}": its pop-out did not open`); } if (my !== gen) return undefined; }
+    if (s.tab && host.switchTab) safe(() => host.switchTab(s.tab), undefined, `"${s.key}": its tab could not be opened`);
+    if (s.before) { try { await s.before(); } catch { warn(`step "${s.key}": its pop-out did not open`); } if (my !== gen) { closeAfter(s); return undefined; } }
     return present(shown[pos], my, { replay: true });
   }
 
@@ -160,7 +168,10 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     holdAction = async () => {
       holdTimer = null;
       // Send only the first time the prompt is shown: after Back the viewer may have edited or already sent the question.
-      if (s.prompt && st.pos === shown.length - 1) host.send(s);
+      const asked = passed.has(shown[st.pos]) || safe(() => !!(host.runStarted && host.runStarted(marker)), false);   // the viewer may already have pressed Send
+      if (s.prompt && !asked) {
+        try { host.send(s); } catch { stopPlay('Play stopped: the question could not be sent.'); emit(); return; }
+      }
       await next({ fromPlay: true });
     };
     holdSlide = slide;
@@ -189,7 +200,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   // ---- the viewer's controls
   async function start() {
     gen += 1; clearHold(); await leave(); overlay.clear();
-    shown = []; marker = null;
+    shown = []; marker = null; passed = new Set();
     Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, stalledAt: -1 });
     emit();
     return advance(0);
@@ -204,9 +215,9 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     return advance(st.index + 1);
   }
   async function back() {
-    if (!st.active || st.pos <= 0 || st.status === 'waiting') return undefined;
+    if (!st.active || st.status === 'waiting' || st.pos < (cleared() ? 0 : 1)) return undefined;
     if (st.playing) stopPlay();
-    return replayAt(st.pos - 1);
+    return replayAt(cleared() ? st.pos : st.pos - 1);
   }
   async function exit() {
     gen += 1; clearHold(); await leave(); overlay.clear();

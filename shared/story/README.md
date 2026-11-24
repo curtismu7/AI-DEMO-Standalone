@@ -74,8 +74,8 @@ A test checks that every `# Step:` and `# Slide:` key in `captions.md` has a mat
 
 ## Wiring it into a lab
 1. The lab's server reads `captions.md`, runs `parseCaptions`, and serves the result at `GET /api/story` (the page and the video both read that).
-2. The lab writes its **script**: one entry per caption key, with the target, trigger and live values (`engine.js` documents the fields). A test calls `parity(captions, scriptKeys)` and asserts no problems.
-3. The lab's `host` gives the engine `mode()`, `query(selector)`, `mark()` and `waitForRun(marker, timeoutMs)` (the page's own run-finished event), `prefill(step)`, `send(step)`, `switchTab(tab)` and optionally `assetUrl(name)`. `send` must click the real Send button with a script-made event (not a trusted one), so Play for me never counts as the viewer's own input.
+2. The lab writes its **script**: one entry per caption key, with the target, trigger and live values (`engine.js` documents the fields). A test calls `parity(captions, { steps, slides, sampleKeys })` and asserts no problems (`sampleKeys` are the Mock wording keys the steps use).
+3. The lab's `host` gives the engine `mode()`, `query(selector)`, `mark()` and `waitForRun(marker, timeoutMs)` (the page's own run-finished event), `prefill(step)`, `send(step)`, `switchTab(tab)`, and optionally `assetUrl(name)` and `runStarted(marker)` (true when a run began since `mark()`, so Play never sends a question the viewer already sent). `send` must click the real Send button with a script-made event (not a trusted one), so Play for me never counts as the viewer's own input.
 4. The toggle goes in the shell's extra slot. When Story is on, the lab lazy-loads its story module, builds `createStory({ steps, captions, overlay: createOverlay(), host, store: localStorage, prefix })` and renders `<StoryBar story={...} mock={...} />`.
 5. Next/Back controls are never awaited by the page: a step that waits for a run only settles when the run ends.
 

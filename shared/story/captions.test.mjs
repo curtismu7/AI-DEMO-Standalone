@@ -133,3 +133,10 @@ test('regression: a closing --- with no newline after it does not leak into the 
   assert.equal(c.steps.sample_intro.text, 'This is a local stand-in.');
   assert.equal(parseCaptions(FILE.trimEnd() + '\n\n---\n').steps.sample_intro.text, 'This is a local stand-in.');
 });
+
+test('regression: an empty field does not swallow the next one, and an empty required field is an error', () => {
+  const c = parseCaptions(FILE.replace('## Image\nconsole-app.jpg\n\n## Layout\nwide', '## Image\n## Layout\nwide'));
+  assert.equal(c.slides.part2.image, null); assert.equal(c.slides.part2.wide, true);
+  assert.throws(() => parseCaptions(FILE.replace('## Text\nThis is a local stand-in.', '## Text\n')), /step "sample_intro" needs both/);
+  assert.throws(() => parseCaptions(FILE.replace('## Verdict\nBye.', '## Verdict\n')), /Closing Slide is missing a "## Verdict"/);
+});

@@ -19,7 +19,7 @@ const splitSections = (text) => String(text).replace(/\r\n?/g, '\n').replace(/^\
 
 function splitFields(body) {
   const fields = {};
-  const re = /^##[ \t]+(.+?)[ \t]*\n([\s\S]*?)(?=\n##[ \t]|(?![\s\S]))/gm;   // (?![\s\S]) is end of text: with the m flag a bare $ would stop at the end of the first line
+  const re = /^##[ \t]+(.+?)[ \t]*\n([\s\S]*?)(?=^##[ \t]|(?![\s\S]))/gm;   // (?![\s\S]) is end of text: with the m flag a bare $ would stop at the end of the first line
   let m;
   while ((m = re.exec(body)) !== null) fields[m[1].trim()] = m[2].trim();
   return fields;
@@ -32,7 +32,7 @@ const bullets = (raw) => {
 };
 
 function slideFrom(fields, which) {
-  for (const k of ['Title', 'Lead', 'Verdict']) if (!(k in fields)) fail(`${which} is missing a "## ${k}" section`);
+  for (const k of ['Title', 'Lead', 'Verdict']) if (!fields[k]) fail(`${which} is missing a "## ${k}" section`);
   const a = Object.keys(fields).find((k) => k.startsWith('Column A:'));
   const b = Object.keys(fields).find((k) => k.startsWith('Column B:'));
   if (!a || !b) fail(`${which} needs both a "## Column A: ..." and a "## Column B: ..." heading`);
@@ -58,7 +58,7 @@ export function parseCaptions(text) {
     else if (heading.startsWith('Step:')) {
       const key = heading.slice(5).trim();
       if (steps[key]) fail(`step "${key}" appears twice`);
-      if (!('Title' in fields) || !('Text' in fields)) fail(`step "${key}" needs both a "## Title" and a "## Text" section`);
+      if (!fields.Title || !fields.Text) fail(`step "${key}" needs both a "## Title" and a "## Text" section`);
       steps[key] = { title: fields.Title, text: fields.Text };
     } else fail(`unrecognised section heading "# ${heading}" (expected "Opening Slide", "Closing Slide", "Slide: <key>" or "Step: <key>")`);
   }
@@ -69,12 +69,12 @@ export function parseCaptions(text) {
 
 // The parity test: every key in captions.md has a step in the demo, and the reverse. `scriptKeys` = { steps: [...], slides: [...] } of the demo's script
 // (the opening and closing slides are the keys "opening" and "closing"). Returns the problems; a lab's test asserts it is empty, so a mismatch fails the
-// build and never fails silently at runtime. `allowUnused` lists caption keys the demo deliberately does not use (the video's sample-only wording).
+// build and never fails silently at runtime. `scriptKeys.sampleKeys` are the Mock wording keys the steps use (a missing one would silently drop a scene in Mock). `allowUnused` lists caption keys the demo deliberately does not use (the video's sample-only wording).
 export function parity(captions, scriptKeys, { allowUnused = [] } = {}) {
   const have = { steps: Object.keys(captions.steps), slides: ['opening', 'closing', ...Object.keys(captions.slides)] };
   const problems = [];
   for (const kind of ['steps', 'slides']) {
-    const want = new Set(scriptKeys[kind] || []); const has = new Set(have[kind]);
+    const want = new Set([...(scriptKeys[kind] || []), ...(kind === 'steps' ? scriptKeys.sampleKeys || [] : [])]); const has = new Set(have[kind]);   // a step's Mock wording (sampleKey) must exist too
     for (const k of want) if (!has.has(k)) problems.push(`the demo has ${kind.slice(0, -1)} "${k}" but captions.md does not`);
     for (const k of has) if (!want.has(k) && !allowUnused.includes(k)) problems.push(`captions.md has ${kind.slice(0, -1)} "${k}" but the demo does not`);
   }

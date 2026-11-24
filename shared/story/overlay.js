@@ -48,7 +48,8 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
   const clear = () => { lastCap = null; wipe(); };   // an explicit clear also stops the bubble following scrolls
   const el = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const view = doc.defaultView || globalThis;
-  const resolve = (t) => (typeof t === 'string' ? doc.querySelector(t) : t || null);
+  // A target is a selector, an Element or a function returning one, found again on every redraw: a page that re-renders replaces its nodes.
+  const resolve = (t) => { const v = typeof t === 'function' ? t() : t; const e = typeof v === 'string' ? doc.querySelector(v) : v || null; return e && e.isConnected !== false ? e : null; };
 
   function slide(o) {
     lastCap = null; ensure(); wipe();
@@ -80,7 +81,7 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
 
   function draw(o, scroll) {
     ensure(); wipe();
-    const vw = view.innerWidth || 1200; const vh = view.innerHeight || 800; const W = Math.round(470 * S); const GAP = 26; const M = 12;
+    const vw = view.innerWidth || 1200; const vh = view.innerHeight || 800; let W = Math.round(470 * S); const GAP = 26; const M = 12;
     const t = resolve(o.target);
     if (scroll && t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });   // instant: a smooth scroll would be measured half way
     const r = t ? t.getBoundingClientRect() : null;
@@ -93,7 +94,7 @@ export function createOverlay({ scale = 1, doc = (typeof document !== 'undefined
     b.append(n, of, el('h3', '', o.title), el('p', '', o.text));
     if (o.lines && o.lines.length) { const ul = el('ul'); o.lines.forEach((l) => ul.append(el('li', '', l))); b.append(ul); }
     b.style.visibility = 'hidden'; root().appendChild(b); els.push(b);
-    const H = b.getBoundingClientRect().height;
+    const br = b.getBoundingClientRect(); const H = br.height; if (br.width) W = br.width;   // measured: on a narrow screen the bubble is narrower than 470
     let left; let top; let side = null;
     if (o.place === 'bl') { left = M + 8; top = vh - H - 24; }
     else if (!r) { left = (vw - W) / 2; top = vh - H - 40; }

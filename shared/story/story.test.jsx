@@ -47,6 +47,32 @@ describe("createOverlay", () => {
     expect(document.querySelector(".story-slide .card").classList.contains("withimg")).toBe(false);
   });
 
+  test("regression: a target the page replaced is found again, and a detached one is treated as missing", async () => {
+    document.body.innerHTML = '<div id="slot"><button id="send">Send</button></div>';
+    const rect = (top) => () => ({ left: 50, top, width: 80, height: 30, right: 130, bottom: top + 30 });
+    const first = document.getElementById("send"); first.getBoundingClientRect = rect(100);
+    const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: () => document.getElementById("send") });
+    expect(document.querySelector(".story-hl").style.top).toBe("95px");
+    document.getElementById("slot").innerHTML = '<button id="send">Send</button>';           // the page re-rendered: a new node
+    const next = document.getElementById("send"); next.getBoundingClientRect = rect(240);
+    window.dispatchEvent(new Event("resize")); await new Promise((r) => setTimeout(r, 40));
+    expect(document.querySelector(".story-hl").style.top).toBe("235px");
+    o.clear();
+    const gone = document.createElement("div"); const o2 = mk(); o2.cap({ n: 1, total: 1, title: "t", text: "x", target: gone });   // never attached
+    expect(document.querySelector(".story-hl")).toBeNull();
+  });
+
+  test("regression: the bubble is placed with its measured width (narrow screens), not the nominal 470", () => {
+    document.body.innerHTML = '<button id="t">t</button>';
+    const t = document.getElementById("t"); t.getBoundingClientRect = () => ({ left: 400, top: 400, width: 100, height: 30, right: 500, bottom: 430 });
+    const orig = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () { return this.classList.contains("story-bub") ? { left: 0, top: 0, width: 300, height: 120, right: 300, bottom: 120 } : orig.call(this); };
+    try {
+      const o = mk(); o.cap({ n: 1, total: 1, title: "t", text: "x", target: t, prefer: "below" });
+      expect(parseFloat(document.querySelector(".story-bub").style.left)).toBe(300);   // centred under the target with the measured width: 450 - 300/2 (with the nominal 470 it would be 215)
+    } finally { HTMLElement.prototype.getBoundingClientRect = orig; }
+  });
+
   test("regression: the highlight follows a resize, and stops following once cleared", async () => {
     document.body.innerHTML = '<button id="send">Send</button>';
     const t = document.getElementById("send"); let top = 100;
@@ -115,6 +141,13 @@ function fakeStory(over = {}) {
 }
 
 describe("StoryBar", () => {
+  test("regression: with no story running the bar leaves the page's own arrow keys and Esc alone", () => {
+    const s = fakeStory({ active: false }); render(<StoryBar story={s} />);
+    const right = new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }); document.body.dispatchEvent(right);
+    expect(right.defaultPrevented).toBe(false); fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(s.calls.filter((c) => c[0] !== "manualInput")).toEqual([]);
+  });
+
   test("regression: the bar picks up a story that started before it subscribed", () => {
     const s = fakeStory({ active: false }); const real = s.state; let first = true;
     s.state = () => { if (first) { first = false; return real(); } return { ...real(), active: true }; };   // active by the time the effect runs, with no emit

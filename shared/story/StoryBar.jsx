@@ -17,6 +17,7 @@ export default function StoryBar({ story, mock = false, isManual = trusted }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!story.state().active) return;                       // no story running: the page's own arrow keys and Esc are left alone
       if (e.key === "Escape") { story.exit(); return; }
       if (typing(e)) return;                                   // the viewer is typing the question: arrows belong to the field
       if (e.key === "ArrowRight") { e.preventDefault(); story.next(); } else if (e.key === "ArrowLeft") { e.preventDefault(); story.back(); }

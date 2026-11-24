@@ -34,10 +34,10 @@ function rig({ mode = 'real', present = ['#input', '#who', '#close'], store = nu
   const here = new Set(present);
   const host = {
     modeV: mode, mode() { return this.modeV; }, query: (s) => (here.has(s) ? { sel: s } : null),
-    runs: 0, waiters: [], mark() { return { runs: this.runs }; },
+    runs: 0, starts: 0, waiters: [], mark() { return { runs: this.runs, starts: this.starts }; }, runStarted(m) { return this.starts > m.starts; },
     waitForRun(marker) { if (this.runs > marker.runs) return Promise.resolve({ ok: true }); return new Promise((res) => this.waiters.push(res)); },
     finishRun(ok = true, reason) { this.runs += 1; this.waiters.splice(0).forEach((r) => r(ok ? { ok: true } : { ok: false, reason })); },
-    prefilled: [], prefill(s) { this.prefilled.push(s.key); }, sent: [], send(s) { this.sent.push(s.key); }, tabs: [], switchTab(t) { this.tabs.push(t); },
+    prefilled: [], prefill(s) { this.prefilled.push(s.key); }, sent: [], send(s) { this.sent.push(s.key); this.starts += 1; }, tabs: [], switchTab(t) { this.tabs.push(t); },
   };
   const captions = {
     opening: { title: 'Open', lead: w(20), colA: { heading: 'A', lines: ['a'] }, colB: { heading: 'B', lines: ['b'] }, verdict: 'v', image: 'shot.jpg' },
@@ -72,7 +72,7 @@ test('start shows the opening slide and counts the steps', async () => {
 test('a prompt step switches tab, pre-fills the exact question and sends nothing', async () => {
   const r = rig(); await go(r.story.start()); await go(r.story.next()); await tick();
   assert.deepEqual(r.host.prefilled, ['p_prompt']); assert.deepEqual(r.host.tabs, ['review']); assert.deepEqual(r.host.sent, []);
-  assert.equal(r.story.state().isPrompt, true); assert.equal(r.last('cap').target.sel, '#input');
+  assert.equal(r.story.state().isPrompt, true); assert.equal(r.last('cap').target().sel, '#input');
 });
 
 test('the step after a prompt waits for the run; Next is ignored while it runs; the wording is filled from the page', async () => {
@@ -275,4 +275,52 @@ test('a script callback that throws does not stop the story: when() counts as tr
   assert.deepEqual(r.last('cap').lines, []);
   await go(r.story.next()); assert.equal(r.story.state().key, 'p_prompt');
   const w2 = r.story.state().warnings.join('\n'); assert.match(w2, /fact lines could not be read/); assert.match(w2, /condition could not be read/);
+});
+
+// ---- regressions found by the second review
+test('a pop-out whose before() finishes AFTER the viewer pressed Exit is closed again', async () => {
+  let open; const opening = new Promise((res) => { open = res; }); const log = [];
+  const r = rig({ steps: [{ key: 'p_mcp', type: 'bubble', trigger: 'load', target: '#who', before: () => opening.then(() => log.push('open')), after: async () => log.push('close') }] });
+  r.story.start(); await tick(); r.story.exit(); await tick(); open(); await tick(); await tick();
+  assert.deepEqual(log, ['open', 'close']); assert.equal(r.story.state().active, false);
+});
+
+test('a host that throws does not wedge the story', async () => {
+  const r = rig(); r.host.waitForRun = () => Promise.reject(new Error('network'));
+  await go(r.story.start()); await go(r.story.next()); await go(r.story.next()); await tick();
+  assert.equal(r.story.state().status, 'stalled'); assert.match(r.story.state().message, /could not be checked/);
+  const r2 = rig({ steps: [{ key: 'p_mcp', type: 'bubble', trigger: 'load', target: () => { throw new SyntaxError('bad selector'); } }, { key: 'closing', type: 'slide', trigger: 'load' }] });
+  await go(r2.story.start()); assert.equal(r2.story.state().key, 'closing'); assert.match(r2.story.state().warnings.join(), /target could not be found/);
+  const r3 = rig(); r3.host.send = () => { throw new Error('boom'); }; r3.host.prefill = () => { throw new Error('boom'); }; r3.host.switchTab = () => { throw new Error('boom'); };
+  await go(r3.story.start()); r3.story.play(); await tick(); await r3.clk.advance(holdMs(slideHold(r3.captions.opening), 'normal') + 4500 + 5);
+  assert.equal(r3.story.state().playing, false); assert.match(r3.story.state().message, /could not be sent/);
+});
+
+test('Play never sends a question the viewer already sent (even after Back and Next to the prompt)', async () => {
+  const r = rig(); await go(r.story.start()); await go(r.story.next());          // at the prompt, the last step shown
+  r.host.starts += 1; r.host.finishRun(true);                                      // the viewer pressed Send themselves
+  await go(r.story.back()); await go(r.story.next());                             // away and back: the prompt is the last shown again
+  assert.equal(r.story.state().key, 'p_prompt');
+  r.story.play(); await r.clk.advance(4500 + 10); assert.deepEqual(r.host.sent, [], 'no second send');
+});
+
+test('Back from the finished screen shows the last step again; Back from a stalled run shows the step before the stall', async () => {
+  const r = rig({ steps: [{ key: 'opening', type: 'slide', trigger: 'load' }, { key: 'closing', type: 'slide', trigger: 'load' }] });
+  await go(r.story.start()); await go(r.story.next()); await go(r.story.next()); assert.equal(r.story.state().status, 'done'); assert.equal(r.story.state().canBack, true);
+  await go(r.story.back()); assert.equal(r.story.state().key, 'closing'); assert.equal(r.story.state().status, 'showing');
+  const r2 = rig(); await go(r2.story.start()); await go(r2.story.next()); await go(r2.story.next()); r2.host.finishRun(false, 'timed out'); await tick();
+  assert.equal(r2.story.state().status, 'stalled'); await go(r2.story.back()); assert.equal(r2.story.state().key, 'p_prompt');
+});
+
+test('a step\'s tab is opened BEFORE its target is looked for, so a target inside that tab is not skipped', async () => {
+  const r = rig({ present: [], steps: [{ key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input', tab: 'review' }] });
+  r.host.switchTab = (t) => { r.host.tabs.push(t); r.here.add('#input'); };
+  await go(r.story.start()); assert.equal(r.story.state().key, 'p_prompt'); assert.deepEqual(r.host.tabs, ['review']);
+});
+
+test('parity checks the Mock wording keys too (a sampleKey with no wording fails the check)', async () => {
+  const { parity, parseCaptions } = await import('./captions.js');
+  const c = parseCaptions('# Opening Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
+  assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: [] }), []);
+  assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: ['sample_handoff'] }), ['the demo has step "sample_handoff" but captions.md does not']);
 });
