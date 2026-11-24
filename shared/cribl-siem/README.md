@@ -94,7 +94,7 @@ Verified (local test and live): no credential, wrong password, wrong key and `Be
 
 ## What the events contain, and what Cribl adds
 
-Privilege's own SIEM feed (since the 11/20 release at the latest) delivers more than console changes. The `Index` field names the kind:
+Privilege's own SIEM feed delivers more than console changes (the runtime kinds first appear in the index on 12 Oct, 13 Oct and 8 Nov). The `Index` field names the kind:
 
 | `Index` | What it is | Useful fields (in `Data`, and promoted to `gw_*` by Cribl) |
 |---|---|---|
