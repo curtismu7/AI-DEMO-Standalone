@@ -1163,6 +1163,28 @@ test('chain: two agents in one run give one chain each, each with its own user',
   assert.deepEqual(rec.chain.chains.map((c) => [c.agent.value, c.user.value]), [['agent-A', 'user-7'], ['agent-B', 'user-8']]);
 });
 
+test('chain: a row that names only the agent (no user, no scopes) still says no scope claim', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued to agent', detail: { agent: 'agent-only-9' } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  const [c] = rec.chain.chains;
+  assert.equal(c.scopes, null);
+  assert.equal(c.noScopeClaim, true, 'the token row is there; its scope claim is not');
+});
+
+test('chain: two distinct agent ids that mask to the same value stay two chains, each with its own scopes', async () => {
+  const rec = await chainOf([
+    { at: at(1), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { agent: 'ops.agent@corp-example.com', scopes: ['pay.read'] } },
+    { at: at(2), product: 'pingfederate', outcome: OK, message: 'Token issued', detail: { agent: 'dev.agent@corp-example.com', scopes: ['tuition.read'] } },
+  ]);
+  assert.deepEqual(assertRunObservability(rec), []);
+  assert.equal(rec.chain.chains.length, 2, 'one chain per agent id, not one per masked value');
+  assert.deepEqual(rec.chain.chains.map((c) => c.scopes.values), [['pay.read'], ['tuition.read']]);
+  assert.deepEqual(rec.chain.chains.map((c) => c.agent.linkable), [false, false]);
+  assert.doesNotMatch(JSON.stringify(rec.chain), /corp-example|ops\.agent@|dev\.agent@/);
+});
+
 test('chain: adding chain keys never changes a row outcome or the summary', async () => {
   const policy = { product: 'privilege', decision: 'DENY', id: 'pol-3' };
   const plain = await chainOf([{ at: at(1), product: 'privilege-siem', outcome: 'refused', message: 'Policy deny', detail: { policy } }]);

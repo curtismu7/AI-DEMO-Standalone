@@ -451,7 +451,8 @@ const chainPart = (raw, mask, keep) => {
     id: text(p.id)?.value ?? null,
   } : null;
   if (!agent && !user && !scopes.length && !policy) return null;
-  return { agent, user, scopes: scopes.length ? scopes : null, policy };
+  // agentKey is the raw identifier: rows are grouped by it, so two ids that mask to the same placeholder stay two chains (never shown).
+  return { agent, agentKey: agent ? raw.agent : null, user, scopes: scopes.length ? scopes : null, policy };
 };
 // One chain: the steps of one agent's rows, in time order. Each step names its row's origin; a missing step is null.
 const chainOf = (items) => {
@@ -467,7 +468,7 @@ const chainOf = (items) => {
   const policies = items.filter((i) => i.part.policy).map((i) => ({ product: i.part.policy.product, decision: i.part.policy.decision, id: i.part.policy.id, outcome: i.row.outcome, origin: i.row.origin, at: i.row.at }));
   return {
     agent, user, scopes,
-    noScopeClaim: !scopes && items.some((i) => i.part.user),
+    noScopeClaim: !scopes && items.some((i) => i.part.user || i.part.agent),
     policies,
     links: { userAgent: linkable && Boolean(user), agentScopes: linkable && Boolean(scopes), scopesPolicy: linkable && Boolean(scopes) && policies.length > 0 },
   };
@@ -478,10 +479,10 @@ const buildChain = (items) => {
   if (!parts.length) return null;
   const order = []; const byAgent = new Map(); const noAgent = [];
   for (const it of parts) {
-    const a = it.part.agent;
-    if (!a) { noAgent.push(it); continue; }
-    if (!byAgent.has(a.value)) { byAgent.set(a.value, []); order.push(a.value); }
-    byAgent.get(a.value).push(it);
+    if (!it.part.agent) { noAgent.push(it); continue; }
+    const k = it.part.agentKey;
+    if (!byAgent.has(k)) { byAgent.set(k, []); order.push(k); }
+    byAgent.get(k).push(it);
   }
   const groups = order.map((k) => byAgent.get(k));
   if (noAgent.length) groups.push(noAgent);
