@@ -28,6 +28,7 @@ row() { # tag -> namespace release deployment host
     cmuir-pingid2)      echo "ping-devops-cmuir agentless-mcpgw-pingid2 agentless-mcpgw-pingid2 mcpgw-pingid2.ai-demo.ping-devops.com" ;;
     curtismuir-pingid3) echo "ping-devops-curtismuir agentless-mcpgw-pingid agentless-mcpgw-pingid mcpgw-pingid3.ai-demo.ping-devops.com" ;;
     cmuir-mcpgw2)       echo "ping-devops-cmuir agentless-mcpgw2 agentless-mcpgw mcpgw2.ai-demo.ping-devops.com" ;;
+    curtismuir-mcpgw)   echo "ping-devops-curtismuir agentless-mcpgw agentless-mcpgw mcpgw.ai-demo.ping-devops.com" ;;  # mcpgw-ct-new1 (LB name), live in the pool 2026-11-24
     *) echo "unknown tag $1" >&2; exit 2 ;;
   esac
 }
@@ -59,7 +60,7 @@ pod_of() { kubectl -n "$1" get pods --no-headers | awk -v n="$2" '$1 ~ "^"n"-[a-
 cmd=${1:-}; tag=${2:-}
 case "$cmd" in
   check)
-    for t in cmuir-pingid curtismuir-pingid3; do printf '%-20s ' "$t"; check_token "$GW/token-$t.env" || true; done ;;
+    for t in cmuir-pingid curtismuir-pingid3 curtismuir-mcpgw; do printf '%-20s ' "$t"; check_token "$GW/token-$t.env" || true; done ;;
   upgrade)
     read -r ns rel dep host <<<"$(row "$tag")"
     check_token "$GW/token-$tag.env"
