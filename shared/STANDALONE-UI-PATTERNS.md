@@ -261,7 +261,7 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
 | C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |
-| B1 | Brand font sizes come from the shared stylesheet (section 1): no `font-size` (or `font` shorthand) on `.shell-brand*` in the app's own CSS. The matcher is a substring match on any part of any selector, so BEM children like `.shell-brand-icon` are included. WARN during the 2026-11-24 header rollout; becomes DRIFT once every lab is converted (see the checker's ADVISORY_RULES comment for the two-step flip) |
+| B1 | Brand font sizes come from the shared stylesheet (section 1): no `font-size` (or `font` shorthand) on `.shell-brand*` in the app's own CSS. The matcher is a substring match on any part of any selector, so BEM children like `.shell-brand-icon` are included. ENFORCED (DRIFT) since 2026-11-25 — every lab's vendored stylesheet is the canonical one, so the rule never fires on a current lab |
 
 Not checked statically: contrast of colours computed in the browser (only the shared tokens and the focus ring are), horizontal overflow at 375px, keyboard
 behaviour, markup built at run time (`innerHTML`, `createElement`), CSS-in-JS. Keep doing the browser checks
