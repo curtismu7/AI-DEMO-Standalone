@@ -43,7 +43,9 @@ banner patterns. Known convergence work for next PRs:
   `.shell-brand__tag`. Name 1.4rem, mark 1.4rem, tagline 0.9rem at 85% opacity; at
   ≤600px name/mark 1.15rem and the tagline is hidden. rem units, so the TopMenu
   Text-size control scales them. Visual reference: `shared/header-standard-mock.html`.
-  Labs whose brand lacks the name/tagline elements fix the markup when converting.
+  Flat-brand labs (the name in a bare `h1` inside `.shell-brand`, no `__name`/`__tag`
+  elements) are sized identically by the shared `.shell-brand h1` rule — converting
+  the markup to the BEM form is welcome but not required.
 
 ## 2. Simulation / status banner (every page)
 
