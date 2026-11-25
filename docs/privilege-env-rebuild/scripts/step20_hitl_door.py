@@ -17,7 +17,7 @@ T = json.load(open(os.path.join(HERE, "..", "state.json")))["env_id"]
 BASE = f"https://local.procyon.ai:8643/api/{T}/v1"; CTX = ssl._create_unverified_context()
 APPLY = "--apply" in sys.argv
 DOOR, HOLD, KEY, GRANT = "opensearch-hitl2", "opensearch-hitl2-hold", "lab-opensearch-hitl-key", "lab-opensearch-hitl-key-grant"
-APPROVER_GROUP, CUSTODIAN = "f3defcdb-7fe8-4ff1-95a9-5e004836b596", "aidemo"
+APPROVER_GROUP_DESC, CUSTODIAN = "HitlApprovers", "aidemo"  # the group is found by its description prefix (its Name is the PingOne group id)
 EXPIRY = "2027-02-20T00:00:00.000Z"
 OUT_ENV = os.path.expanduser("~/.config/demo-kit/hitl-opensearch.env")
 BACKUPS = os.path.expanduser("~/.config/demo-kit/backups/hitl-2026-11-24")
@@ -40,9 +40,12 @@ def lst(k):
 
 apps, pols, keys, users, aip = lst("applications"), lst("pacpolicys"), lst("agentaccesskeys"), lst("users"), lst("aipolicys")
 uname = {u["Spec"]["UserName"]: n for n, u in users.items()}
+if CUSTODIAN not in uname and f"cmuir+{CUSTODIAN}@pingone.com" in uname: uname[CUSTODIAN] = uname[f"cmuir+{CUSTODIAN}@pingone.com"]  # usernames are emails on 5bfb4e12
 assert CUSTODIAN in uname, f"user {CUSTODIAN} missing"
 cust_id = uname[CUSTODIAN]
-approver_id = APPROVER_GROUP; assert approver_id in lst("groups"), "approver group missing"
+_g = [n for n, o in lst("groups").items() if o["Spec"].get("Description", "").startswith(APPROVER_GROUP_DESC)]
+assert len(_g) == 1, f"expected exactly one approver group starting '{APPROVER_GROUP_DESC}', found {len(_g)}"
+approver_id = _g[0]
 assert DOOR in apps and HOLD in aip, "door or hold policy missing"
 permit = pols[f"{DOOR}-permit"]
 tools = permit["Spec"]["ActionMap"]["MCP"]["PolicyRule"][0]["Capabilities"]["Map"]["tools"]["Elems"]

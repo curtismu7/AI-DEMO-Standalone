@@ -7,6 +7,7 @@
 // The `lab-agent-*` grants made by step17 (cloned from a broken template) get IssuedTo = the key's custodian and a validity window.
 // Dry run by default; --apply PUTs the whole object. Idempotent. Never prints secrets.
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import crypto from 'node:crypto';
+import { withEmailAliases } from './map-users.mjs';
 import { buildMaps, decodeRef, b64ref, rewriteDeep } from '/Users/cmuir/Development/PINGID-MIGRATION/lib.mjs';
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const APPLY = process.argv.includes('--apply');
@@ -18,7 +19,7 @@ const HDR = { 'x-procyon-session-id': crypto.randomUUID(), accept: 'application/
 const load = (k) => { const d = JSON.parse(fs.readFileSync(path.join(EXPORT, `${k}.json`), 'utf8')); return Array.isArray(d) ? d : Object.values(d).find(Array.isArray) || []; };
 const list = async (k) => { const r = await fetch(`${BASE}/${k}?ObjectMeta.Namespace=default`, { headers: HDR }); return Object.values(await r.json()).find(Array.isArray) || []; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const maps = buildMaps({ srcUsers: load('users'), dstUsers: await list('users'), srcGroups: load('groups'), dstGroups: await list('groups') });
+const maps = buildMaps({ srcUsers: load('users'), dstUsers: withEmailAliases(load('users'), await list('users')), srcGroups: load('groups'), dstGroups: await list('groups') });
 const report = { unmappedUsers: new Set(), unmappedGroups: new Set(), droppedRefs: [], droppedRules: [], secrets: [] };
 const ctx = { oldTenant: OLD, newTenant: NEW, maps, report, meshCluster: 'ai-demo-cmuir', skippedNames: new Set() };
 const fix = (v) => rewriteDeep(JSON.parse(JSON.stringify(v)), ctx);

@@ -208,6 +208,31 @@ The environment `Pingid-privilege` (`ea040334…`, retired 2026-11-24) was creat
 - The PingID apps (`PingID Desktop`, `PingID Desktop Gen2`, `PingID Mobile`) and the old env's `Multi_Factor` policy do not exist in the new environment.
 To finish it (owner decision, needs a person): in the console, Pingid-privilege -> add the PingID capability with a PingID admin login (or create a PingID account); then pair `demouser`'s phone; then `step05_signon_policies.py --only Multi_Factor` and test one HITL push **before** turning tenant MFA on (see "Lockout rules"). A PingID account (deployment `35200c13-a439-42bc-87cf-b06a0af4ea20`) is attached to the old `pingid` environment: do not try to re-attach it to the new one by API without deciding what happens to the old environment's paired devices.
 
+## Move to `5bfb4e12` (2026-11-24): what was done and what it taught
+`5bfb4e12-8d71-4b81-8ef8-940b91728c05` ("Pingid_Privillege", SANDBOX, NA) was made by the owner in the console in one wizard, which is the only way to get a PingID deployment (the API accepts `PING_ONE_ID` but provisions no deployment). The earlier plan to attach the old PingID account to `ea040334` ("Use Existing") was dropped for this.
+Done by API with the environment's own worker (read-backs saved under `~/.config/demo-kit/backups/move-5bfb4e12-2026-11-24/`):
+- Privilege mode flipped agentless to agent (`PUT billOfMaterials`, only the `PING_ONE_PAM` tag changed).
+- Group `PrivilegeAdmins` created and all 19 users added (old members matched by **email**, not username: `aidemo` is `cmuir+aidemo@pingone.com`, `jordan.ellis` is `cmuir+jordan@pingone.com`, `demoUser-new` is `cmuir+4@pingidentity.com`).
+- Privilege app `accessControl` set to that group (whole-object PUT). Without it the console says "This user does not have access ... designated group".
+- Agent onboarded with a link made inside the new tenant (private window), then `POST /setpreftenant`.
+
+Lessons:
+- **Onboarding adds a tenant, it does not select it.** Until `PrefTenant` is set the agent falls back to an old onboarded tenant that demands MFA and shows `mfa-required` although the new tenant has MFA off. Fix: `POST /setpreftenant {"Tenant":"<id>"}`; the agent goes disabled, enabled, connected in about 10 s.
+- **Restarting the agent daemon (`launchctl kickstart -k system/com.procyon.ai`) clears `PrefTenant`.** Set it again straight after, or the fallback tenant's MFA error ("Error initiating Ping MFA ... failed after 2 attempts", a Privilege-side failure) returns.
+- **`connected` is not enough for the local console.** `AgentState connected` with controller and proxy READY can still leave `https://local.procyon.ai:8643` accepting TCP but never answering the TLS hello (seen after a tenant switch and a daemon restart; a disable/enable cycle did not clear it). Check the console, not just `/status`, before running a script.
+- **Switching the agent back to the previous tenant is not safe.** After the move, switching to `ea040334` gave `mfa-required`, so a live export of the old tenant is not available once the agent has left it. Export first, then move.
+- A worker made by a person inherits all that person's roles (here 180, read-only, across 60 environments). It cannot trim itself ("May not change role assignments for self"); another principal must, or a fresh worker made by the setup script (PR #579) is trimmed to two roles.
+- A role-assignment API listing can show one row per environment; count by scope id before concluding "duplicates".
+- PingID itself was not paired on this environment; tenant MFA stays off until stage 2 of the HITL test case.
+
+Replay into `5bfb4e12` (2026-11-24), in this order, each read back from the tenant: step 13 (10 identities, 31 apps, 24 permits, 15 AI policies, 18 tag policies, 9 shadow-AI policies; run `--kinds applications --apply` a second time for the 4 aggregate apps), 13b (54 objects), 13 `--kinds agentaccesskeys --keys` (22 keys; un-revoke `agg-guest` and `agg-delegate` with a whole-key PUT; `google` is refused until a valid `GOOGLE_API_KEY` is filled), 14 (doors `lab-banking-full|limited|blocked`, permits, keys `lab-banking-<variant>-key` and grants, `pgc-agent-llm`), 17a (`lab-agent`, cloned from `audit-test`; no export has it), 17 (three grants), 18 (`priv-log-agent`). Totals afterwards: 34 apps, 32 policies, 28 keys.
+- Users are matched to the new tenant by `EmailID` (then two confirmed aliases) in `map-users.mjs`, because `buildMaps` compares usernames and they differ after the move (12 of 12 map).
+- `step14` no longer touches the lab `.env` or `pgc-hosted.env` unless `--write-env` is passed: those writes repoint the lab, and must wait until the gateways serve this tenant (step 15).
+- A key whose custodian is a person has `UserRef` only; a template key's `CustodianRef` (NonHumanIdentity) must be cleared or the POST is a 400.
+- **The local console listener wedges under a burst of calls** (after a few hundred in a row it stopped accepting for about 30 s, then recovered). Run replay steps one at a time and retry a failed read once.
+- 13b renews an already-past `NotAfter` by 90 days on every run, so it always reports two updates; the `lab-agent-*` grants end 2026-12-08 and need a longer window set by hand before then.
+- Not done on `5bfb4e12`: `apply-tag-schema.mjs` (needs the tenant API key; `orphan 0` unchecked), the cluster cutover (gateways still enrolled to `ea040334`), `step15` repointing, the HITL door (`step20`), the secrets that must be re-entered by hand.
+
 ## Lockout rules (learned the hard way)
 - **Keep Privilege tenant MFA (`EnableMFA`) off** until a full agent Disconnect/Connect with MFA on has been proven. The console and its API only exist while the agent is connected. If the agent's MFA fails, nothing can turn MFA off again except the Privilege team.
 - Never use an onboarding link from another tenant on the demo Mac: it re-binds the device (2026-11-23 04:25 moved it to the old tenants).

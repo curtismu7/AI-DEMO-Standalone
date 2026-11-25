@@ -8,8 +8,10 @@ import base64, json, os, urllib.error, urllib.parse, urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE = os.path.join(os.path.dirname(HERE), "state.json")
 ORG_CREDS = os.path.expanduser("~/.config/demo-kit/provisioning.json")
-# P1_NEW_ENV_CREDS overrides the target environment's worker creds file (2026-11-24 move: privilege-env-5bfb4e12.env).
-NEW_ENV_CREDS = os.path.expanduser(os.environ.get("P1_NEW_ENV_CREDS", "~/.config/demo-kit/pingid-privilege-env.env"))
+# Env var overrides the target environment's worker creds file (2026-11-24 move: privilege-env-5bfb4e12.env).
+# P1_NEW_ENV_CREDS is the canonical name; PRIV_ENV_CREDS is accepted as the older alias.
+CREDS_OVERRIDE = os.environ.get("P1_NEW_ENV_CREDS") or os.environ.get("PRIV_ENV_CREDS")
+NEW_ENV_CREDS = os.path.expanduser(CREDS_OVERRIDE or "~/.config/demo-kit/pingid-privilege-env.env")
 TLD = "com"  # NA region
 
 
