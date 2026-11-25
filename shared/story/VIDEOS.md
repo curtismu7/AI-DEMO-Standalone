@@ -26,6 +26,7 @@
 | spiffe-issuer-LAB | **no** (take.py still on its own overlay; runbook §9 migration not started) | The §9 migration (one PR) before any recording | Migrate take.py onto the shared bridge, rehearsal-compare, then record |
 | meridian-air-LAB | **partly** (has `guarded_take.py` + `onscreen_mask.py` + tests — the most standards-ready pipeline — but take.py is not confirmed on the shared story bridge) | §9 migration check; then a rehearsal | Verify bridge status, rehearse, record |
 | cimd-LAB | n/a (no video; Story only, lab #35) | — | Decide if it ever gets a video (needs the owner's PingFederate for a real walk) |
+| cedar-act-sub-LAB | no (Story merged, lab #17; no take.py yet — the video pipeline is the first PR, then bubbles ready) | The video pipeline (story_bridge.py + captions.py + take.py) and the VIDEO.md gates (masking, redacted stills) | Build the video pipeline from the pf-privilege-obo-LAB template, then rehearse, then the owner records the Mock cut |
 | cedar-in-privilege-LAB | no (Story merged, lab #12; no take.py yet — the video pipeline is the first PR, then bubbles ready) | The video pipeline (story_bridge.py + captions.py + take.py) and the VIDEO.md gates (masking, redacted stills) | Build the video pipeline from the pf-privilege-obo-LAB template, then rehearse, then the owner records the Mock cut |
 | all other labs | n/a | No Story yet (see ROLLOUT.md order) | Story rollout first; videos follow |
 
