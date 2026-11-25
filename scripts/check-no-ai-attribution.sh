@@ -26,7 +26,8 @@ known_old=(
   35708386d7e5eef3c371bef06906d0445dfe8c74
 )
 
-self_coauthor='^[C]o-authored-by:[^<]*<([0-9]+\+)?(curtismu7|cmuir)@users\.noreply\.github\.com>[[:space:]]*$'
+# GitHub's squash merge uses the profile's display-name address, not always the noreply one; both are the owner.
+self_coauthor='^[C]o-authored-by:[^<]*<([0-9]+\+)?(curtismu7|cmuir)@users\.noreply\.github\.com|curtis@coachcurtis\.org>[[:space:]]*$'
 bad=0
 for h in $(git log --all --since="$rule_date" --format=%H 2>/dev/null); do
   case " ${known_old[*]} " in *" $h "*) continue ;; esac
