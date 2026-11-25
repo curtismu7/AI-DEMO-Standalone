@@ -42,5 +42,10 @@ Steps, in order (the owner does every agent-control and console step; the guard 
 
 Today stage 1 approval is a console click (`channel chat`); a push-based approval needs step 4 to prove the channel.
 
+## Stage 2 result (executed 2026-11-25; it did not follow the plan above in order: tenant MFA was already on, so the first thing proved was the push, not the rollback)
+Tenant `EnableMFA` was on, `demouser` has a paired `PINGID_MOBILE` device, and the Default MFA Policy has `platform` and `securityKey` OFF (with them on, PingOne's `DEFAULT_TO_FIRST` picked Touch ID, returned `ASSERTION_REQUIRED` and Privilege showed "Failed to initiate MFA verification"; see the guide's `5bfb4e12` lessons).
+Run on the shared host (`mcpgw.ai-demo.ping-devops.com`, door `opensearch-hitl2`, key `lab-opensearch-hitl-key`, approver group `HitlApprovers` = demouser): control `ListIndexTool` 200; `SearchIndexTool` 403 `pending_approval` (`ins_dec96c8b...`); approved by `demouser` **channel `ciba`** 7 s after the hold; PingOne audit: `PUSH_CONFIRMATION_REQUIRED`, then "Mobile authentication approved for iPhone18,2"; retry with `X-Procyon-Approval-Id` 200; second call without the id 403.
+Still true: each agent reconnect needs one push tap; a daemon restart clears `PrefTenant` (run `setpreftenant` again).
+
 ## Not covered
 Human (user-token) calls to this door: `demouser` is still denied on the `lab-banking-*` doors ("no policy grants this principal access"). This test uses the key path only.
