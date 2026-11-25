@@ -130,7 +130,7 @@ tmp = sys.argv[1]; pre = "sk-" + "orion-"
 full = pre + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "1234"
 lines = {
   "gw": {"time": "2026-11-24T12:00:00.123Z", "level": "info", "msg": "LLM request", "Provider": "openai", "Model": "gpt-x", "HTTPStatus": 200, "TotalTokens": 12,
-         "VirtualKeyID": full, "User": "u-1", "Headers": {"Authorization": "Bearer abcdefgh" + "12345678"}, "Note": "called with Bearer zzzzzzzz" + "9999 ok", "keep": "me"},
+         "VirtualKeyID": full, "User": "u-1", "UpstreamStatus": 200, "LatencyMs": 1008, "CostUSD": 0.000138, "Streaming": False, "EndUserResolved": False, "Headers": {"Authorization": "Bearer abcdefgh" + "12345678"}, "Note": "called with Bearer zzzzzzzz" + "9999 ok", "keep": "me"},
   # lines that have no VirtualKeyID (the A2A ones, and an AIGuard verdict) and keys that are short or already in prefix...last4 form
   "gw2": {"time": "2026-11-24T12:00:05Z", "msg": "A2A policy denied", "Principal": "agent-7", "App": "orders", "Reason": "principal does not have access"},
   "gw3": {"time": "2026-11-24T12:00:06Z", "msg": "AIGuard", "Event": "llm_request_blocked", "Category": "prompt_injection", "VirtualKeyID": pre + "..." + "1234", "User": "u-1"},
@@ -178,6 +178,7 @@ good = [check("index gateway-events", a.get("create", a.get("index", {})).get("_
         check("Headers removed", "Headers" not in d and "abcdefgh12345678" not in json.dumps(d)),
         check("Bearer in Note masked, text kept", "zzzzzzzz9999" not in d.get("Note", "") and d.get("Note") == "called with Bearer *** ok"),
         check("other fields kept, _time removed", d.get("keep") == "me" and d.get("Model") == "gpt-x" and "_time" not in d),
+        check("numbers and booleans keep their types (not turned into strings)", d.get("HTTPStatus") == 200 and type(d["HTTPStatus"]) is int and d.get("TotalTokens") == 12 and type(d["TotalTokens"]) is int and d.get("LatencyMs") == 1008 and type(d["LatencyMs"]) is int and d.get("CostUSD") == 0.000138 and type(d["CostUSD"]) is float and d.get("Streaming") is False and d.get("EndUserResolved") is False),
         check("[%s] OpenSearch copies: %d (expected %s)" % (sys.argv[3], len(osd), sys.argv[4]), len(osd) == int(sys.argv[4]))]
 by = {d[1]["msg"] + ":" + d[1].get("User", d[1].get("Principal", "")): d for d in docs(sys.argv[1]) if d[1].get("msg") in ("A2A policy denied", "AIGuard", "LLM request")}
 a2a = by.get("A2A policy denied:agent-7"); ag = by.get("AIGuard:u-1"); short = by.get("AIGuard:u-2")

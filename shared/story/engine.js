@@ -18,7 +18,9 @@
 //     tab, before, after,  // host.switchTab(tab); before(): may open a pop-out (may be async); after(): closes it when the step is left
 //     transform }      // (slide, mode) => slide : a last tweak to a slide's wording
 // host: { mode(), query(selector) -> Element|null, mark(), waitForRun(marker, timeoutMs) -> Promise<{ok, reason?}>, prefill(step), send(step), switchTab(tab), assetUrl(name),
-//         runStarted(marker) -> boolean }   runStarted (optional, recommended): true when a run began since mark(), so Play never sends a question the viewer already sent
+//         runStarted(marker) -> boolean, runInFlight() -> boolean, onRun(cb) -> unsubscribe }   runInFlight/onRun (optional, recommended): let the wait for a run say whose turn it is (
+//         nothing running = the viewer's: press Send) and accept a result the page already shows when the viewer sent the question early
+//           runStarted (optional, recommended): true when a run began since mark(), so Play never sends a question the viewer already sent
 
 import { bubbleHold, slideHold, holdMs, speedFactor, SPEED_NAMES } from './hold.js';
 
@@ -45,7 +47,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
   const write = (k, v) => { try { if (store) store.setItem(k, v); } catch { /* storage blocked: the choice is kept for this session only */ } };
 
   const st = { active: false, status: 'idle', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false,
-    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, stalledAt: -1 };
+    speed: SPEED_NAMES.includes(read(SPEED_KEY)) ? read(SPEED_KEY) : 'normal', message: '', warnings: [], isPrompt: false, promptKind: null, waitingOn: null, stalledAt: -1 };
   const subs = new Set();
   let gen = 0; let shown = []; let marker = null; let current = null;
   let holdTimer = null; let scrollTimer = null; let holdEndsAt = 0; let holdRemaining = 0; let holdAction = null; let holdSlide = false; let curSecs = 0;
@@ -85,13 +87,26 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
 
   async function waitFor(s, my, { skipWait }) {
     if (skipWait || s.trigger === 'load' || !s.trigger) return { ok: true };
-    st.status = 'waiting'; st.index = steps.indexOf(s); st.key = s.key; st.isPrompt = false;
+    st.status = 'waiting'; st.index = steps.indexOf(s); st.key = s.key; st.isPrompt = false; st.promptKind = null;
     clearHold(); holdAction = null; holdRemaining = 0;
     overlay.clear();
     if (s.trigger === 'run-done') {
-      st.message = 'Waiting for the run to finish. Press Send if you have not.'; emit();
+      const inFlight = () => safe(() => !!(host.runInFlight && host.runInFlight()), false);
+      const started = () => safe(() => !!(host.runStarted && host.runStarted(marker)), false);
+      // The viewer sent the question before this step (or before a reload) and its result is already on the page, with nothing running: show it, do not wait for another run.
+      if (host.runInFlight && !inFlight() && !started() && targetOf(s)) return { ok: true };
+      // Say who we are waiting on, and keep saying it truthfully as a run starts and ends: nothing running is the VIEWER's turn (press Send); a run in flight is the run's.
+      const say = () => {
+        const viewer = host.runInFlight ? !inFlight() && !started() : false;
+        st.waitingOn = host.runInFlight ? (viewer ? 'viewer' : 'run') : null;
+        st.message = !host.runInFlight ? 'Waiting for the run to finish. Press Send if you have not.' : viewer ? 'Your turn: press Send for the question above; the story carries on when the answer is in.' : 'Waiting for the run to finish.';
+        emit();
+      };
+      say();
+      const off = safe(() => (host.onRun ? host.onRun(() => { if (my === gen && st.status === 'waiting') say(); }) : null), null);
       let r;
       try { r = await host.waitForRun(marker, waitTimeoutMs); } catch { r = { ok: false, reason: 'The run could not be checked. Press Next to carry on, or Exit.' }; }
+      finally { if (typeof off === 'function') safe(off, undefined); st.waitingOn = null; }
       return my === gen ? r : { ok: false, stale: true };
     }
     // 'frame': poll for the target. A target that never appears means the step does not apply to this run: it is skipped, not an error.
@@ -131,7 +146,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
     current = s;
     if (!replay) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
     if (s.prompt && !replay) { marker = safe(() => host.mark(), { runs: 0 }, `"${s.key}": the run counter could not be read`); safe(() => host.prefill(s), undefined, `"${s.key}": the question could not be filled in`); }   // Back never refills a prompt the viewer may have edited
-    st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.stalledAt = -1;
+    st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.promptKind = s.prompt ? (s.prompt.press ? 'press' : 'text') : null; st.stalledAt = -1;
     st.kind = s.type; st.n = shown.slice(0, st.pos + 1).filter((i) => isBubble(steps[i])).length; st.total = shown.filter((i) => isBubble(steps[i])).length + remainingAfter(shown[shown.length - 1]);
     if (s.type === 'slide') {
       overlay.slide({ ...cap, image: cap.image && host.assetUrl ? host.assetUrl(cap.image) : null });
@@ -197,14 +212,14 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
 
   function finish() {
     clearHold(); overlay.clear(); stopPlay();
-    st.status = 'done'; st.message = 'End of the story.'; st.isPrompt = false; emit();
+    st.status = 'done'; st.message = 'End of the story.'; st.isPrompt = false; st.promptKind = null; emit();
   }
 
   // ---- the viewer's controls
   async function start() {
     gen += 1; clearHold(); await leave(); overlay.clear();
     shown = []; marker = null; passed = new Set();
-    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, stalledAt: -1 });
+    Object.assign(st, { active: true, status: 'showing', index: -1, pos: -1, n: 0, total: 0, kind: null, key: null, playing: false, paused: false, message: '', warnings: [], isPrompt: false, promptKind: null, stalledAt: -1 });
     emit();
     return advance(0);
   }

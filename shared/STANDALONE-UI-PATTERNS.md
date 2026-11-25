@@ -37,6 +37,17 @@ banner patterns. Known convergence work for next PRs:
 - The bar wraps at 600px: nav drops to its own row (`flex-basis: 100%`).
 - Markup names: `shell-bar`, `shell-brand`, `shell-nav`, `shell-right` (BEM children
   allowed). A light `.topbar` is the legacy pattern — migrate when touching the page.
+- Brand sizing (2026-11-24 header standard; sizes live **only** in
+  `shared/standalone-ui.css`, checker rule B1 flags app-level overrides):
+  `.shell-brand` > `.brand-mark` + `.shell-brand__text` > `.shell-brand__name` +
+  `.shell-brand__tag`. Name 1.4rem, mark 1.4rem, tagline 0.9rem at 85% opacity; at
+  ≤600px name/mark 1.15rem and the tagline is hidden. rem units, so the TopMenu
+  Text-size control scales them. Visual reference: `shared/header-standard-mock.html`.
+  Flat-brand labs (the name in a bare `h1` inside `.shell-brand`, no `__name`/`__tag`
+  elements) are sized identically by the shared `.shell-brand h1` rule — converting
+  the markup to the BEM form is welcome but not required. The sizing is ALSO set at
+  `.shell-bar .shell-brand h1` so a lab's own `.shell-bar h1 { font-size }` cannot
+  override it (checker rule B1 flags such overrides).
 
 ## 2. Simulation / status banner (every page)
 
@@ -250,6 +261,7 @@ inline styles are judged together. A status is PASS, DRIFT, WARN or INFO; only D
 | V1 | The page loads a `standalone-ui.css` identical to `shared/standalone-ui.css` |
 | M1 | A visible Mock / Real toggle wired to `/api/mode` (rule 19) |
 | C1 | Token contrast: primary gradient, chips, muted text, borders, and the focus ring on content surfaces and on the dark shell bar (4.5:1 text, 3:1 non-text) |
+| B1 | Brand font sizes come from the shared stylesheet (section 1): no `font-size` (or `font` shorthand) on `.shell-brand*` in the app's own CSS. The matcher is a substring match on any part of any selector, so BEM children like `.shell-brand-icon` are included. ENFORCED (DRIFT) since 2026-11-25 — every lab's vendored stylesheet is the canonical one, so the rule never fires on a current lab |
 
 Not checked statically: contrast of colours computed in the browser (only the shared tokens and the focus ring are), horizontal overflow at 375px, keyboard
 behaviour, markup built at run time (`innerHTML`, `createElement`), CSS-in-JS. Keep doing the browser checks

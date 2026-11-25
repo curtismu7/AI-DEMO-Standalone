@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { withEmailAliases } from './map-users.mjs';
 import {
   buildMaps, toCreateBody, filterGrantRules, decodeRef, b64ref, DEFAULT_KINDS,
 } from '/Users/cmuir/Development/PINGID-MIGRATION/lib.mjs';
@@ -39,7 +40,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const dstUsers = await list('users');
 const dstGroups = await list('groups');
-const maps = buildMaps({ srcUsers: load('users'), dstUsers, srcGroups: load('groups'), dstGroups });
+const maps = buildMaps({ srcUsers: load('users'), dstUsers: withEmailAliases(load('users'), dstUsers), srcGroups: load('groups'), dstGroups });
 console.log(`mapping: ${maps.user.size} users mapped, ${maps.missingUsers.length} source users missing in new tenant, groups ${maps.group.size}`);
 if (maps.missingUsers.length) console.log('  missing users (their references are dropped):', maps.missingUsers.join(', '));
 

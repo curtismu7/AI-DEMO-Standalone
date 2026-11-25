@@ -37,11 +37,15 @@ export default function StoryBar({ story, mock = false, isManual = trusted }) {
 
   if (!s.active) return null;
   const done = s.status === "done";
+  // Waiting on the VIEWER (not on a run): a prompt step that is up and not being played for them, or a run that failed and needs Next. The message turns bright red and
+  // blinks slowly (story.css; no blink under reduced motion) so a presenter cannot miss that it is their turn.
+  const yourTurn = s.status === "stalled" || (s.status === "showing" && !!s.promptKind && !s.playing) || (s.status === "waiting" && s.waitingOn === "viewer");
+  const turnText = s.promptKind === "press" ? "Your turn: press the highlighted button, then Next" : "Your turn: press Send, then Next";
   return (
     <div className="story-bar" ref={bar} role="region" aria-label="Story controls" data-testid="story-bar" data-status={s.status}>
       {mock ? <span className="story-chip" data-testid="story-simulated">Simulated</span> : null}
-      <span className="story-msg" role="status" aria-live="polite" data-testid="story-msg">
-        {s.message || (s.status === "waiting" ? "Waiting for the run…" : done ? "End of the story." : s.kind === "slide" ? "Slide" : s.n ? `${s.n} of ${s.total}` : "")}
+      <span className="story-msg" role="status" aria-live="polite" data-testid="story-msg" data-your-turn={yourTurn ? "true" : undefined}>
+        {s.message || (s.status === "waiting" ? "Waiting for the run…" : done ? "End of the story." : yourTurn ? turnText : s.kind === "slide" ? "Slide" : s.n ? `${s.n} of ${s.total}` : "")}
       </span>
       <button type="button" onClick={() => story.back()} disabled={!s.canBack} data-testid="story-back">Back</button>
       <button type="button" onClick={() => story.next()} disabled={!s.canNext} data-testid="story-next">Next</button>

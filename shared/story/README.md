@@ -1,6 +1,6 @@
 # Story mode (shared pattern)
 
-> **Scope: AI-DEMO-Standalone apps only, for now.** The target is a `standalone/*-LAB` app: each lab is its own `curtismu7/<name>-LAB` repo and a submodule of AI-DEMO-Standalone, the shared code is vendored from `AI-DEMO-Standalone/shared/story`, and the PR goes in the **lab's** repo. A new standalone app counts once it exists as a `standalone/*-LAB` under the standalone-demo rules. **Out of scope: AI-DEMO2 and any repo that is not a `standalone/*-LAB` lab.** Anything else needs the owner's say-so first: stop and ask. **Adding it to a lab: follow `ADDING-TO-A-LAB.md`** (the steps, the files to copy, the mistakes already made, the browser tools). This file is the contract.
+> **Scope: AI-DEMO-Standalone apps only, for now.** The target is a `standalone/*-LAB` app: each lab is its own `curtismu7/<name>-LAB` repo and a submodule of AI-DEMO-Standalone, the shared code is vendored from `AI-DEMO-Standalone/shared/story`, and the PR goes in the **lab's** repo. A new standalone app counts once it exists as a `standalone/*-LAB` under the standalone-demo rules. **Out of scope: AI-DEMO2 and any repo that is not a `standalone/*-LAB` lab.** Anything else needs the owner's say-so first: stop and ask. **Rolling it out to more labs: start with `ROLLOUT.md` (the hand-off brief, the candidate labs, the status table).** **Adding it to a lab: follow `ADDING-TO-A-LAB.md`** (the steps, the files to copy, the mistakes already made, the browser tools). This file is the contract.
 
 **Status:** engine built and merged (PR #553); first used in the A2A lab (`privilege-a2a-anthropic-demo-LAB`, the reference implementation). Agreed 2026-11-24 (PR #552 merged) (spec: `docs/specs/2026-11-24-story-mode.md`; each lab keeps its own copy of that spec). Amended 2026-11-24: optional **Play for me** with a speed control. This file is the contract every demo follows once it adopts Story mode. Canonical copy lives here; labs vendor a byte-for-byte copy and pin it.
 
@@ -19,6 +19,7 @@ One file holds every bubble and slide. Each demo keeps its own `video/captions.m
 
 - `# Step: <key>` starts a bubble, with `## Title` and `## Text` sections.
 - `# Slide: <key>` starts a slide, with `## Title`, `## Lead`, optional `## Column A: <label>` and `## Column B: <label>` lists, and `## Verdict`.
+- **First page title (owner, 2026-11-24; STANDALONE-RULES rule 29):** the `# Opening Slide` has a `## Header` naming what the demo shows (for example "A2A, and A2A with an AWS agent"); the overlay shows it above the slide's title, and the parser refuses an opening slide without one. If a mode shows another slide first (a Mock "this is simulated" note), give that slide the same `## Header`: whatever the viewer sees first carries it, in the live Story and in the video.
 - `---` separates sections. Keep each bullet on its own line starting with `- `.
 - Live values go in `{braces}`, for example `{status}`, `{tools}`, `{words}`. The page fills them from the DOM.
 - Keep slide text to about 40 words, so a slide is never held longer than 10 s in a video.
@@ -73,6 +74,8 @@ A test checks that every `# Step:` and `# Slide:` key in `captions.md` has a mat
 | `*.test.mjs` | not vendored | `node --test shared/story/*.test.mjs` (a glob, never a directory) |
 | `tools/walk.py`, `tools/play.py` | not vendored | the real-browser checks (walk every step as a viewer at both screen sizes; Play for me, speed, Pause). Run them, then read the screenshots. See `ADDING-TO-A-LAB.md` section 7 |
 | `ADDING-TO-A-LAB.md` | not vendored | the runbook for agents adding Story to a lab |
+| `ROLLOUT.md` | not vendored | the hand-off for rolling Story out to the other labs: the brief to paste to an agent, the candidate labs and order, the status table |
+| `VIDEO.md` | not vendored | the hand-off for re-recording a lab's video for public release on the shared code: the brief to paste, the gates (served wording, page masking, redacted and OCR-checked screenshots), recording both cuts, the checks, the release |
 
 `StoryPanel.jsx` and `fill.js` in this folder are the older talk-track panel (2026-11-13). They are separate from Story mode and are not part of this pin.
 

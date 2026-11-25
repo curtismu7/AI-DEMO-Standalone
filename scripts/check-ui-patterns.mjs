@@ -96,6 +96,7 @@ export const RULES = {
   T1: 'theme tokens only: no colour literals in own CSS outside token definitions; purple/violet/indigo hues drift',
   T2: 'font-size floor of 10px',
   T3: 'dark and light themes are both defined',
+  B1: 'brand font sizes come from the shared stylesheet: no font-size on .shell-brand* in the app own CSS (advisory until the header rollout completes)',
   A1: 'buttons, links and form controls have an accessible name',
   A2: 'no outline:none without a replacement focus style',
   A3: 'every img has alt (role=img needs a label)',
@@ -107,6 +108,7 @@ export const RULES = {
 export const RULE_IDS = Object.keys(RULES);
 // Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
 // their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
+// B1 (brand font-size in app CSS, header standard 2026-11-24) was WARN-only during the rollout; enforced (DRIFT) since 2026-11-25 — the rollout is complete and every vendored copy matches the canonical.
 const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
@@ -923,7 +925,7 @@ const over = (fg, bg) => (fg.length > 3 && fg[3] < 1 ? fg.slice(0, 3).map((c, i)
 // ============================== files and imports ==============================
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.vite', '.next', '__tests__', 'tests', 'test', 'fixtures', 'docs', 'mocks', 'mock', 'e2e', 'playwright-report', 'data', '.data', 'storybook-static']);
-const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link', 'gateway-trace', 'diagram-kit', 'phone']);
+const VENDORED_DIRS = new Set(['floating-dialog', 'evidence', 'return-link', 'hop-detail', 'shelf-link', 'gateway-trace', 'diagram-kit', 'phone', 'story', 'run-observability']);
 // Single vendored files (shared/json): pinned byte for byte by their sha256 files, so the rules do not judge them.
 const VENDORED_FILES = new Set(['JsonPane.jsx', 'JsonPane.css', 'Json.jsx']);
 const isVendoredPath = (appDir, p) => VENDORED_FILES.has(path.basename(p)) || path.relative(appDir, p).split(path.sep).some((s) => VENDORED_DIRS.has(s));
@@ -2677,7 +2679,27 @@ function ruleC1(u) {
   return PASS(R);
 }
 
-const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1];
+// ---- B1: brand sizing belongs to the shared stylesheet, not the app's own CSS
+// (header standard, 2026-11-24: sizes live in shared/standalone-ui.css only).
+function ruleB1(u) {
+  const R = 'B1';
+  const hit = [];
+  for (const s of ownSheets(u)) {
+    for (const r of s.parsed.rules) {
+      const parts = selParts(r.selector);
+      if (!parts.some((p) => /\.shell-brand/i.test(p))) continue;
+      for (const d of r.decls) {
+        if (d.prop === 'font-size' || d.prop === 'font') {
+          hit.push({ file: r.file, line: d.line, msg: `${r.selector.trim()} { ${d.prop}: ${d.value.trim()} } — brand sizes come from shared/standalone-ui.css` });
+        }
+      }
+    }
+  }
+  if (hit.length) return mk(R, 'DRIFT', `app CSS sets a brand font-size on .shell-brand*: ${first(hit)}`, hit);
+  return PASS(R);
+}
+
+const RULE_FUNCS = [ruleP1, ruleP2, ruleP3, ruleP4, ruleP6, ruleP7, ruleP9, ruleP10, ruleP11, ruleH1, ruleH2, ruleH3, ruleT1, ruleT2, ruleT3, ruleA1, ruleA2, ruleA3, ruleJ1, ruleV1, ruleM1, ruleC1, ruleB1];
 
 /** Apply the `ui-pattern: allow` escapes: a finding on the escape's line or the line below is let through. */
 function applyEscapes(results, u) {

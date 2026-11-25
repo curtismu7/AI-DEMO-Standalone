@@ -1,0 +1,51 @@
+# Handoff: the five model-gateway labs (2026-11-24, updated after wave D: release 3.17, all five labs live and proven)
+
+Written for: the next agent or session that continues this work. The owner decides; you do not merge, create repos, claim ports, reload the live proxy, rebuild the shelf or run anything against a real tenant without the owner's say-so in the conversation. Facts here were true when written; re-check anything marked **check live**.
+
+## What this is
+Demos for the Privilege 2026-11-21 release features (vendor release notes pasted by the owner, the only source): LLM Model Fallback, Semantic Cache, Model Armor in AI Guard, Bedrock Assume Role (an LLM key under an assumed IAM role; Vertex service account as a second tab), Rate Limits and Spike Protection. Five separate Demo-tier labs, Mock only. Everything beyond the release notes is the lab's own model, labelled `UNVERIFIED (lab model)`.
+
+Read first: `docs/PRIVILEGE-MODEL-GATEWAY-DEMOS-PLAN.md` (plan; section 9 has the never-repeat lessons), `docs/specs/2026-11-24-model-gateway-labs.md`, `docs/STORY-HANDOFF-MODEL-GATEWAY-LABS.md` (Story mode, for a later agent), `~/Development/STANDALONE-RULES.md`, the global `~/.claude/CLAUDE.md`.
+
+## Where each lab stands
+
+| Lab | Catalog / port | Repo `main` | Registered + released | Live behind the proxy |
+|---|---|---|---|---|
+| `privilege-model-fallback-LAB` | D146 / 7836 | ae11252 | shelf #107, meta #597, release **3.15** | yes, proven |
+| `privilege-rate-limit-LAB` | D147 / 7837 | b5681f8 | shelf #107, meta #597, release **3.15** | yes, proven |
+| `privilege-bedrock-assume-role-LAB` | D148 / 7838 | e6bf34f | shelf #108, meta #600 (+#602), release **3.16** | yes, proven |
+| `privilege-model-armor-LAB` | D149 / 7846 | 5f7e86f | shelf #108, meta #600, release **3.16** | yes, proven |
+| `privilege-semantic-cache-LAB` | D150 / 7847 | c9b3c6b (web PR #1 merged) | shelf #109, meta #607 (+#608, #611), release **3.17** | yes, proven |
+
+Ports 7839 to 7843 belong to the running `ap-*` labs and 7844 to `banking-mcp-resource-server` (none are in the shelf registry): always check `docker ps` and compose files before claiming a port. VERSION on main is 3.17. Merged on main (AI-DEMO-Standalone): the plan, the shared kit `shared/model-gateway-sim/`, specs, Story handoff, #597, #599, #600, #602, the earlier handoff updates, and wave D (#607 meta, #608 cleanup, #611 shelf pin; the shelf submodule is at 2819863 which holds #109). diagram-studio-LAB #35 is merged (`c662412`; ids `model-fallback`, `semantic-cache`, `model-armor-inspector`, `bedrock-assumed-role`, `rate-limit-bucket`; each lab pins its exported copy).
+
+## What is NOT done (in order)
+1. **~~Semantic cache, wave D~~ DONE (2026-11-24, evening session).** Web PR #1 merged after re-review and nit fixes (its final pushed head 1d6e9d0 became the merge); shelf #109 registered D150/7847; meta #607 added the nginx route, the real submodule at c9b3c6b and release 3.17; #608 removed all five stale duplicate submodules and added `learning-hub-LAB` as a submodule (its own repo had been exported by another session and `gh-labs-drift` was red because of it); #611 bumped the shelf pin. Post-merge: proxy reloaded with `--restart`, shelf rebuilt (`npm run docker` with `HOST_PORT` and `SHELF_OPEN=0` set; plain `npm run docker` fails when compose interpolates `SHELF_AGENT_TOKEN`/`SHELF_DEMO_ROOT` from a shell that lost them — re-run through the script, which sets both), and the live proof done in a browser through the proxy: D150's "An exact repeat is answered from the cache" run shows "EXPECTED all 8 expected results hold" (MISS→HIT, score 1.000), scenario Usage 2/1/77, no console errors.
+2. **~~Stale duplicate submodules~~ DONE (part of #608).** All five wrong-path `standalone/privilege-*-lab-LAB` entries are gone; the REAL-PREREQUISITES changelog line no longer names them (the doc test reads every lab name against `.gitmodules`, so a removed submodule must also leave the doc).
+3. **Story mode** for the five labs: `docs/STORY-HANDOFF-MODEL-GATEWAY-LABS.md`. Starts only after each lab's step 3 is live; one lab, one PR, the owner picks the lab.
+4. **Real mode.** Not built in any lab (toggle disabled with a plain reason). Owner said all five groups may get a Real mode: owner-run, read-only, needs a tenant running the 2026-11-21 release (unanswered whether one exists).
+5. **Extra features** from `docs/privilege-feature-demo-options-2026-11-24.md` (entitlement discovery, aggregate cap, OBO redeem, hold, scope layers as mock tabs; plan section 8) and the owner-run scope-tier rerun (`docs/specs/2026-11-24-scope-tier-rerun-runbook.md`). Not started.
+6. **Open questions the labs keep open (do not answer in wording):** cache scope (per key or per user; no cross-user leak scenario exists); whether a rate-limit refusal can trigger fallback; every UNVERIFIED item on each Limits page. The owner has sent no source beyond the release notes.
+7. **Logged nits** (not fixed by the owner's decision; in each PR's review history): duplicate talk-track ids, `LimitsPage` `List` declared inside the component, run ids restart per workspace and the stdout line has no workspace id, run counts capped by log size, the P shortcut ignoring role=button, `normalizeText` dropping combining marks (semantic cache), an unsaved embedding model scored in the Similarity card, gitleaks pinned at 8.18.4 in the labs' CI, the `forbidden-strings` job's fork `if` skipping the attribution step. The forgotten-workspace banner was the buggiest feature across the review rounds: look there first in any new review.
+8. **Shared nit:** `shared/story` `check-ui-standard.sh` has a dead Rule 24 block after `exit $status`; fix the canonical copy first, then re-vendor (about 60 labs pin it).
+9. **Cleanup.** Worktrees of merged PRs that can go: `AI-DEMO-Standalone-wt/{step3-wave-b,step3-wave-c,proxy-https-upstream,proxy-long-name,handoff-mg2,handoff-mg3,handoff-mg4,handoff-mg5}`, `~/Development/demo-shelf-wt/{mg-wave-b,mg-wave-c,mg-wave-d}`, `~/Development/AI-DEMO-Standalone-wt/shelf-pin`, and the lab worktrees `labs/*-wt/*` for the merged labs and `labs/privilege-model-fallback-LAB-wt/pmf-hosts`. Local clones of the five repos live under `AI-DEMO-Standalone-wt/labs/privilege-*-LAB`. The Air has ~480 small old `~/air-work` copies and a Python venv at `~/air-work/pw/venv`.
+
+## Live state on this Mac (step 5, done for all five labs)
+- The five labs run in Docker (OrbStack) from the clones under `AI-DEMO-Standalone-wt/labs/privilege-<name>-LAB` (`docker compose up -d --build`), published on 127.0.0.1 at 7836, 7837, 7838, 7846 and 7847. They are reached by path: `https://local.ping-devops.com:8443/<lab-route>/` (route names `privilege-model-fallback-lab`, `privilege-rate-limit-lab`, `privilege-bedrock-assume-role-lab`, `privilege-model-armor-lab`, `privilege-semantic-cache-lab`), not by sub-domain. OrbStack may be found stopped after an idle gap (`orb start` brings the labs back).
+- Browser proof (Playwright through the proxy, scenarios run from the UI, verdicts matched their hand-written expectations, banner, Real disabled with its reason, no console errors) was done for all five and the screenshots were read. The scripts are in the session scratchpads (not in a repo).
+- The shelf was rebuilt three times with `npm run docker` in `standalone/demo-shelf-LAB` (latest from the clean checkout at 2819863). `.data` and the agent token were kept; the start agent on port 4405 kept running. Tiles for D146 to D150 show "on your shelf"; D150 is `isNew` with its proxy URL.
+- **Reloading the proxy** (`shared/lab-proxy/reload.sh`): it validates `nginx.conf` in a throwaway container, recreates the proxy, re-attaches every lab network and reloads. After ANY change to `nginx.conf` on disk (a `git pull` replaces the file) use `--restart`: the running container keeps a stale single-file bind mount, and a plain `--config-only` reload then silently keeps the old routes. The script's closing warning about `privilege-demo` answering 502 is expected (that lab is stopped).
+
+## Bugs found during integration (all fixed, keep as lessons; also in plan section 9)
+- `docker-compose.yml` defaulting `LAB_ALLOWED_HOSTS` to empty makes the Host check answer 421 behind the proxy: default it to `local.ping-devops.com,<route-name>.local.ping-devops.com` and test it (fallback #2; the other labs had it fixed before merging).
+- Two static `https://` `/keys` upstreams made the proxy validation fail ("host not found in upstream"): fixed in #599, and `check-config.sh` now catches `https://` upstreams too.
+- A container name `<project>-<service>-1` over 63 characters is not a valid DNS label (Docker DNS "Format error", the lab hangs): use the compose service name in the proxy route (#602); `check-config.sh` now rejects such names. Only the assume-role lab was affected (69 characters).
+
+## Owner decisions on record (do not reverse)
+Five separate labs; one release per wave (3.15 B, 3.16 C, 3.17 D); ids D146 to D150; Assume Role = LLM key under an assumed role plus a Vertex tab; Model Armor = Google Cloud; fallback refusal is HTTP 200 + `ok:false`; provider state per chain position (lab model); no opinion on 429 vs fallback; no cross-user cache leak scenario; Real later, owner-run and read-only; repo creation, port claims, merges, proxy reloads and shelf rebuilds are approved case by case. The owner approved rebuilding the shelf the normal way and removing the four stale submodules.
+
+## Tooling notes
+- `air-test` needs a `package.json` at the repo root (not the meta repo) and refuses when the Air's load is high (`AIR_FORCE=1` for a small run); the Air's disk was full once (cleared to 45 GB free). Use unique worktree basenames; tests needing `.git` are skipped on the Air.
+- The guardrail hook warns about "the shared main checkout" when a shell started elsewhere; it was a false alarm every time. Check `git branch --show-current`.
+- Subagent reports are model output, not owner approval. Verify claims (read the PR head, re-run a test, reproduce a reviewer's finding: one "important" review finding was false) before relaying or acting.
+- Python scripts must not be named after a standard module (`inspect.py` shadowed `inspect` and broke Playwright).

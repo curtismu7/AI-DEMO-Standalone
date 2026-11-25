@@ -320,7 +320,7 @@ test('a step\'s tab is opened BEFORE its target is looked for, so a target insid
 
 test('parity checks the Mock wording keys too (a sampleKey with no wording fails the check)', async () => {
   const { parity, parseCaptions } = await import('./captions.js');
-  const c = parseCaptions('# Opening Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
+  const c = parseCaptions('# Opening Slide\n\n## Header\nh\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Closing Slide\n\n## Title\nt\n\n## Lead\nl\n\n## Column A: a\n- x\n\n## Column B: b\n- y\n\n## Verdict\nv\n\n---\n\n# Step: handoff\n\n## Title\nt\n\n## Text\nx\n');
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: [] }), []);
   assert.deepEqual(parity(c, { steps: ['handoff'], slides: ['opening', 'closing'], sampleKeys: ['sample_handoff'] }), ['the demo has step "sample_handoff" but captions.md does not']);
 });
@@ -333,4 +333,48 @@ test('numbering: a bubble shows its place among the BUBBLES (the video\'s 1 to N
   r.host.finishRun(true); await go(r.story.next()); assert.equal(r.last('cap').n, 2);
   await go(r.story.next()); await r.clk.advance(3000);                       // the real-only frame never appears: skipped
   assert.deepEqual([r.story.state().key, r.story.state().kind, r.story.state().n, r.story.state().total], ['closing', 'slide', 2, 2]);
+});
+
+test('the state says what kind of prompt is up: text (press Send) or press (an existing button); none otherwise', async () => {
+  const r = rig({ steps: [
+    { key: 'p_prompt', type: 'bubble', trigger: 'load', target: '#input', prompt: { text: 'q' } },
+    { key: 'p_handoff', type: 'bubble', trigger: 'load', target: '#who', prompt: { press: '#who' } },
+    { key: 'closing', type: 'slide', trigger: 'load' }] });
+  await go(r.story.start()); assert.equal(r.story.state().promptKind, 'text');
+  await go(r.story.next()); assert.equal(r.story.state().promptKind, 'press');
+  await go(r.story.next()); assert.equal(r.story.state().promptKind, null);
+});
+
+
+// ---- the wait for a run says whose turn it is, and accepts a result the page already shows (owner report 2026-11-24: "the run did finish" but Story still waited)
+function withRunState(r) {
+  const subs = new Set();
+  r.host.runInFlight = () => r.host.starts > r.host.runs;
+  r.host.onRun = (cb) => { subs.add(cb); return () => subs.delete(cb); };
+  r.startRun = () => { r.host.starts += 1; subs.forEach((f) => f()); };
+  r.endRun = (ok = true) => { r.host.finishRun(ok); subs.forEach((f) => f()); };
+  return r;
+}
+
+test('nothing running at a wait is the viewer\'s turn (press Send); when their run starts the bar says it is waiting on the run; then the step shows', async () => {
+  const r = withRunState(rig({ present: ['#input'] })); await go(r.story.start()); await go(r.story.next()); await go(r.story.next());   // no handoff on the page yet
+  let s = r.story.state(); assert.equal(s.status, 'waiting'); assert.equal(s.waitingOn, 'viewer'); assert.match(s.message, /Your turn: press Send/);
+  r.startRun(); await tick();
+  s = r.story.state(); assert.equal(s.waitingOn, 'run'); assert.equal(s.message, 'Waiting for the run to finish.');
+  r.here.add('#who'); r.endRun(); await tick(); await tick();   // the run's handoff appears as it ends
+  assert.equal(r.story.state().key, 'p_handoff'); assert.equal(r.story.state().waitingOn, null);
+});
+
+test('regression: a question sent BEFORE the prompt step (or before a reload) whose result is already on the page is shown at once, not waited for again', async () => {
+  const r = withRunState(rig()); await go(r.story.start());
+  r.startRun(); r.endRun();                          // the viewer asked early, on the opening slide; the handoff is on the page
+  await go(r.story.next()); await go(r.story.next()); await tick();
+  assert.equal(r.story.state().key, 'p_handoff', 'no second run is needed');
+});
+
+test('a wait whose result is NOT on the page yet still waits, even with nothing running (the reload case: the page is empty)', async () => {
+  const r = withRunState(rig({ present: ['#input'] })); await go(r.story.start());
+  r.startRun(); r.endRun();
+  await go(r.story.next()); await go(r.story.next()); await tick();
+  assert.equal(r.story.state().status, 'waiting'); assert.equal(r.story.state().waitingOn, 'viewer');
 });

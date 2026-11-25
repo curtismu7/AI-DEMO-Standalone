@@ -11,7 +11,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => fs.readFileSync(path.join(HERE, f), 'utf8');
 
 test('the contract and the runbook both say Story mode is for AI-DEMO-Standalone apps only, for now', () => {
-  for (const f of ['README.md', 'ADDING-TO-A-LAB.md']) assert.match(read(f), /AI-DEMO-Standalone apps only, for now/, `${f} states the scope`);
+  for (const f of ['README.md', 'ADDING-TO-A-LAB.md', 'ROLLOUT.md', 'VIDEO.md']) assert.match(read(f), /AI-DEMO-Standalone apps only, for now/, `${f} states the scope`);
 });
 
 test('the runbook\'s copy commands name every file the pin vendors (so a new vendored file cannot be forgotten)', () => {
@@ -31,6 +31,18 @@ test('the tools the docs point at exist and parse', () => {
 });
 
 test('the docs and tools carry no internal hostname, tenant id or key', () => {
-  const all = ['README.md', 'ADDING-TO-A-LAB.md', 'tools/walk.py', 'tools/play.py'].map(read).join('\n');
+  const all = ['README.md', 'ADDING-TO-A-LAB.md', 'ROLLOUT.md', 'tools/walk.py', 'tools/play.py'].map(read).join('\n');
   assert.equal(/ping-devops|procyon|sk-ant|curtismuir|Curtiss-MacBook|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(all), false);
 });
+
+test('the hand-off names the reference lab, the runbook and the rules the next agent must read', () => {
+  const doc = read('ROLLOUT.md');
+  for (const want of ['privilege-a2a-anthropic-demo-LAB', 'ADDING-TO-A-LAB.md', 'STANDALONE-RULES.md', 'story-mode skill', 'walk.py', 'merge N', 'VIDEO.md']) assert.ok(doc.includes(want), `ROLLOUT.md mentions ${want}`);
+});
+
+test('the video hand-off names the gates that keep a real value out of a public video', () => {
+  const doc = read('VIDEO.md');
+  for (const want of ['sourceSha256', 'ALLOW_STALE_WORDING', 'onscreen_mask.py', '.redacted', 'public_image', 'mask_leaks', 'guarded_take.py', 'owner approves', 'gh release create', 'privilege-a2a-anthropic-demo-LAB', 'clip_window', 'image_leaks', 'Frame review']) assert.ok(doc.includes(want), `VIDEO.md mentions ${want}`);
+  assert.ok(read('ADDING-TO-A-LAB.md').includes('VIDEO.md') && read('README.md').includes('VIDEO.md'), 'the runbook and the contract point to VIDEO.md');
+});
+

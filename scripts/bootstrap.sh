@@ -333,10 +333,12 @@ if [ "${run_pingone:-1}" = "0" ]; then
 elif grep -q "^PINGONE_ENVIRONMENT_ID=" "${STANDALONE_ENV:-$HOME/Development/.env}" 2>/dev/null && [ -z "${PINGONE_ARGS:-}" ]; then
   step_ok "configured in ~/Development/.env"
 else
+  # --non-interactive must never reach the "which environment?" question in pingone-setup.sh.
+  [ "$non_interactive" = 1 ] && export STANDALONE_NON_INTERACTIVE=1
   # Intentional word-splitting: PINGONE_ARGS holds --flag value pairs from --pingone="...".
   # shellcheck disable=SC2086
   if "$root/scripts/pingone-setup.sh" ${PINGONE_ARGS:-}; then
-    step_ok "environment created, ~/Development/.env written"
+    step_ok "environment ready, ~/Development/.env written"
   else
     step_warn "setup failed — continuing in mock mode"
     step_detail "Fix and re-run scripts/pingone-setup.sh, or stay in mock mode (the default in every app)."

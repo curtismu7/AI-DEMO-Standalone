@@ -1,0 +1,70 @@
+# Handoff 2026-11-24 (end of day, ~17:20 CST; re-checked 2026-11-25 12:56Z): Privilege on `5bfb4e12` after the replay, the gateway cutover and the HITL/PingID groundwork
+
+**Re-check 2026-11-25 12:56Z:** agent connected to `5bfb4e12`; `agentless-mcpgw` still rev 109; HAProxy `new1`, `pool1`, `pool2` UP, `spare1` MAINT; public host 200. The only change since the text below was written: **PR #601 is MERGED** (2026-11-25 01:07Z, merge commit `fd5f5d8`, merged by someone other than the author of this file), and every migration commit including `eb81666` is in `main`. Nothing else was re-verified.
+
+Supersedes `HANDOFF-2026-11-24-finish-move-to-5bfb4e12.md` (written 11:50 CST; its blockers 1, 2 and most of 5 are now done). Method background: `HANDOFF-2026-11-24-privilege-move-to-5bfb4e12.md` ("move §n"). Bootstrap/PR #579 side: `HANDOFF-2026-11-24-bootstrap-pingid-adopt.md`. No secret values in this file; every secret is named by file path or key name only.
+
+**Tier 2** (global rule 12). Everything below was read back from the live systems today unless it says "not verified".
+
+## 1. State right now
+**Desktop agent:** `connected`, controller and proxy READY, `PrefTenant` = `5bfb4e12-8d71-4b81-8ef8-940b91728c05`. A PreToolUse hook (`~/.claude/hooks/guard-privilege-agent.py`) now asks before agent control calls; only one session should drive the agent. Disable/enable events at 11:26 and 12:xx CST that I did not cause came from the Privilege app (diagnostics runs followed each).
+
+**`5bfb4e12` PingOne side:** "Pingid_Privillege", SANDBOX, NA. PingID Workforce with deployment, Privilege tagged `AUTHENTICATION_MODE_AGENT`, `Multi_Factor` + `Single_Factor` policies. 19 users (matched to the old users by EmailID, see §4). Group `PrivilegeAdmins` (all 19 users) is the Privilege app's `accessControl` group (without it: "This user does not have access ... designated group"). Group `HitlApprovers` (demouser only) was added and also exists as a Privilege group object. `demouser` has an ACTIVE `PINGID_MOBILE` device (iPhone) and Touch ID. Gateway callbacks added to the Privilege app for `mcpgw`, `mcpgw-pingid`, `mcpgw-pingid3`.
+
+**`5bfb4e12` Privilege tenant** (read back through the local console API): 34 applications, 32 policies, 28 agent keys, 10 non-human identities, 15 AI policies (8 Active), 18 tag policies, 9 shadow-AI policies. Doors `lab-banking-full|limited|blocked` + `-permit` for full/limited; keys `lab-banking-{full,limited,blocked}-key` (+ grants for full/limited), `lab-agent` (+ 3 `lab-agent-aggregate*` grants), `priv-log-agent`, `pgc-agent-llm`, `lab-opensearch-hitl-key` (+ grant); hold policy `opensearch-hitl2-hold` Active, approver = `HitlApprovers`. No key is revoked (`agg-guest` and `agg-delegate` were un-revoked). Tenant MFA (`EnableMFA`) was **false** at 17:08Z; the owner said once it showed enabled: re-read it before trusting this.
+
+**Cluster gateways (context `us`):** all three nodes are enrolled to `5bfb4e12` (latest "tenant 5bfb4e12 compiled" log line: pool2 21:27Z, pool1 21:33Z, new1 21:53Z; identity moved aside into `pre-5bfb4e12…-move`). Someone other than me ran that cutover. HAProxy (`mcpgw-lb`, 2 pods): `mcpgw-ct-new1` UP, `mcpgw-cm-pool1` UP, `mcpgw-ct-pool2` UP (unparked by me via Helm rev 108), `mcpgw-cm-spare1` parked and **still enrolled to the old `pingid` tenant `4cb38c18`** (owner: keep parked). Release `agentless-mcpgw` (ns `ping-devops-curtismuir`, the `new1` node and the LB config) is at **revision 109, deployed**. HAProxy stats login was rotated (rev 109); new login in `~/.config/demo-kit/lb-stats.env` (mode 600); `demo_api_server/.env` `MCPGW_LB_STATS_AUTH` updated and `demo-api-server` recreated.
+
+**Not moved / still old:** the labs and `~/Development/.env` still hold `ea040334` keys (nothing was repointed; `step14` no longer writes env files unless `--write-env`). Hosted PGC, `HMLAB_*`, `privilege-a2a-demo-pingid` Secret, `~/.config/demo-kit/pgc-hosted.env`: untouched. `ea040334` itself is untouched and not deletable yet (§3).
+
+**Git:** PR #562 (HITL test case), #579 (bootstrap adopt) and #601 (runbook + scripts: email user matching, convention names in `step14`, new `step17a_lab_agent_key.py`, `step18`, `step20` approver lookup, guide lessons) are all **merged**. The worktree `/Users/cmuir/Development/AI-DEMO-Standalone-wt/move-5bfb4e12` (branch `feat/privilege-move-5bfb4e12`) and its remote branch can be removed once nothing else uses it. Another session has PR #596 (guide header, small) and a worktree `privilege-move-replay` with an uncommitted edit to `step03_copy_users.py`: not mine, do not touch.
+
+## 2. Open items, in order
+1. **Repoint consumers to the `5bfb4e12` keys** (move §8, steps 15/16): `step15_repoint.py` (+`step15_verify.py`), `step16_restart_labs.py`, `step14 --write-env`, hosted PGC per the finish-move handoff §3. Add `ea040334` to `OLD_ENVS` in `step15_repoint.py`. The keys are read from the tenant by name. Needs the owner's go (restarts, k8s Secret `kubectl patch --patch-file`, never `apply`).
+2. **HITL test on `5bfb4e12`** through a gateway now serving it: `step20_hitl_test.py` (needs a person to approve in the console as an approver; requests expire after 300 s and show only on All/Expired afterwards). Stage 1 (approval = console click) passed on `ea040334`; it is **untested on `5bfb4e12`**. The `opensearch-hitl2-permit` has no `IssuedTo`/dates (key-bound path only).
+3. **PingID stage 2:** tenant MFA on, last, with the lockout rules (`SETUP-Privilege-gateway-GUIDE.md`): prove an agent Disconnect/Connect with MFA on first, write down the rollback. The direct PingOne device-authentication API is **not available** here (no PingOne MFA, route 403s), so the push test is a Privilege hold with MFA on, or a sign-in through the `Multi_Factor` policy. Only `demouser` has a device.
+4. **Decide the gateways' sign-in client.** pool1/pool2 use the `mcpgw-oidc` app (`d8fbd995`), `new1` uses the "PingOne Privilege" app (`1bd04cae`); the other session's failed Helm rev 107 intended `mcpgw-oidc` + extra scopes. Rev 108/109 deliberately did not complete it. Pick one app; add every node host's callback to it (the Privilege app has `mcpgw`, `mcpgw-pingid`, `mcpgw-pingid3`; `mcpgw-oidc` only the shared host).
+5. **Re-enrol `spare1`** (needs a fresh single-use AI GW token in the console, Host IP `agentless-mcpgw-pingid2.ping-devops-cmuir.svc.cluster.local`, cluster `ai-demo-cmuir`, `serverUrl` = its own host `mcpgw-pingid2…`) before it may be unparked; it must never be unparked while on `4cb38c18`.
+6. **Worker roles:** the `5bfb4e12` "Worker" app holds 180 inherited read-only roles incl. organization-level Environment Admin / DaVinci Admin / Custom Roles Admin; it cannot trim itself ("May not change role assignments for self"). Options: owner removes them in the console, or a new worker made by `pingone-setup.sh --existing-env` (PR #579, trims to two roles). Using the other org-admin worker was blocked by the permission classifier; get the owner's explicit word.
+7. **Secrets to re-enter by hand** (never copied): `agent-gateway` and `banking-mcp` `McpAppConfig.AuthToken`, `muse-ig` headers, Grafana token, the provider virtual keys, the 2 secret-store entries, the Google key (refused: invalid `GOOGLE_API_KEY`). `Bitwarden` (rule 14): the two `5bfb4e12` worker secrets and the lab worker/user-app secrets from `standalone-5bfb4e12.env`; the owner saves them, no script exists.
+8. **`apply-tag-schema.mjs`** against `5bfb4e12` (needs the tenant API key; `orphan 0` unchecked). Update `NAMING-CONVENTION.md` change log in an AI-DEMO2 worktree if any name changed.
+9. **Expiry dates:** the three `lab-agent-*` grants end **2026-12-08** (step 13b renews past dates by 90 days on every run and reports two updates each time); give them 2027-02-20.
+10. Remove the merged `move-5bfb4e12` worktree and branch when done; `SETUP-Privilege-gateway-GUIDE.md` in `main` is now the single runbook (re-sync it with this file's §3 and §4 if anything changes).
+11. **Retire `ea040334`** only per the finish-move handoff §4 (owner's yes, read back by id, after §1 here is done and proven).
+
+## 3. What not to do
+- Do not switch the agent back to `ea040334`: it returns `mfa-required` (server-side "Error initiating Ping MFA ... failed after 2 attempts", a Privilege-team issue). A live export of `ea040334` is therefore impossible; the replay used the 2026-11-17 export plus the scripts.
+- Do not run `launchctl kickstart` / restart the agent daemon casually: it clears `PrefTenant`; re-run `POST /setpreftenant {"Tenant":"5bfb4e12…"}` straight after (the guard hook will ask).
+- Do not use `--force-conflicts` or `helm upgrade` on `agentless-mcpgw` without `replicaCount=1` pinned (live `new1` is hand-scaled to 1; Helm values say 0) and without pinning the live `proxyToken` (the render would put an older one in the Secret). The pattern that worked: values from `helm get values -a`, one change, server-side dry run, diff the render against the LIVE ConfigMap/Deployment (not Helm's old manifest), a gate that fails unless only the intended line changes, apply, then promote backends on the new LB pods (`set server gateways/<name> health up` through the runtime socket in each `mcpgw-lb` pod) because a restarted LB holds every backend out ~10 minutes.
+- Never `rm`/`rm -rf` temp files holding secrets in a shell command (a safety check blocked it; truncate in place with `: > file`).
+
+## 4. Lessons (also in the guide, PR #601)
+- Onboarding adds a tenant; it does not select it. Set `PrefTenant`.
+- `AgentState connected` does not mean the local console answers. The listener at `https://local.procyon.ai:8643` wedged twice (after a tenant switch, after a few hundred calls); it recovered after an app relaunch or ~30 s. Run replay steps one at a time; check `curl -sk https://local.procyon.ai:8643/ui/` returns 302/200 before a script.
+- `@approvers` takes a GROUP id (the approval object records `RefKind Group`); a user id there matches nobody. Privilege does not auto-import a new PingOne group; the HitlApprovers Privilege group object was created through the API.
+- A person-custodian key has `UserRef` only; clear a template's `CustodianRef` (NonHumanIdentity) or the POST is a 400.
+- Users differ per environment (emails on `5bfb4e12`): `scripts/map-users.mjs` matches by `EmailID` then two confirmed aliases (`demoadmin`→`demoAdmin@pingone.com`, `antonik_adham`→`cmuir+antonik_adham@pingone.com`).
+- Aggregate apps need the applications kind run twice; imported `agg-*` keys arrive revoked; `step18_priv_log_key.py` has no dry run (it writes immediately).
+- zsh does not word-split `set -- $spec`; my first cutover backup loop failed because of it (nothing ran). Use explicit variables.
+- A masking `sed` missed a `stats auth user:password` line once and printed the stats login (since rotated). Mask by structure (`auth\s+\S+`), and keep secret-bearing renders in files, not terminal output.
+
+## 5. Read-only checks to start with
+```
+curl -s http://127.0.0.1:8008/status                       # AgentState connected? PrefTenant 5bfb4e12?
+curl -sk -o /dev/null -w '%{http_code}\n' https://local.procyon.ai:8643/ui/    # 302 or 200
+kubectl --context us get deploy -A -l ping.demo/gateway
+helm --kube-context us -n ping-devops-curtismuir list | grep agentless          # agentless-mcpgw 109 deployed
+# HAProxy per backend: kubectl exec into a mcpgw-lb pod: echo "show stat" | nc 127.0.0.1 9999
+# runbook scripts (worktree above), state.json is gitignored and already points at 5bfb4e12:
+cd /Users/cmuir/Development/AI-DEMO-Standalone-wt/move-5bfb4e12/docs/privilege-env-rebuild/scripts
+PRIV_ENV_CREDS=$HOME/.config/demo-kit/privilege-env-5bfb4e12.env python3 -I step14_verify.py   # names pinned to the old doors: check before trusting
+```
+
+## 6. Files and backups
+- Credentials (never print): `~/.config/demo-kit/privilege-env-5bfb4e12.env` (worker + a console login the owner added), `~/.config/demo-kit/rebuild-gw/oidc-new.values.yaml` (gateway OIDC for `5bfb4e12`, uses the Privilege app), `lb-stats.env`, `hitl-opensearch.env` (**now holds the `5bfb4e12` HITL key; the `ea040334` one was overwritten by step 20**), `provider-keys.pingid.env`.
+- Backups: `~/.config/demo-kit/backups/move-5bfb4e12-2026-11-24/` (BOM before the agent flip, Privilege app, worker role assignments, key un-revoke), `.../hitl-2026-11-24/` (hold policy), `.../lb-stats-rotate-*` (the old `.env`), `pingid-privilege-app-1bd04cae-*.json` (app before each callback add).
+- Logs: `~/.config/demo-kit/privilege-rebuild-import-log.json` (replay results, mode 600), `/Library/Logs/Procyon/procyon-agent.log` (prints a tenant client secret: never paste it).
+- Scratch: the session scratchpad holds only emptied files for secret-bearing manifests.
+
+## 7. Rules in force
+Worktree only (absolute paths for subagents), stage files by name, GitHub account `curtismu7`, no AI attribution, naming per `AI-DEMO2/privilege/NAMING-CONVENTION.md`, heavy tests on the Air, Docker = OrbStack, never print secrets, the owner's explicit go in the conversation before a cluster change, merge, deletion or agent control call.

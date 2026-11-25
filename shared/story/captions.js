@@ -6,7 +6,7 @@
 //   an optional leading <!-- comment -->; sections separated by a line holding only "---"; each section starts with a "# " heading:
 //   "# Opening Slide", "# Closing Slide", "# Slide: <key>" or "# Step: <key>".
 //   A step has "## Title" and "## Text". A slide has "## Title", "## Lead", "## Column A: <label>", "## Column B: <label>" (each a list of "- " lines),
-//   "## Verdict", and optionally "## Image" (a file name; shown only when a local assets folder supplies it) and "## Layout" (wide).
+//   "## Verdict", optionally "## Header" (a line above the title naming the demo; REQUIRED on the Opening Slide, rule 29) and "## Image" (a file name; shown only when a local assets folder supplies it) and "## Layout" (wide).
 //   Live values go in {braces} (for example {status}); the page fills them from the DOM.
 
 export class CaptionsError extends Error {
@@ -38,6 +38,7 @@ function slideFrom(fields, which) {
   if (!a || !b) fail(`${which} needs both a "## Column A: ..." and a "## Column B: ..." heading`);
   return {
     title: fields.Title, lead: fields.Lead, verdict: fields.Verdict,
+    header: (fields.Header || '').trim() || null,   // the demo's own name, shown above the title on the first page
     colA: { heading: a.split(':').slice(1).join(':').trim(), lines: bullets(fields[a]) },
     colB: { heading: b.split(':').slice(1).join(':').trim(), lines: bullets(fields[b]) },
     image: (fields.Image || '').trim() || null,
@@ -52,7 +53,11 @@ export function parseCaptions(text) {
     const head = /^#[ \t]+(.+?)[ \t]*\n([\s\S]*)$/.exec(sec);
     if (!head) fail(`a section has no "# " heading on its first line: ${JSON.stringify(sec.slice(0, 120))}`);
     const heading = head[1].trim(); const fields = splitFields(head[2]);
-    if (heading === 'Opening Slide') opening = slideFrom(fields, 'Opening Slide');
+    if (heading === 'Opening Slide') {
+      opening = slideFrom(fields, 'Opening Slide');
+      // Owner rule (2026-11-24, STANDALONE-RULES rule 29): the first page of every demo and video says what is being shown.
+      if (!opening.header) fail('the Opening Slide needs a "## Header" that names what the demo shows (rule 29: every first page has a title)');
+    }
     else if (heading === 'Closing Slide') closing = slideFrom(fields, 'Closing Slide');
     else if (heading.startsWith('Slide:')) { const key = heading.slice(6).trim(); if (slides[key]) fail(`slide "${key}" appears twice`); slides[key] = slideFrom(fields, `Slide "${key}"`); }
     else if (heading.startsWith('Step:')) {

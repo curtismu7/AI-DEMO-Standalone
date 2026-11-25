@@ -14,8 +14,11 @@ import glob, hashlib, json, os, re, shutil, ssl, sys, time, urllib.request, uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 ST = json.load(open(os.path.join(HERE, "..", "state.json")))
 NEW = ST["env_id"]; NEW_APP = ST["privilege_app_id"]
-OLD_ENVS = ["4cb38c18-691a-4201-a99d-b4b8842ca786", "0428ba4f-169c-436b-aff9-b230496e0e3b"]
-OLD_APPS = ["33bb98ce-c805-43fa-9b01-1a7dc746ce53", "d6120528-3b53-4258-bd03-0ab100cab878", "1a403855-81f6-45eb-b233-fed59abc5c73"]
+# Retired tenants this script repoints away from. ea040334 ("Pingid-privilege") was RETIRED 2026-11-24 after the move
+# to 5bfb4e12-8d71-4b81-8ef8-940b91728c05; for the CURRENT target read state.json["env_id"] or privilege-env-5bfb4e12.env.
+OLD_ENVS = ["4cb38c18-691a-4201-a99d-b4b8842ca786", "0428ba4f-169c-436b-aff9-b230496e0e3b", "ea040334-d50b-4ded-8d98-4d5cd14dbd4d"]
+OLD_APPS = ["33bb98ce-c805-43fa-9b01-1a7dc746ce53", "d6120528-3b53-4258-bd03-0ab100cab878", "1a403855-81f6-45eb-b233-fed59abc5c73",
+            "ec787511-2fa5-460a-96ff-20d4eaa10e7e"]  # ec787511: ea040334's Privilege app (retired with the tenant, 2026-11-24 move)
 APPLY = "--apply" in sys.argv
 # Variables that hold an environment id for something other than Privilege: the hitl lab pushes PingID through the old `pingid` env.
 KEEP = {"HMLAB_PINGONE_ENV_ID"}
@@ -40,6 +43,19 @@ for f in glob.glob(os.path.join(DK, "*key*.txt")) + glob.glob(os.path.join(DK, "
         if l and not l.startswith("#"):
             val = l.split("=", 1)[1].strip().strip("\"'") if "=" in l else l
             if len(val) > 20: old.setdefault(sha(val), "file:" + n)
+
+# --- history (2026-11-24 move): consumers hold keys of an intermediate tenant (ea040334, retired) that cannot be read any more.
+# The earlier repoint runs backed up each env file before writing; a variable's value there is an export key, which names it.
+hist = {}
+for bdir in sorted(glob.glob(os.path.join(DK, "backups", "repoint-*"))):
+    for bk in glob.glob(os.path.join(bdir, "*.bak")):
+        target = os.path.basename(bk)[:-4]  # same naming as the backups this script writes
+        for l in open(bk, errors="replace"):
+            mm = re.match(r"^\s*(?:export\s+)?([A-Za-z0-9_]+)\s*=\s*(.*)$", l)
+            if not mm: continue
+            v = mm.group(2).strip().strip("\"'")
+            if len(v) > 20 and old.get(sha(v), "file:").split(":")[0] != "file":
+                hist.setdefault((target, mm.group(1)), old[sha(v)])
 
 # --- new tenant keys and the new app secret
 ctx = ssl._create_unverified_context(); H = {"x-procyon-session-id": str(uuid.uuid4()), "accept": "application/json"}
@@ -80,6 +96,10 @@ for f in files:
             notes.append(f"  {var}: old key from {kn[5:]} has no same-named key on the new tenant (left unchanged)") if False else None
         elif kn:
             notes.append(f"  {var}: old key '{kn}' has no value on the new tenant (left unchanged)")
+        elif (f.replace("/", "_").lstrip("_"), var) in hist and len(val) > 20 and val not in set(newkeys.values()):
+            hn = hist[(f.replace("/", "_").lstrip("_"), var)]
+            if newkeys.get(hn): new, why = newkeys[hn], f"key '{hn}' (named via the 2026-11-23 repoint backup) -> new tenant key"
+            else: unmapped.append(var + f" (was key '{hn}', not on the new tenant)")
         elif any(e in val for e in OLD_ENVS):
             new = val
             for e in OLD_ENVS: new = new.replace(e, NEW)

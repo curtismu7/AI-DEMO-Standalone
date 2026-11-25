@@ -25,6 +25,7 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
   .story-slide{box-sizing:border-box;position:fixed;z-index:${z + 6};inset:0;display:flex;align-items:center;justify-content:center;background:#051727;font:17px/1.5 system-ui,sans-serif;padding:24px}
   .story-slide .card{zoom:${S};box-sizing:border-box;width:min(1100px,calc(94vw / ${S}));max-height:calc(92vh / ${S});overflow-y:auto;background:#0f2236;color:#f2f4f7;border:3px solid #e3002b;border-radius:24px;padding:32px 40px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
   .story-slide h1{margin:0 0 10px;font-size:32px;font-weight:800;color:#fff}
+  .story-slide .header{margin:0 0 8px;font-size:22px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff6b81}
   .story-slide .lead{margin:0 0 20px;color:#c7d0dc;font-size:19px}
   .story-slide .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
   @media (max-width:760px){ .story-slide .cols{grid-template-columns:1fr} }
@@ -57,6 +58,7 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
     const cols = el('div', 'cols');
     const col = (cls, c) => { const d = el('div', `col ${cls}`); d.append(el('h2', '', c.heading)); const ul = el('ul'); c.lines.forEach((l) => ul.append(el('li', '', l))); d.append(ul); return d; };
     cols.append(col('cola', o.colA), col('colb', o.colB));
+    if (o.header) card.append(el('p', 'header', o.header));   // what the demo is (rule 29: every first page has a title)
     card.append(el('h1', '', o.title), el('p', 'lead', o.lead), cols, el('p', 'verdict', o.verdict));
     // An image is shown only when the page was given one (a local, gitignored assets folder). Nothing ships in the repo; a broken one is removed.
     if (o.image) {

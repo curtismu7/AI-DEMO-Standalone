@@ -153,6 +153,15 @@ describe("createOverlay", () => {
     o.destroy();
   });
 
+  test("rule 29: a slide with a header shows it above the title, as text; a slide without one has none", () => {
+    const o = mk();
+    o.slide({ header: "<b>A2A</b>, and A2A with an AWS agent", title: "T", lead: "L", colA: { heading: "A", lines: ["a"] }, colB: { heading: "B", lines: ["b"] }, verdict: "V" });
+    const h = document.querySelector(".story-slide .header"); expect(h.textContent).toBe("<b>A2A</b>, and A2A with an AWS agent"); expect(h.querySelector("b")).toBeNull();
+    expect(h.nextElementSibling.tagName).toBe("H1");
+    o.slide({ title: "T", lead: "L", colA: { heading: "A", lines: ["a"] }, colB: { heading: "B", lines: ["b"] }, verdict: "V" });
+    expect(document.querySelector(".story-slide .header")).toBeNull();
+  });
+
   test("a slide has both columns and the verdict; no image unless one is given; a broken image is removed", () => {
     const o = mk();
     const slide = { title: "T", lead: "L", colA: { heading: "A", lines: ["a1", "a2"] }, colB: { heading: "B", lines: ["b1"] }, verdict: "V" };
@@ -239,6 +248,21 @@ describe("StoryBar", () => {
     expect(screen.queryByTestId("story-simulated")).toBeNull();
     fireEvent.click(screen.getByTestId("story-pause")); expect(s.calls.at(-1)[0]).toBe("pause");
     act(() => s.set({ paused: true })); fireEvent.click(screen.getByTestId("story-play")); expect(s.calls.at(-1)[0]).toBe("resume");
+  });
+
+  test("waiting on the viewer: the message says it is their turn and is marked for the red slow blink; not while a run is in flight or Play is playing", () => {
+    const s = fakeStory({ kind: "bubble", isPrompt: true, promptKind: "text" }); render(<StoryBar story={s} />);
+    const msg = screen.getByTestId("story-msg");
+    expect(msg).toHaveTextContent("Your turn: press Send, then Next"); expect(msg).toHaveAttribute("data-your-turn", "true");
+    act(() => s.set({ promptKind: "press" })); expect(msg).toHaveTextContent("Your turn: press the highlighted button, then Next");
+    act(() => s.set({ playing: true })); expect(msg).not.toHaveAttribute("data-your-turn");               // Play presses Send for them
+    act(() => s.set({ playing: false, status: "waiting", promptKind: null, isPrompt: false })); expect(msg).not.toHaveAttribute("data-your-turn");   // waiting on the run
+    act(() => s.set({ status: "stalled", message: "The run did not finish in time. Press Next to carry on, or Exit." }));
+    expect(msg).toHaveAttribute("data-your-turn", "true"); expect(msg).toHaveTextContent("Press Next to carry on");
+    act(() => s.set({ status: "showing", kind: "bubble", n: 3, total: 9, message: "" })); expect(msg).not.toHaveAttribute("data-your-turn"); expect(msg).toHaveTextContent("3 of 9");
+    act(() => s.set({ status: "waiting", waitingOn: "viewer", promptKind: null, message: "Your turn: press Send for the question above; the story carries on when the answer is in." }));
+    expect(msg).toHaveAttribute("data-your-turn", "true");                                                   // waiting on the viewer: their turn
+    act(() => s.set({ waitingOn: "run", message: "Waiting for the run to finish." })); expect(msg).not.toHaveAttribute("data-your-turn");
   });
 
   test("a slide is labelled Slide (it has no number); a bubble shows its number among the bubbles", () => {
