@@ -41,7 +41,7 @@ Spec (`docs/specs/<date>-story-mode.md`, copy the A2A lab's) -> `captions.md` wi
 |---|---|---|---|---|---|---|---|
 | privilege-a2a-anthropic-demo-LAB | done | done | done | done (both sizes) | done (both sizes, simulated Part 1) | recording (masking #60, screenshot guard #61) | lab #55-#61; shared #553 #563 #567 #574; pin #577 |
 | cimd-LAB | done (lab #35, merged 2026-11-24) | n/a (no video) | done | done (both sizes, offline; PF-configured walk needs the owner's PF) | n/a (one wording, no Mock split) | n/a | lab #35 |
-| spiffe-issuer-LAB | - | - | - | - | - | - | |
+| spiffe-issuer-LAB | done (lab #24, merged 2026-11-24) | not yet (take.py still uses its own overlay; runbook §9 is a later PR) | done | done (both sizes, live gateway from this Mac) | done (both sizes) | not yet (the take must move onto the shared bridge first) | lab #24 |
 | hitl-mfa-lab-LAB | done (lab #44, open 2026-11-24) | done (lab #44, take.py on the shared overlay; rehearsal pixel-compare clean) | done | n/a (mock-side lab; Real take needs the owner's gateway) | done (both sizes) | not yet (rehearsal verified; recording is the owner's) | lab #44 |
 | meridian-air-LAB | - | - | - | - | - | - | |
 | pf-privilege-obo-LAB | done (lab #29, merged 2026-11-24) | done (take.py on the shared bridge: overlay + holds from web/src/story, wording from GET /api/story) | done (rule 29 header on the opening slide and the mock note) | done (both sizes; walk.py + play.py incl. an unattended Real run) | done (both sizes; mock intro + flow-sim wording) | - (rehearsal take passed 17/17 bubbles, no host leaks; a public re-record by VIDEO.md is not done) | lab #29; pin #609 |
