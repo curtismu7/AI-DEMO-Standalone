@@ -13,7 +13,7 @@ Read, in this order, before any code:
   2. ~/Development/AI-DEMO-Standalone/shared/story/README.md    (the contract)
   3. ~/Development/AI-DEMO-Standalone/shared/story/ADDING-TO-A-LAB.md  (the runbook: steps, files to copy, 18 mistakes already made)
   4. ~/Development/STANDALONE-RULES.md (rule 29: every first page has a title) and the global ~/.claude/CLAUDE.md
-  5. if the lab has a recorded video: ~/Development/AI-DEMO-Standalone/shared/story/VIDEO.md (re-recording it for public release, after Story merges)
+  5. if the lab has a recorded video: ~/Development/AI-DEMO-Standalone/shared/story/VIDEO.md (re-recording it for public release, after Story merges), and shared/story/VIDEOS.md (what is recorded, what is left, per-lab video status)
 Invoke the story-mode skill, then spec-first, for each lab. Copy from the reference lab, standalone/privilege-a2a-anthropic-demo-LAB (on main).
 Rules that bite: one worktree and one PR per lab (git worktree add ../<lab>-wt/story -b feat/story-mode origin/main); vendor shared/story byte for byte
 and never edit the copy; curtismu7 GitHub account; no AI attribution anywhere; no force-push; heavy runs on the Air with air-test; the lab's .env never
