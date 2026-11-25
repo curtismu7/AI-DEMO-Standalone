@@ -45,7 +45,9 @@ banner patterns. Known convergence work for next PRs:
   Text-size control scales them. Visual reference: `shared/header-standard-mock.html`.
   Flat-brand labs (the name in a bare `h1` inside `.shell-brand`, no `__name`/`__tag`
   elements) are sized identically by the shared `.shell-brand h1` rule — converting
-  the markup to the BEM form is welcome but not required.
+  the markup to the BEM form is welcome but not required. The sizing is ALSO set at
+  `.shell-bar .shell-brand h1` so a lab's own `.shell-bar h1 { font-size }` cannot
+  override it (checker rule B1 flags such overrides).
 
 ## 2. Simulation / status banner (every page)
 
