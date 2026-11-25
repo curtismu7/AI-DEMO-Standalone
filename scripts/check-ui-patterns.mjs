@@ -108,9 +108,7 @@ export const RULES = {
 export const RULE_IDS = Object.keys(RULES);
 // Rules reported as DRIFT but NOT yet failing an enforced page (owner, 2026-11-14): J1 (JSON panes, Rule 24) lands before the labs have migrated and
 // their pins are bumped, so it must not turn the family's CI red. Remove J1 from this set (or run with J1_ENFORCE=1) to enforce it.
-// B1 (brand font-size in app CSS, header standard 2026-11-24) is WARN-only during the rollout, so it never blocks an enforced page. When the rollout
-// completes, enforcement is a two-step flip: change ruleB1's `mk(R, 'WARN', ...)` to `mk(R, 'DRIFT', ...)` AND remove B1 from this set (or every
-// unconverted lab goes red at once).
+// B1 (brand font-size in app CSS, header standard 2026-11-24) was WARN-only during the rollout; enforced (DRIFT) since 2026-11-25 — the rollout is complete and every vendored copy matches the canonical.
 const ADVISORY_RULES = new Set(process.env.J1_ENFORCE === '1' ? [] : ['J1']);
 
 // ============================== text helpers ==============================
@@ -2697,7 +2695,7 @@ function ruleB1(u) {
       }
     }
   }
-  if (hit.length) return mk(R, 'WARN', `app CSS sets a brand font-size on .shell-brand*: ${first(hit)}`, hit);
+  if (hit.length) return mk(R, 'DRIFT', `app CSS sets a brand font-size on .shell-brand*: ${first(hit)}`, hit);
   return PASS(R);
 }
 
