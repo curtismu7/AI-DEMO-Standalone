@@ -50,8 +50,9 @@ def tools(door, key):
 
 
 env = envfile(os.path.expanduser("~/Development/.env"))
-tests = [("agg-guest", "AGG_ENT_GW_KEY_AGG_GUEST", "aggregate-limited"), ("agg-delegate", "AGG_ENT_GW_KEY_AGG_DELEGATE", "aggregate-limited"),
-         ("main-agent", "APL_GW_KEY_MAIN_AGENT", "a2a-mcp-tools"), ("lab-agent", "AGG_ENT_GW_KEY_LAB_AGENT", "aggregate-limited"),
+# doors: the aggregate trio was renamed to lab-agg-* (2026-11-25, NAMING-CONVENTION change log); a2a-mcp-tools keeps its name
+tests = [("agg-guest", "AGG_ENT_GW_KEY_AGG_GUEST", "lab-agg-limited"), ("agg-delegate", "AGG_ENT_GW_KEY_AGG_DELEGATE", "lab-agg-limited"),
+         ("main-agent", "APL_GW_KEY_MAIN_AGENT", "a2a-mcp-tools"), ("lab-agent", "AGG_ENT_GW_KEY_LAB_AGENT", "lab-agg-limited"),
          ("lab-agent", "MCP_TOOLS_GW_KEY_LAB_AGENT", "a2a-mcp-tools")]
 for name, var, door in tests:
     c, n = tools(door, env[var])
