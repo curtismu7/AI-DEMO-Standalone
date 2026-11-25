@@ -84,13 +84,19 @@ def selftest():
 if __name__ == "__main__":
     if "--selftest" in sys.argv: selftest(); sys.exit(0)
     print(f"watching {AGENT_LOG} -> {OUT}", flush=True)
-    f = open(AGENT_LOG, errors="replace"); f.seek(0, 2); last = status(); seen_t = 0
+    f = open(AGENT_LOG, errors="replace"); f.seek(0, 2); last = status(); seen_t = 0; bad_since = 0; reported = False
     while True:
         line = f.readline()
         if not line:
             time.sleep(0.4)
             now = status()
-            if now != last and time.time() - seen_t > 8:   # a state change with no control request line (crash, tunnel drop...)
+            if now.startswith("unreadable"):   # the status call timing out on a loaded Mac is noise: only an outage that lasts counts
+                bad_since = bad_since or time.time()
+                if time.time() - bad_since > 60 and not reported:
+                    ev = snapshot(f"STATE CHANGE without a control line: agent API unreachable for over 60 s ({now})", last); reported = True; print(json.dumps({k: ev[k] for k in ('at', 'trigger', 'frontmost')}), flush=True)
+                continue
+            bad_since = 0; reported = False
+            if now != last and time.time() - seen_t > 8:   # a real state change with no control request line (proxy drop, crash...)
                 ev = snapshot(f"STATE CHANGE without a control line: {last} -> {now}", last); print(json.dumps({k: ev[k] for k in ('at', 'trigger', 'frontmost')}), flush=True)
             last = now; continue
         if PAT.search(line) and "Error" not in line[:60]:
