@@ -345,3 +345,6 @@
 [submodule "standalone/learning-hub-LAB"]
 	path = standalone/learning-hub-LAB
 	url = https://github.com/curtismu7/learning-hub-LAB.git
+[submodule "standalone/ai-guard-demo-LAB"]
+	path = standalone/ai-guard-demo-LAB
+	url = https://github.com/curtismu7/ai-guard-demo-LAB
