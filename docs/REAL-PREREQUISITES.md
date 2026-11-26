@@ -49,7 +49,7 @@ simulation with zero outbound calls (README "Mock and live modes" or "Mock and R
 - Mock scaffolds of a product contract (the README says what is real and what is not): `appfire-agent-governance-LAB`
   (Appfire agentic-AI demo; Ping governs the agent-facing front end over a simulated HIVE back end — no tenant), `a2a-lab-LAB`,
   `delegation-lab-LAB`, `hitl-mfa-lab-LAB`, `mcp-gateway-lab-LAB`, `agent-preferences-lab`, `ai-demo-standalone-LAB`.
-- Testers and tools: `hostile-a2a-LAB`, `attack-gallery-LAB`, `ai-guard-sidecar-LAB`, `diagram-studio-LAB`,
+- Testers and tools: `hostile-a2a-LAB`, `attack-gallery-LAB`, `ai-guard-sidecar-LAB`, `ai-guard-demo-LAB` (the released AI Guard demo: agent gateway, Agentic Apps and a mock Agent Registry with per-key guardrails; offline), `diagram-studio-LAB`,
   `diagram-prove-lab`, `deploy-test-LAB`, `demo-shelf-LAB`, `privilege-k8-kits-LAB` (serves packaged zips and a PDF
   from its own folders; offline, no tenant), `privilege-owasp-lab-LAB` (OWASP Agentic AI Top 10 with Privilege
   coverage; Mock is static deck wording offline, Real is one read-only PingOne call), `privilege-api-explorer-LAB` (Privilege console API explorer; Mock is the in-process mock console, Real signs in with the owner's user API key/secret — see its docs/live-checks.md),
