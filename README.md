@@ -77,7 +77,7 @@ scripts/setup.sh --app id-jag-standalone-LAB --skip-install
 | token-workbench-LAB | Demo | standalone/token-workbench-LAB |
 | worker-demo-LAB | Demo | standalone/worker-demo-LAB |
 | session-LAB | Demo | standalone/session-LAB |
-| poppy-agent-tester-LAB | Demo | standalone/poppy-agent-tester-LAB |
+| poppy-demo-LAB | Demo | standalone/poppy-demo-LAB |
 | intent-purpose-behaviour-LAB | Demo | standalone/intent-purpose-behaviour-LAB |
 | coding-agents-LAB | Demo | standalone/coding-agents-LAB |
 | data-protection-LAB | Demo | standalone/data-protection-LAB |
@@ -199,7 +199,7 @@ Each app sets its own ports; ranges and variables are in each app's README. Defa
 | pingone-LAB | 5500 | see the app README |
 | pingone-mcp-inspector-LAB | 5201 | see the app README |
 | pingone-signin-LAB | 6171 | see the app README |
-| poppy-agent-tester-LAB | 5450 | see the app README |
+| poppy-demo-LAB | 5450 | see the app README |
 | privilege-a2a-anthropic-demo-LAB | 6881-6883 | `MAIN_AGENT_PORT`, `WORKER_AGENT_PORT`, `MCP_SERVER_PORT` |
 | privilege-demo-LAB | 4510 | `PORT` |
 | privilege-map-LAB | 5300 dev, 5301 Docker | `PORT`, `HOST_PORT` |
