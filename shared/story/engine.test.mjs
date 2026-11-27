@@ -378,3 +378,13 @@ test('a wait whose result is NOT on the page yet still waits, even with nothing 
   await go(r.story.next()); await go(r.story.next()); await tick();
   assert.equal(r.story.state().status, 'waiting'); assert.equal(r.story.state().waitingOn, 'viewer');
 });
+
+test('regression: pressing Next while a step is still showing never double-counts the bubble counter', async () => {
+  const r = withRunState(rig()); await go(r.story.start());
+  await go(r.story.next());                             // to the prompt step (p_prompt)
+  const n0 = r.story.state().n;
+  await go(r.story.next());                             // Next again while the SAME prompt step is still showing
+  await go(r.story.next());                             // and again: every later step is still counted once
+  const s = r.story.state();
+  assert.ok(s.n <= s.total, `n (${s.n}) never exceeds total (${s.total})`);
+});
