@@ -107,7 +107,7 @@ licence or the YES is missing. See `shared/ping-shared/README.md`, "Getting a lo
 - `cimd-LAB`: `PF_BASE_URL` for direction 1 only; the other tabs work offline. README "Prerequisites".
 - `privilege-demo-LAB`: `PF_URL` and `PF_AUDIENCE` (tokens verified against that PingFederate's JWKS); the family's
   `scripts/pingfederate-setup.sh` installs a local one. README "Settings file".
-- `poppy-agent-tester-LAB`: a PingFederate CIMD policy for the agent URL and the app reachable over https.
+- `poppy-demo-LAB`: a PingFederate CIMD policy for the agent URL and the app reachable over https.
   `docs/setup.md`.
 - `token-workbench-LAB`: can use a PingFederate as the issuer (see section B).
 - **NOT YET STANDALONE: needs a repoint.** `jit-lab-LAB` PF path: `JIT_LAB_PF_CLIENT_SECRET` for client

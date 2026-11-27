@@ -207,12 +207,12 @@ agent-audit-trail-LAB/retention
 agent-audit-trail-LAB/tools
 agent-audit-trail-LAB/story
 
-# 2026-11-16: legacy header -> shell-bar, batch 9: poppy-agent-tester-LAB (3 pages), saas-access-LAB (9),
+# 2026-11-16: legacy header -> shell-bar, batch 9: poppy-agent-tester-LAB (renamed poppy-demo-LAB) (3 pages), saas-access-LAB (9),
 # secrets-vault-LAB (9), observability-LAB (7) converted (0 drift); pingone-mcp-inspector-LAB (8) retired 2026-11-18 (merged into mfa-admin-mcp-LAB, entries removed);
 # their pins are bumped in the same PR.
-poppy-agent-tester-LAB/run
-poppy-agent-tester-LAB/chat
-poppy-agent-tester-LAB/diagram
+poppy-demo-LAB/run
+poppy-demo-LAB/chat
+poppy-demo-LAB/diagram
 saas-access-LAB/request
 saas-access-LAB/approvals
 saas-access-LAB/timeline
