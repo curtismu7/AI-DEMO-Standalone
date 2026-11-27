@@ -144,7 +144,7 @@ export function createStory({ steps, captions, overlay, host, store = null, pref
       return advance(i + 1);
     }
     current = s;
-    if (!replay) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
+    if (!replay && shown[st.pos] !== i) { if (st.pos >= 0) passed.add(shown[st.pos]); shown = shown.slice(0, st.pos + 1); shown.push(i); st.pos = shown.length - 1; }
     if (s.prompt && !replay) { marker = safe(() => host.mark(), { runs: 0 }, `"${s.key}": the run counter could not be read`); safe(() => host.prefill(s), undefined, `"${s.key}": the question could not be filled in`); }   // Back never refills a prompt the viewer may have edited
     st.index = i; st.key = s.key; st.status = 'showing'; st.message = ''; st.isPrompt = !!s.prompt; st.promptKind = s.prompt ? (s.prompt.press ? 'press' : 'text') : null; st.stalledAt = -1;
     st.kind = s.type; st.n = shown.slice(0, st.pos + 1).filter((i) => isBubble(steps[i])).length; st.total = shown.filter((i) => isBubble(steps[i])).length + remainingAfter(shown[shown.length - 1]);
