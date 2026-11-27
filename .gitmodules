@@ -348,3 +348,6 @@
 [submodule "standalone/ai-guard-demo-LAB"]
 	path = standalone/ai-guard-demo-LAB
 	url = https://github.com/curtismu7/ai-guard-demo-LAB
+[submodule "standalone/poppy-demo-LAB"]
+	path = standalone/poppy-demo-LAB
+	url = https://github.com/curtismu7/poppy-demo-LAB
