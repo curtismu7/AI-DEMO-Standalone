@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI standard proposal mock — header order, empty state, claim banner (2026-11-27)</title>
+<!--
+  Proposal from the fleet UI consistency audit (2026-11-27). Three additions to the
+  existing standard (STANDALONE-UI-PATTERNS.md + standalone-ui.css):
+
+    P12 — right-cluster order: Mode · [Vertical] · Presenter · Talk track · Help ·
+          [version] · [Postman] · Reset · Demo|Story · Shelf↵ · Theme · Text size.
+          Optional items may be omitted, never reordered.
+    P13 — empty state: .empty-state (dashed border, muted text, optional one action).
+    P14 — evidence-claim banner: .banner[data-claim="unverified"], --status-warn edge,
+          strong label, body --text-body. Apps never invent their own colours.
+
+  Colours/fonts come from shared/standalone-ui.css tokens (inlined here for standalone preview).
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfc; --surface: #ffffff; --surface-2: #eff0f1;
+  --text: #051727; --text-body: #263746; --muted: #556070; --border: #556070;
+  --accent: #d20e0f; --accent-deep: #aa0005; --on-accent: #fff;
+  --accent-gradient: linear-gradient(90deg, #d20e0f 55%, #aa0005);
+  --status-warn: #8a5a00; --focus: #12538d;
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-primary); }
+.pad { max-width: 1600px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+h2 { font-size: 1rem; margin: 2.5rem 0 0.75rem; }
+h3 { font-size: 0.95rem; margin: 0 0 0.5rem; }
+.note { color: var(--muted); font-size: 0.9rem; max-width: 78ch; }
+
+/* ===== shell bar (P12 order) ===== */
+.shell-bar {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  background: #051727; color: #fcfcfc;
+  padding: 0.5rem 1rem;
+  border-bottom: 3px solid; border-image: var(--accent-gradient) 1;
+}
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+.brand-mark { font-size: 1.4rem; }
+.shell-brand__name { font-size: 1.4rem; font-weight: 700; }
+.shell-nav { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.shell-nav a {
+  color: inherit; text-decoration: none; padding: 0.3rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; font-size: 0.85rem;
+}
+.shell-nav a[aria-current] { background: var(--accent); border-color: var(--accent); }
+.shell-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.shell-right .ctl {
+  font: inherit; font-size: 0.8rem; color: inherit; background: transparent;
+  border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 0.28rem 0.7rem;
+}
+.shell-right .ctl--mode { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.shell-right .ctl--primary { background: var(--accent); border-color: var(--accent-deep); font-weight: 600; }
+.shell-right .sep { opacity: 0.4; font-size: 0.8rem; }
+.shell-right label { font-size: 0.8rem; opacity: 0.85; }
+
+/* ===== empty state (P13) ===== */
+.empty-state {
+  border: 1.5px dashed var(--border); border-radius: 10px;
+  background: var(--surface);
+  padding: 1.25rem 1.5rem;
+  color: var(--muted); font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+}
+.empty-state .btn {
+  font: inherit; font-size: 0.85rem; padding: 0.35rem 0.9rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+
+/* ===== evidence-claim banner (P14) ===== */
+.banner {
+  border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  background: var(--surface-2); color: var(--text-body);
+  padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.9rem;
+}
+.banner[data-claim="unverified"] { border-left-color: var(--status-warn); }
+.banner[data-claim="unverified"] strong { color: var(--status-warn); }
+
+/* ===== numbered step (existing pattern, for context) ===== */
+.step-num {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%;
+  background: var(--accent-gradient); color: #fff; font-family: var(--font-mono);
+  font-size: 0.85em; margin-right: 0.5em; vertical-align: middle;
+}
+.card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); border-top: 4px solid var(--accent); padding: 1rem; }
+</style>
+</head>
+<body>
+<div class="pad">
+<h1>UI standard proposal — P12 header order, P13 empty state, P14 claim banner</h1>
+<p class="note">From the 2026-11-27 fleet audit. Everything not shown here is already standard
+(see <code>STANDALONE-UI-PATTERNS.md</code> and <code>ui-standard-mock.html</code>).</p>
+
+<h2>P12 — canonical right-cluster order (1440px, dark)</h2>
+<div class="shell-bar">
+  <div class="shell-brand"><span class="brand-mark">◆</span><span class="shell-brand__name">Token Workbench</span></div>
+  <nav class="shell-nav"><a href="#" aria-current="page">Decode / Trace</a><a href="#">Flow catalog</a></nav>
+  <div class="shell-right">
+    <span class="ctl ctl--mode">Mode: Mock ▾</span>
+    <span class="ctl">Presenter</span>
+    <span class="ctl">Talk track</span>
+    <span class="ctl">Help</span>
+    <span class="ctl">3.0.0</span>
+    <span class="ctl">Reset</span>
+    <span class="ctl ctl--primary">Demo</span><span class="ctl">Story</span>
+    <span class="ctl ctl--primary">Shelf↵</span>
+    <span class="sep">|</span>
+    <label>Theme <span class="ctl">Auto ▾</span></label>
+    <label>Text size <span class="ctl">M ▾</span></label>
+  </div>
+</div>
+<p class="note">Order is fixed: Mode · [Vertical] · Presenter · Talk track · Help · [version] ·
+[Postman] · Reset · Demo|Story · Shelf↵ · Theme · Text size. Omit what a lab doesn't need —
+never reorder. Checker rule P12 flags out-of-order clusters.</p>
+
+<h2>P13 — empty state</h2>
+<div class="card">
+  <h3>Saved connections</h3>
+  <div class="empty-state">
+    <span>No saved connections yet. Connect to a server to save it here.</span>
+    <button class="btn">Open the Connect form</button>
+  </div>
+</div>
+<p class="note">Dashed 1.5px <code>--border</code>, radius 10px, <code>--muted</code> text
+0.9rem, at most one secondary action. Replaces bare paragraphs and blank space.</p>
+
+<h2>P14 — evidence-claim banner (UNVERIFIED)</h2>
+<div class="banner">SIMULATED, Mock mode: a mock engine produces every token, hop and decision offline. No tenant is touched.</div>
+<p style="height:0.5rem"></p>
+<div class="banner" data-claim="unverified"><strong>Ping release claim (2026-11-02), UNVERIFIED on our tenant.</strong> The entitled listing and aggregate cap features are simulated in Mock; in Real, the Entitled listing page asks your own gateway.</div>
+<p class="note">Same position and markup as the standard banner; the only difference is
+<code>data-claim="unverified"</code>: a <code>--status-warn</code> left edge and a
+<code>--status-warn</code> strong label. Apps must not invent their own colours (this replaces
+the beige strip in mcp-tools and the gold-bordered strip in ai-guard-demo).</p>
+</div>
+</body>
+</html>
