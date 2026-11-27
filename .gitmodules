@@ -106,9 +106,6 @@
 [submodule "standalone/session-LAB"]
 	path = standalone/session-LAB
 	url = https://github.com/curtismu7/session-LAB.git
-[submodule "standalone/poppy-agent-tester-LAB"]
-	path = standalone/poppy-agent-tester-LAB
-	url = https://github.com/curtismu7/poppy-agent-tester-LAB.git
 [submodule "standalone/intent-purpose-behaviour-LAB"]
 	path = standalone/intent-purpose-behaviour-LAB
 	url = https://github.com/curtismu7/intent-purpose-behaviour-LAB.git
@@ -348,3 +345,6 @@
 [submodule "standalone/ai-guard-demo-LAB"]
 	path = standalone/ai-guard-demo-LAB
 	url = https://github.com/curtismu7/ai-guard-demo-LAB
+[submodule "standalone/poppy-demo-LAB"]
+	path = standalone/poppy-demo-LAB
+	url = https://github.com/curtismu7/poppy-demo-LAB
