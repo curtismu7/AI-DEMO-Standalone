@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Standard Mock B — Authorize policy demo (inspector layout, prompt → decision)</title>
+<!--
+  DEMO-STANDARD MOCK B of 3 — 2026-11-27. The inspector tier of the same demo standard:
+  for demos whose point is the POLICY DECISION (PingOne Authorize, P1AZ, token exchange).
+  Same shell, same banner, same chips; the evidence is a three-part inspector:
+  left = scenario tree, middle = run, right = the actual call/decision as it lands.
+
+  Interactions to try: pick a scenario, Send, watch hops land live, click a hop or the
+  decision chip to open the actual request/response.
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfc; --surface: #ffffff; --surface-2: #eff0f1;
+  --text: #051727; --text-body: #263746; --muted: #556070; --border: #556070;
+  --accent: #d20e0f; --accent-deep: #aa0005; --on-accent: #fff; --accent-soft: #fde8e8;
+  --focus: #12538d; --danger-text: #aa0005;
+  --accent-gradient: linear-gradient(90deg, #d20e0f 55%, #aa0005);
+  --status-ok: #1d7a43; --status-warn: #8a5a00; --status-info: #12538d;
+  --box-dark: #051727; --on-box: #fcfcfc;
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1622; --surface: #10202f; --surface-2: #0f2236;
+    --text: #fcfcfc; --text-body: #d5dde4; --muted: #9aa7b2; --border: #7c8894;
+    --status-warn: #f0b34c; --status-info: #8fbcff; --danger-text: #fca5a5;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-body); font: 14px/1.55 var(--font-primary); }
+.shell-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: var(--box-dark); color: var(--on-box); padding: 0.5rem 1rem; border-bottom: 3px solid; border-image: var(--accent-gradient) 1; }
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+.brand-mark { width: 1.7rem; height: 1.7rem; border-radius: 6px; background: var(--accent-gradient); display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; }
+.shell-brand__name { font-size: 1.4rem; font-weight: 700; }
+.shell-nav { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.shell-nav a { color: inherit; text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; font-size: 0.85rem; }
+.shell-nav a[aria-current] { background: var(--accent); border-color: var(--accent); }
+.shell-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.ctl { font: inherit; font-size: 0.8rem; color: inherit; background: transparent; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 0.28rem 0.7rem; cursor: pointer; }
+.ctl--mode { background: var(--accent); border-color: var(--accent-deep); font-weight: 600; }
+.shell-right label { font-size: 0.8rem; opacity: 0.85; display: inline-flex; align-items: center; gap: 0.3rem; }
+
+.frame { max-width: 1600px; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+.banner { border: 1px solid var(--border); border-left: 4px solid var(--accent); background: var(--surface-2); padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.9rem; }
+.step-num { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent-gradient); color: #fff; font-family: var(--font-mono); font-size: 0.85em; margin-right: 0.5em; vertical-align: middle; }
+h2 { color: var(--text); font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.chip { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; }
+.chip--ok { color: var(--status-ok); border-color: var(--status-ok); }
+.chip--info { color: var(--status-info); border-color: var(--status-info); }
+.chip--deny { color: var(--danger-text); border-color: var(--danger-text); }
+.chip--warn { color: var(--status-warn); border-color: var(--status-warn); }
+
+/* ===== inspector: tree + run + output ===== */
+.inspector { display: grid; grid-template-columns: minmax(230px, 300px) 1fr minmax(320px, 460px); gap: 0.9rem; align-items: start; }
+@media (max-width: 1100px) { .inspector { grid-template-columns: 1fr; } }
+.pane { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); border-top: 4px solid var(--accent); padding: 0.9rem 1rem; }
+.pane h3 { margin: 0 0 0.6rem; color: var(--text); font-size: 0.95rem; }
+.tree { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.tree button {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
+  font: inherit; font-size: 0.84rem; text-align: left; padding: 0.45rem 0.7rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-body); cursor: pointer;
+}
+.tree button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.tree button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.tree .vc { font-size: 0.68rem; font-weight: 800; }
+.vc--ok { color: var(--status-ok); } .vc--deny { color: var(--danger-text); } .vc--warn { color: var(--status-warn); }
+
+.prompt-row { display: flex; gap: 0.5rem; }
+.prompt-row input { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-width: 0; }
+button.primary { font: inherit; font-weight: 700; color: var(--on-accent); background: var(--accent-gradient); border: 1px solid var(--accent-deep); border-radius: 8px; padding: 0.5rem 1.1rem; cursor: pointer; }
+.runlog { margin: 0.8rem 0 0; display: grid; gap: 0.45rem; font-size: 0.83rem; }
+.runline { display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.6rem; background: var(--surface); cursor: pointer; text-align: left; width: 100%; }
+.runline[aria-current="step"] { border-color: var(--accent); }
+.runline .t { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; min-width: 3.4rem; }
+.empty-state { border: 1.5px dashed var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; color: var(--muted); font-size: 0.9rem; }
+.code { margin: 0; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow: auto; }
+.sub { color: var(--muted); font-size: 0.8rem; }
+.kv { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: 0.25rem 0.9rem; margin: 0.6rem 0 0; }
+.kv dt { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+.kv dd { margin: 0; font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<header class="shell-bar">
+  <div class="shell-brand"><span class="brand-mark">AZ</span><span class="shell-brand__name">Authorize policy demo</span></div>
+  <nav class="shell-nav" aria-label="Pages"><a href="#" aria-current="page">Try a decision</a><a href="#">Policies</a><a href="#">Diagram</a></nav>
+  <div class="shell-right">
+    <button class="ctl ctl--mode">Mode: Mock ▾</button>
+    <button class="ctl">Presenter</button>
+    <button class="ctl">Talk track</button>
+    <button class="ctl">Help</button>
+    <button class="ctl">Reset</button>
+    <button class="ctl">Shelf↵</button>
+    <label>Theme <button class="ctl">Auto ▾</button></label>
+    <label>Text size <button class="ctl">M ▾</button></label>
+  </div>
+</header>
+
+<main class="frame">
+  <div class="banner">SIMULATED, Mock mode: the policy engine, its policies and the tokens are this lab's own model. No tenant is touched. Real mode sends the same request to your configured decision endpoint.</div>
+
+  <h2><span class="step-num">1</span>Pick a scenario, type the ask, run it</h2>
+  <p class="sub" style="max-width:78ch">Each scenario runs the same shape: agent → gateway → Authorize decision → narrowed token → resource. The right pane shows the actual call as each hop lands.</p>
+
+  <div class="inspector">
+    <section class="pane" aria-label="Scenarios">
+      <h3>Scenarios</h3>
+      <ul class="tree" id="tree"></ul>
+    </section>
+
+    <section class="pane" aria-label="Run">
+      <h3 style="display:flex;align-items:center;gap:0.5rem">Run <span class="chip chip--info" id="runstate">idle</span>
+        <span style="margin-left:auto"><button class="ctl" style="border-color:var(--border);color:var(--text)" onclick="run()">Replay</button></span></h3>
+      <form class="prompt-row" onsubmit="document.getElementById('prompt').value=SCEN[cur].prompt; run(); return false;">
+        <input id="prompt" aria-label="Prompt" readonly>
+        <button class="primary" type="submit">Send</button>
+      </form>
+      <div class="runlog" id="runlog"></div>
+    </section>
+
+    <section class="pane" aria-label="Call detail" style="border-top-color: var(--status-info)">
+      <h3>Call detail</h3>
+      <div id="detail"><div class="empty-state">Pick a scenario and press Send. The actual request and response of each hop appear here as it lands.</div></div>
+    </section>
+  </div>
+
+  <h2><span class="step-num">2</span>Decision</h2>
+  <div class="empty-state" id="decision-host">The outcome, the policy that decided it, and the reasons — in words, never colour alone.</div>
+</main>
+
+<script>
+const SCEN = [
+  { id:'book', name:'Book $380 to Denver', verdict:['ok','PERMIT'],
+    prompt:'book a business seat to Denver for $380',
+    hops:[
+      { t:'0.0s', label:'agent → gateway', title:'Invoke', kind:'invoke',
+        req:'POST /agent/invoke\nauthorization: Bearer MOCK_AGENT_TOKEN\nx-on-behalf-of: emma.hartley\n\n{ "prompt": "book a business seat to Denver for $380" }',
+        res:'HTTP 202\n{ "accepted": true, "runId": "run_1a07" }' },
+      { t:'0.2s', label:'gateway → Authorize', title:'Decision', kind:'decision',
+        req:'POST /as/decision\n\n{ "subject": { "type": "agent", "id": "travel-assistant",\n  "onBehalfOf": "elena novak" },\n  "action": "flights.book", "resource": { "amount": 380 } }',
+        res:'HTTP 200\n{ "outcome": "PERMIT",\n  "policy": "Agent booking under $500",\n  "reasons": ["delegate consent active", "amount 380 <= 500"] }' },
+      { t:'0.4s', label:'Authorize → gateway', title:'Narrowed token', kind:'token',
+        req:'POST /as/token.oauth2\ngrant_type=token-exchange&scope=flights.book',
+        res:'HTTP 200\n{ "access_token": "MOCK_NARROWED_TOKEN",\n  "scope": "flights.book", "expires_in": 300 }' },
+      { t:'0.6s', label:'gateway → Flights API', title:'Book', kind:'call',
+        req:'POST /bookings\nauthorization: Bearer MOCK_NARROWED_TOKEN\n\n{ "amount": 380 }',
+        res:'HTTP 201\n{ "bookingId": "BK-33120", "status": "confirmed" }' } ] },
+  { id:'toronto', name:'Book $380 to Toronto', verdict:['warn','CONSTRAINED'],
+    prompt:'book a business seat to Toronto for $380',
+    hops:[
+      { t:'0.0s', label:'agent → gateway', title:'Invoke', kind:'invoke',
+        req:'POST /agent/invoke\nx-on-behalf-of: elena novak\n\n{ "prompt": "book a business seat to Toronto for $380" }',
+        res:'HTTP 202\n{ "accepted": true, "runId": "run_1a08" }' },
+      { t:'0.2s', label:'gateway → Authorize', title:'Decision', kind:'decision',
+        req:'POST /as/decision\n\n{ "action": "flights.book",\n  "resource": { "amount": 380, "destination": "YYZ", "international": true } }',
+        res:'HTTP 200\n{ "outcome": "PERMIT",\n  "obligations": ["seatClass:economy"],\n  "policy": "International bookings economy only",\n  "reasons": ["international route", "business seat downgraded"] }' },
+      { t:'0.4s', label:'gateway → agent', title:'Obligation', kind:'obligation',
+        req:'(internal) obligations: seatClass:economy',
+        res:'HTTP 200\n{ "text": "International bookings are economy only — I can book 14A (economy) on AC-856." }' } ] },
+  { id:'batch', name:'Nightly analytics batch', verdict:['deny','DENY'],
+    prompt:'run the nightly analytics batch',
+    hops:[
+      { t:'0.0s', label:'agent → gateway', title:'Invoke', kind:'invoke',
+        req:'POST /agent/invoke\nx-on-behalf-of: elena novak\n\n{ "prompt": "run the nightly analytics batch" }',
+        res:'HTTP 202\n{ "accepted": true, "runId": "run_1a09" }' },
+      { t:'0.2s', label:'gateway → Authorize', title:'Decision', kind:'decision',
+        req:'POST /as/decision\n\n{ "action": "analytics.batch.run",\n  "subject": { "type": "agent", "id": "travel-assistant" } }',
+        res:'HTTP 200\n{ "outcome": "DENY",\n  "policy": "Batch jobs are human-initiated",\n  "reasons": ["agent principals may not start batch jobs", "see policy §4.2"] }' } ] },
+];
+let cur = 0, timer = null;
+const tree = document.getElementById('tree');
+tree.innerHTML = SCEN.map((s,i)=>`<li><button onclick="pick(${i})" aria-pressed="${i===0}"><span>${s.name}</span><span class="vc vc--${s.verdict[0]==='ok'?'ok':s.verdict[0]}">${s.verdict[0]==='ok'?'PERMIT':s.verdict[0]==='deny'?'DENY':'CONSTRAINED'}</span></button></li>`).join('');
+function pick(i){ cur=i; document.getElementById('prompt').value=SCEN[i].prompt;
+  [...tree.querySelectorAll('button')].forEach((b,k)=>b.setAttribute('aria-pressed',k===i)); run(); }
+function run(){
+  if(timer){clearInterval(timer);timer=null;}
+  const s=SCEN[cur]; const log=document.getElementById('runlog');
+  document.getElementById('detail').innerHTML='<div class="empty-state">Running…</div>';
+  document.getElementById('decision-host').innerHTML='Running…';
+  document.getElementById('runstate').textContent='running'; document.getElementById('runstate').className='chip chip--warn';
+  log.innerHTML='';
+  let i=0;
+  timer=setInterval(()=>{
+    const h=s.hops[i];
+    log.insertAdjacentHTML('beforeend',`<button class="runline" aria-current="step" onclick="show(${i})"><span class="t">${h.t}</span><span>${h.title}</span><span class="sub" style="margin-left:auto">${h.label}</span></button>`);
+    document.querySelectorAll('.runline').forEach((b,k)=>b.removeAttribute('aria-current'));
+    log.lastElementChild.setAttribute('aria-current','step');
+    show(i);
+    i++;
+    if(i>=s.hops.length){
+      clearInterval(timer); timer=null;
+      const deny=s.verdict[0]==='deny';
+      document.getElementById('runstate').textContent=deny?'denied':'done';
+      document.getElementById('runstate').className='chip '+(deny?'chip--deny':'chip--ok');
+      document.getElementById('decision-host').innerHTML=deny
+        ?'<strong style="color:var(--danger-text)">DENY</strong> — batch jobs are human-initiated. The agent never held a token for analytics; the refusal, the policy and the reasons are on the audit trail.'
+        :s.verdict[0]==='warn'
+        ?'<strong style="color:var(--status-warn)">PERMIT with obligation</strong> — the booking was downgraded to economy by policy "International bookings economy only". The agent told the traveller, in words.'
+        :'<strong style="color:var(--status-ok)">PERMIT</strong> — decided at call time by "Agent booking under $500" on a narrowed token. Nothing was granted in advance.';
+    }
+  },700);
+}
+function show(i){
+  const h=SCEN[cur].hops[i];
+  document.getElementById('detail').innerHTML=`
+    <h3 style="display:flex;align-items:center;gap:.5rem;font-size:.95rem">${h.title} <span class="sub">${h.label}</span></h3>
+    <dl class="kv"><dt>Landed at</dt><dd><span class="t" style="font-family:var(--font-mono);font-size:.75rem">${h.t}</span></dd></dl>
+    <h4 style="margin:.6rem 0 .2rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Request</h4>
+    <div class="code">${h.req}</div>
+    <h4 style="margin:.6rem 0 .2rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Response</h4>
+    <div class="code">${h.res}</div>`;
+}
+document.getElementById('prompt').value=SCEN[0].prompt;
+</script>
+</body>
+</html>
