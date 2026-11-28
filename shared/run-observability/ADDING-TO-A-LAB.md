@@ -20,7 +20,7 @@ From `origin/main`, never from a branch checkout: `git -C <AI-DEMO-Standalone> f
 | Case | Copy |
 |---|---|
 | Mock only, events computed by the lab's mock | `a2a-lab-LAB` (`server/src/runObs.js`), `hostile-a2a-LAB` (`runRecord.js`, `decisionLog.js`) |
-| Mock + Real, replies as `response`, Elasticsearch for `logged` | `meridian-a2a-hop-LAB` (`server/src/runLog.js`), `poppy-agent-tester-LAB` |
+| Mock + Real, replies as `response`, Elasticsearch for `logged` | `meridian-a2a-hop-LAB` (`server/src/runLog.js`), `poppy-demo-LAB` |
 | Several kinds of run on one page, per-kind records | `cimd-LAB` (`server/src/runLog.js`, `web/src/RunRecord.jsx`) |
 
 1. **Decision events:** compute each event ONCE, stamp it ONCE, store it per workspace, write one stdout line per decision, and build the record from the stored events. Never re-run a scenario to build the record and never add invented spacing (a record whose times differ from the stdout lines contradicts the only real log the lab writes).
