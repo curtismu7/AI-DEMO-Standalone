@@ -50,10 +50,11 @@ test('the code never touches innerHTML, eval or a dynamic function, and imports 
   }
 });
 
-test('the only link is built from a validated GitHub https URL, and it opens safely', () => {
+test('the only links are the source pointer and a hop catalog\'s spec refs, and every anchor opens safely', () => {
   const jsx = read('DiagramKit.jsx'); const js = read('diagramKit.js');
-  assert.equal([...jsx.matchAll(/href=/g)].length, 1, 'one anchor');
-  assert.match(jsx, /href=\{s\.href\}/);
+  assert.equal([...jsx.matchAll(/href=/g)].length, 2, 'two anchors: the source pointer and a spec ref (call refs)');
+  assert.match(jsx, /href=\{s\.href\}/, 'the source link is the kit-built, GitHub-validated href');
+  assert.match(jsx, /href=\{r\.url\}/, 'a spec ref renders its catalog url (hopDetail validates https:// only)');
   assert.match(jsx, /target="_blank" rel="noopener noreferrer"/);
   assert.match(js, /\^https:\\\/\\\/github\\\.com\\\//, 'sourceHref only accepts https://github.com/');
   assert.match(js, /\[0-9a-f\]\{40\}/, 'and a full 40-character commit');
