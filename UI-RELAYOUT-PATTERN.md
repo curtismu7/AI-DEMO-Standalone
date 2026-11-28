@@ -113,7 +113,7 @@ The old layout used `grid-template-columns: repeat(auto-fit, minmax(...))` mosai
 | pingone-events | `pingone-events-LAB` | Event sections numbered via `data-n`/`::before` |
 | pingone-mcp-inspector | `pingone-mcp-inspector-LAB` | Inspector sections numbered 1–5; mosaic → stacked |
 | pingone-signin | `pingone-signin-LAB` | Sign-in flow sections numbered; `.duo` pairing |
-| poppy-agent-tester | `poppy-agent-tester-LAB` | Tester sections numbered 1–4; grid stacks <900px |
+| poppy-demo | `poppy-demo-LAB` | Tester sections numbered 1–4; grid stacks <900px |
 | poppy-verification | `poppy-verification-LAB` | Verification sections numbered; Dockerfile fixed to `COPY docs docs` |
 | privilege-bulk-users | `privilege-bulk-users-LAB` | Bulk-user sections numbered; `.hops-grid` for hops |
 | privilege-google-secrets | `privilege-google-secrets-LAB` | Secret sections numbered via `data-n`/`::before` |

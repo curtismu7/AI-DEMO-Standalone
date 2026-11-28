@@ -20,6 +20,12 @@ whenever you bump VERSION; never edit an old entry.
 
 <!-- SHELF RELEASES BELOW — newest first, one "## version" heading per release -->
 
+## 3.18 (2026-11-26)
+
+**New labs**
+
+- ai-guard-demo-LAB (Demo, D151, port 7900): AI Guard end to end — an agent gateway, Agentic Apps (MCP doors) and an Agent Registry of mock keys with per-key guardrails. Try a call as a key: identity, grant, tool filter, then the stand-in sidecar's verdict, including the refusals. Fork of ai-guard-sidecar-LAB; the sidecar contract and demo are unchanged. Contract unverified; offline.
+
 ## 3.17 (2026-11-24)
 
 **New labs**
