@@ -1,7 +1,7 @@
 # rail: the family's one collapsible sidebar
 
 `Rail` (owner 2026-11-13) wraps a lab's sidebar content in a collapsible chrome: a toggle strip on the rail's page
-edge hides/shows it, and the state persists in localStorage. Content changes per lab; the chrome is shared, so
+edge hides/shows it, and the state persists in localStorage ("1" collapsed, "0" expanded; no value = the `defaultCollapsed` prop). Content changes per lab; the chrome is shared, so
 features like pinning, width-drag or keyboard toggle land once here.
 
 ## Vendor it
@@ -25,4 +25,5 @@ The lab keeps owning the sidebar's inner markup and CSS. `Rail` only adds the co
 | `children` | | the sidebar content (the lab's own component) |
 | `storageKey` | `"rail-collapsed"` | localStorage key for the collapsed state |
 | `label` | `"Sidebar"` | accessible name + toggle titles |
+| `defaultCollapsed` | `false` | start collapsed on the first visit (before the user has clicked the toggle); an explicit choice is remembered and wins |
 | `side` | `"left"` | which page edge the toggle strip hugs (`"right"` for right-hand rails) |

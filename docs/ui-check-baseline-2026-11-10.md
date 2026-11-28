@@ -104,7 +104,7 @@ Columns: pages found, pages with no DRIFT, pages with DRIFT, DRIFT findings (a f
 | pingone-LAB | Demo | 4 | 0 | 4 | 16 | P1×4 P10×4 P3×4 P9×4 |
 | pingone-mcp-inspector-LAB | Tester | 8 | 0 | 8 | 39 | A2×8 H1×8 P1×8 P2×8 |
 | pingone-signin-LAB | Demo | 8 | 0 | 8 | 35 | A2×8 H1×8 P1×8 P3×7 |
-| poppy-agent-tester-LAB | Demo | 2 | 0 | 2 | 8 | P1×2 P10×2 P3×2 P9×2 |
+| poppy-demo-LAB | Demo | 2 | 0 | 2 | 8 | P1×2 P10×2 P3×2 P9×2 |
 | privilege-demo-LAB | Demo | 7 | 3 | 4 | 4 | P9×4 |
 | privilege-k8-kits-LAB | null | 2 | 0 | 2 | 12 | H3×2 P1×2 P10×2 M1×1 |
 | privilege-logging-LAB | Tester | 8 | 0 | 8 | 12 | P10×8 P9×4 |

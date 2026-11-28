@@ -33,7 +33,7 @@ colour is never the only cue. The active arrow's label uses the accent (override
 
 ## Wire it in (about ten lines)
 
-Your diagram needs a **graph**: `{ nodes: [{ id, label, sub?, group?, groupLabel?, sources? }], edges: [{ source, target, label? }], groups?, repo? }`.
+Your diagram needs a **graph**: `{ nodes: [{ id, label, sub?, group?, groupLabel?, sources? }], edges: [{ source, target, label?, hop? }], groups?, repo? }`.
 A `diagram-studio/1` document already is one; a lab with its own data maps onto it in a line or two:
 
 ```js
@@ -80,6 +80,22 @@ says where an arrow meets a box: `sidePoint` (the middle of a side: `"t" | "b" |
 
 Labels take no clicks unless you pass `onSelect` (so the boxes under them stay draggable). The expanded details are marked `nodrag nopan
 nowheel`, so using them never moves the box or pans the canvas.
+
+## Calls: the API calls and responses in the pop-up (owner, 2026-11-27)
+
+The expanded box also shows **what actually went over the wire on this box's arrows**. Give an edge a `hop` — a `demo-hop/1` object,
+built with the shared `hopDetail.mjs` (`enrichHop`, already redacted: secrets write-only, tokens `[redacted]` in Real mode, raw in Mock)
+— and `boxPassport` collects the hops touching a box into `p.calls` as **Sent** (the box's outgoing arrows) and **Received** (its
+incoming arrows), each with its verdict chip (ok / deny / held / error / skip) and the hop's `fact` line. Expanding a call row shows:
+
+- the **request** and **response** through the lab's own vendored `JsonPane` — pass it as `<Passport p={...} JsonView={Json} />`
+  (the default export of `web/src/json/JsonPane.jsx`). That is the standard (rules 24/24b): Form/JSON views, tokens decoded below
+  the pane, important claims hot. The fallback without `JsonView` is plain text and a lab's review should flag it.
+- for a wire-transcript string (request line / status line, headers, blank line, JSON body), the head stays text and the body gets the pane.
+- the hop's **spec references** (from the hop catalog) as links.
+
+Keep hops small: the box is already expanded, and the pane must stay full-view (no scrolling caps). A hop that carries no `request`
+and no `response` (a decision-only step) shows only its verdict and fact.
 
 ## Limits
 
