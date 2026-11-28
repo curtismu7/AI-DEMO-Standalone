@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import SequenceView from "./evidence/SequenceView";
-import SequenceStrip from "./evidence/SequenceStrip";
 import MovieReel from "./evidence/MovieReel";
 import StepDetailPanel from "./evidence/StepDetailPanel";
 import { UC1_RUN, UC1_DENY_RUN } from "./evidence/fixtures";
 
-// Demo Standard Mock E — the run strip on TOP is a CONVERTED COPY of the real SequenceView
-// (SequenceStrip: same SVG lanes/lifelines/arrows, compact); below it the untouched real
-// SequenceView, MovieReel (re-flowed vertical by this page's CSS) and StepDetailPanel.
+// Demo Standard Mock E — ONE sequence diagram: the real SequenceView, fed only the hops
+// revealed so far, so it fills in live as the run progresses. The MovieReel (re-flowed
+// top-to-bottom on the right) and the StepDetailPanel share the same selected hop.
 
 export default function App() {
   const [prompt, setPrompt] = useState("Show Alex's account balance");
@@ -68,30 +67,22 @@ export default function App() {
           </div>
         </section>
 
-        {/* ===== 1. RUN STRIP — the real sequence diagram, converted compact, live ===== */}
-        <section className="strip" aria-label="What happened — live run strip">
-          <div className="strip-head">
-            <strong>What happened</strong>
-            <span className={`chip ${running ? "" : "chip"}`} data-state={running ? "warn" : done ? "ok" : "info"}>{running ? "working" : done ? "done" : "idle"}</span>
-            <span className="strip-hint">click anything in the strip for the actual call</span>
-          </div>
-          <SequenceStrip hops={shown} selected={selected} onSelect={setSelected} />
-        </section>
+        {/* ===== the ONE sequence diagram — the real SequenceView, live ===== */}
+        <SequenceView hops={shown} selected={selected} onSelect={setSelected} />
 
-        {/* ===== 2. the demo's existing evidence, real components ===== */}
-        <h2>Evidence</h2>
+        {/* ===== the reel + detail: real components, same selection ===== */}
         <div className="evidence">
           <div className="ev-main">
-            <SequenceView hops={hops} selected={selected} onSelect={setSelected} />
-            <StepDetailPanel hops={hops} selected={selected} onSelect={setSelected} />
+            <StepDetailPanel hops={shown} selected={selected} onSelect={setSelected} />
           </div>
           <aside className="ev-side" aria-label="Movie reel, top to bottom">
             {/* The vertical reel: the REAL MovieReel component; this page's CSS re-flows .rl to one top-to-bottom column. */}
             <div className="reel-vertical">
-              <MovieReel hops={hops} selected={selected} onSelect={setSelected} />
+              <MovieReel hops={shown} selected={selected} onSelect={setSelected} />
             </div>
           </aside>
         </div>
+
 
         <h2>What the run proved</h2>
         <div className="empty-state" data-testid="verdict">

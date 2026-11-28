@@ -32,26 +32,6 @@ button.primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 
 .chip[data-state="deny"] { color: var(--danger-text); border-color: var(--danger-text); }
 .chip[data-state="info"] { color: var(--status-info); border-color: var(--status-info); }
 
-/* ===== the run strip: the real SequenceView classes, at compact scale ===== */
-.strip { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 0.8rem 1rem 0.4rem; margin-top: 0.9rem; position: relative; }
-.strip-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.strip-head strong { color: var(--text); font-size: 0.9rem; }
-.strip-hint { font-size: 0.72rem; color: var(--muted); }
-.strip-view .sq-scroll { max-height: none; }
-.strip-view .sq-svg { width: 100%; }
-.strip-view .sq-lbox { fill: var(--box-dark); stroke: var(--lane, var(--border)); stroke-width: 1.5; }
-.strip-view .sq-lbox[data-state="active"] { stroke: var(--accent); stroke-width: 2.5; }
-.strip-view .sq-lbox[data-state="done"] { opacity: 0.92; }
-.strip-view .sq-lt { fill: var(--on-box); font-size: 10.5px; font-weight: 700; }
-.strip-view .sq-al { font-size: 9.5px; font-weight: 600; }
-.strip-view .sq-hit:hover { fill: var(--accent-soft); }
-.strip-view .sq-row[data-on="true"] .sq-msg { stroke: var(--accent); }
-.strip-view .sq-row[data-on="true"] .sq-albox { fill: var(--accent-soft); stroke: var(--accent); }
-.strip-head--on { fill: var(--accent); }
-.strip-actorcard { position: absolute; top: 2.6rem; right: 1rem; max-width: 300px; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 0.5rem 0.75rem; box-shadow: 0 6px 18px rgba(0,0,0,0.18); z-index: 5; }
-.strip-actorcard p { margin: 0.15rem 0; font-size: 0.8rem; }
-.strip-actorcard__x { position: absolute; top: 2px; right: 6px; border: none; background: none; font-size: 1rem; cursor: pointer; color: var(--muted); }
-
 /* ===== evidence layout: sequence+detail left, vertical reel right ===== */
 .evidence { display: grid; grid-template-columns: 1fr minmax(240px, 290px); gap: 1rem; align-items: start; }
 @media (max-width: 1000px) { .evidence { grid-template-columns: 1fr; } }
