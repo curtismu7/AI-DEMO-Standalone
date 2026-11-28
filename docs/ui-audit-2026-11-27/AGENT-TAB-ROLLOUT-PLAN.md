@@ -18,6 +18,13 @@ It does **not** replace anything: no existing tab, page, view or behaviour chang
 closed, the demo is byte-for-byte what it was. The existing full SequenceView tab, topology tab
 and any walkthrough stay exactly where they are.
 
+**Mock AND Real.** The tab works in both modes, because the engines already do: cohort-A labs
+emit `demo-hop/1` hops from the mock engine (MOCK tokens raw) *and* from the real path
+(`live.js`: real PingOne calls as they happen, tokens redacted on the server, a refusal or
+network failure becomes a hop with a verdict, steps that cannot run listed as "not run" — mock
+is never mixed into a real run). The Agent tab streams whichever mode is active; the banner and
+MOCK tags make the mode unmistakable. A lab with no real mode simply has a mock-only tab.
+
 **Q1**: tab name — "Agent run", "Live run", "Agent", other?
 
 ## 1. Fleet inventory (measured 2026-11-28, 110 labs)
@@ -36,24 +43,30 @@ standard.)
 
 ## 2. What must be true before a lab gets the tab (gate, not wish)
 
-1. The lab's engine can emit `demo-hop/1` hops **incrementally** (one per step) — this is the
-   existing evidence contract (`shared/hop-detail/`), already met by all 7 cohort-A labs.
+1. The lab's engine can emit `demo-hop/1` hops **incrementally** (one per step) in the mode(s)
+   the lab supports — mock via its flow engine, real via its live path (refusals and network
+   failures are hops with verdicts; "not run" steps are listed, never faked). This is the
+   existing evidence contract (`shared/hop-detail/`), already met in BOTH modes by all 7
+   cohort-A labs.
 2. The lab vendors `shared/evidence/` byte-for-byte (sha256 pins) and `top-menu`.
 3. The tab is a **separate route/view**; default route unchanged. Bookmarks, deep links, tests
    and muscle memory are untouched.
 4. Nothing is deleted: the old sequence/evidence views stay for comparison until the owner
    retires them explicitly.
-5. Mock-only at first: the live reveal works from the engine's existing step events; **Real-mode
-   labs stream from whatever they stream today** — if a lab's real mode has no step stream, its
-   Agent tab shows the completed run (no fake streaming). Ever.
+5. Both modes covered by the new test: "tab exists, default route unchanged, old views intact,
+   mock run streams hop by hop" — and, where the lab has a real mode, "a live run renders its
+   real hops with redacted tokens and its refusals as DENY hops" (against the tests' fake
+   PingOne, the pattern `live.js` tests already use).
 
 ## 3. What we will NOT do (do-not-break contract)
 
 - No change to `SequenceView`/`MovieReel`/`StepDetailPanel`/`lanes.js` semantics — the live feed
   is the parent slicing `hops` (Mock E pattern: `hops.slice(0, revealed)`), not a component change.
 - No new colours, no restyled shared controls, no new CSS outside the lab layout file.
-- No engine behaviour change: same decisions, same verdicts, same redaction. The tab renders
-  what the engine already produces, as it produces it.
+- No engine behaviour change: same decisions, same verdicts, same redaction, in both modes. The
+  tab renders what the engine already produces, as it produces it. Mock and real are never
+  mixed in one run, and a real hop is never labelled mock (the existing `mock:false, live:true`
+  hop flags carry through untouched).
 - No lab outside cohorts A/B touched in v1.
 - Every lab ships with its existing test suite green plus one new test: "tab exists, default
   route unchanged, old views intact".
