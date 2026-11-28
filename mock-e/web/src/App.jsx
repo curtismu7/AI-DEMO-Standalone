@@ -82,6 +82,15 @@ export default function App() {
 
   const reset = () => { clearInterval(timer.current); setRevealed(0); setSelected(null); setRunning(false); };
 
+  // The setup sidebar (New chat + prompts): collapsed by default, the chevron icon toggles it.
+  const [setupOpen, setSetupOpen] = useState(false);
+  const PROMPTS = [
+    { text: "Show Alex's account balance", scenario: "uc1" },
+    { text: "Show my mortgage balance", scenario: "uc1" },
+    { text: "Transfer with the wrong scope (refused)", scenario: "deny" },
+  ];
+  const say = (p) => { setPrompt(p.text); setScenario(p.scenario); run(); };
+
   return (
     <div className="page">
       <header className="shell-bar">
@@ -114,8 +123,26 @@ export default function App() {
 
       <p className="banner" role="note">SIMULATED, Mock mode: the hops come from the shared evidence fixtures (the engine's UC1 run). No tenant, gateway or identity provider is touched.</p>
 
-      <main className="frame">
-        <h1>Agent demo</h1>
+      <main className={`frame ${setupOpen ? "frame--setup" : ""}`}>
+        <div className="agno">
+          {setupOpen && (
+            <aside className="setup" aria-label="Setup" data-testid="setup">
+              <p className="kicker">What to type</p>
+              <ul className="setup__prompts">
+                {PROMPTS.map((p) => (
+                  <li key={p.text}><button type="button" className="wtt__chip" onClick={() => say(p)}>{p.text}</button></li>
+                ))}
+              </ul>
+              <p className="kicker">New chat</p>
+              <button type="button" onClick={reset}>+ New chat</button>
+            </aside>
+          )}
+          <button type="button" className={`setup-toggle ${setupOpen ? "open" : ""}`} aria-expanded={setupOpen}
+            aria-label={setupOpen ? "Hide setup" : "Show setup"} title={setupOpen ? "Hide setup" : "Show setup"}
+            data-testid="setup-toggle" onClick={() => setSetupOpen((v) => !v)}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <div className="work">
 
         <section className="prompt-card card" aria-label="Prompt">
           <div className="prompt-row">
@@ -171,6 +198,8 @@ export default function App() {
           {!done
             ? <p className="ev-muted">Run a prompt: the verdict, the policy decision and the token evidence appear here.</p>
             : <p><strong>The delegated token carried the right scope; the gateway filter chain passed; the policy answered PERMIT at call time.</strong> Click any hop above for its full evidence.</p>}
+        </div>
+          </div>
         </div>
       </main>
 
