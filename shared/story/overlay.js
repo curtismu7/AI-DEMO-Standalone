@@ -46,7 +46,9 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
   };
   const wipe = () => { while (els.length) els.pop().remove(); };
   let lastCap = null; let raf = null;
-  const clear = () => { lastCap = null; wipe(); };   // an explicit clear also stops the bubble following scrolls
+  let tick = null; let lastKey = null;
+  const stopTick = () => { if (tick !== null) { clearInterval(tick); tick = null; } };
+  const clear = () => { lastCap = null; stopTick(); wipe(); };   // an explicit clear also stops the bubble following scrolls
   const el = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const view = doc.defaultView || globalThis;
   // A target is a selector, an Element or a function returning one, found again on every redraw: a page that re-renders replaces its nodes.
@@ -84,16 +86,24 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
   let ro = null; let watched = null;
   const watch = (bar) => { if (watched === bar || typeof ResizeObserver === 'undefined') return; if (!ro) ro = new ResizeObserver(() => reflow()); ro.observe(bar); watched = bar; };
 
-  function cap(o) { lastCap = o; listen(); draw(o, true); reflow(); }
+  // A target that moves or resizes with nothing scrolling (a modal that opens with an animation or grows when its device list loads, a floating panel that is dragged)
+  // would leave the red box where the target WAS. While a caption is up, look at the target's box a few times a second and redraw when it changed.
+  const boxKey = (o) => { const t = resolve(o.target); if (!t) return ''; const r = t.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(','); };
+  const startTick = () => { if (!follow || tick !== null) return; tick = view.setInterval(() => { if (!lastCap) return stopTick(); if (boxKey(lastCap) !== lastKey) draw(lastCap, false); }, 120); };
+  function cap(o) { lastCap = o; listen(); draw(o, true); reflow(); startTick(); }
 
   function draw(o, scroll) {
     ensure(); wipe();
     const vw = view.innerWidth || 1200; const vh = view.innerHeight || 800; let W = Math.round(470 * S); const GAP = 26; const M = 12;
-    const t = resolve(o.target);
+    const t = resolve(o.target); lastKey = boxKey(o);
     if (scroll && t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });   // instant: a smooth scroll would be measured half way
-    const r = t ? t.getBoundingClientRect() : null;
+    const r0 = t ? t.getBoundingClientRect() : null;
+    // Clamp the highlight to the viewport: a target wider or taller than the screen (a floating panel dragged
+    // partly off-screen, a modal that hangs over an edge) drew a red box cut off by the screen, which reads
+    // as "the box is too small / off". What stays visible is exactly what is on screen.
+    const r = r0 ? { left: Math.max(r0.left, 0), top: Math.max(r0.top, 0), right: Math.min(r0.right, view.innerWidth || 1200), bottom: Math.min(r0.bottom, view.innerHeight || 800) } : null;
     if (r) {
-      const h = el('div', 'story-hl'); h.style.cssText = `left:${r.left - 5}px;top:${r.top - 5}px;width:${r.width + 10}px;height:${r.height + 10}px`;
+      const h = el('div', 'story-hl'); h.style.cssText = `left:${r.left - 5}px;top:${r.top - 5}px;width:${r.right - r.left + 10}px;height:${r.bottom - r.top + 10}px`;
       root().appendChild(h); els.push(h);
     }
     const b = el('div', 'story-bub'); b.setAttribute('role', 'status');
@@ -109,10 +119,10 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
       const fits = { right: r.right + GAP + W + M <= vw, left: r.left - GAP - W >= M, below: r.bottom + GAP + H + M <= vh, above: r.top - GAP - H >= M };
       const order = o.prefer ? [o.prefer, 'right', 'left', 'below', 'above'] : ['right', 'left', 'below', 'above'];
       side = order.find((s) => fits[s]) || (vw - r.right > r.left ? 'right' : 'left');
-      if (side === 'right') { left = r.right + GAP; top = r.top + r.height / 2 - H / 2; }
-      else if (side === 'left') { left = r.left - GAP - W; top = r.top + r.height / 2 - H / 2; }
-      else if (side === 'below') { left = r.left + r.width / 2 - W / 2; top = r.bottom + GAP; }
-      else { left = r.left + r.width / 2 - W / 2; top = r.top - GAP - H; }
+      if (side === 'right') { left = r.right + GAP; top = r.top + (r.bottom - r.top) / 2 - H / 2; }
+      else if (side === 'left') { left = r.left - GAP - W; top = r.top + (r.bottom - r.top) / 2 - H / 2; }
+      else if (side === 'below') { left = (r.left + r.right) / 2 - W / 2; top = r.bottom + GAP; }
+      else { left = (r.left + r.right) / 2 - W / 2; top = r.top - GAP - H; }
     }
     left = Math.max(M, Math.min(vw - W - M, left)); top = Math.max(M, Math.min(vh - H - M, top));
     // The Story bar sits on top of everything. A bubble that would run under it moves to the nearest place that clears the bar and, if it can, the highlighted
@@ -122,8 +132,7 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
     if (bar) watch(bar);
     const hit = (a, c) => !!a && !!c && a.left < c.right && a.right > c.left && a.top < c.bottom && a.bottom > c.top;
     const box = (l, t2) => ({ left: l, top: t2, right: l + W, bottom: t2 + H });
-    const ring = r ? { left: r.left - 5, top: r.top - 5, right: r.right + 5, bottom: r.bottom + 5 } : null;
-    if (bb && bb.width && hit(box(left, top), bb)) {
+    const ring = r ? { left: r.left - 5, top: r.top - 5, right: r.right + 5, bottom: r.bottom + 5 } : null;    if (bb && bb.width && hit(box(left, top), bb)) {
       const tries = [[left, bb.top - 8 - H], [bb.left - 8 - W, top], [bb.left - 8 - W, bb.top - 8 - H], [left, bb.bottom + 8], [bb.right + 8, top], [left, M], [M, top]];   // above, beside, below and the far side of the bar, then the screen's edges
       const clearsBar = (c) => c[0] >= M && c[1] >= M && c[0] + W <= vw - M && c[1] + H <= vh - M && !hit(box(c[0], c[1]), bb);
       const pick = tries.find((c) => clearsBar(c) && !hit(box(c[0], c[1]), ring)) || tries.find(clearsBar);
@@ -136,7 +145,7 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
     b.style.left = `${left}px`; b.style.top = `${top}px`; b.style.visibility = 'visible';
     if (r && side && o.place !== 'bl') {
       const tail = el('div', 'story-tail');
-      const cx = Math.max(left + 26, Math.min(left + W - 26, r.left + r.width / 2)); const cy = Math.max(top + 26, Math.min(top + H - 26, r.top + r.height / 2));
+      const cx = Math.max(left + 26, Math.min(left + W - 26, (r.left + r.right) / 2)); const cy = Math.max(top + 26, Math.min(top + H - 26, (r.top + r.bottom) / 2));
       if (side === 'right') { tail.style.left = '-13px'; tail.style.top = `${cy - top - 11}px`; tail.style.borderRight = 'none'; tail.style.borderTop = 'none'; }
       if (side === 'left') { tail.style.right = '-13px'; tail.style.top = `${cy - top - 11}px`; tail.style.borderLeft = 'none'; tail.style.borderBottom = 'none'; }
       if (side === 'below') { tail.style.top = '-13px'; tail.style.left = `${cx - left - 11}px`; tail.style.borderBottom = 'none'; tail.style.borderRight = 'none'; }
@@ -150,6 +159,6 @@ export function createOverlay({ scale = 1, follow = true, doc = (typeof document
     const c = doc.querySelector('.story-slide .card');
     if (c && c.scrollHeight > c.clientHeight + 4 && c.scrollTo) c.scrollTo({ top: c.scrollHeight - c.clientHeight, behavior: 'smooth' });
   };
-  const destroy = () => { unlisten(); if (ro) { ro.disconnect(); ro = null; watched = null; } clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
+  const destroy = () => { unlisten(); stopTick(); if (ro) { ro.disconnect(); ro = null; watched = null; } clear(); const st = doc.getElementById('story-style'); if (st) st.remove(); };
   return { cap, slide, clear, scrollSlide, destroy };
 }

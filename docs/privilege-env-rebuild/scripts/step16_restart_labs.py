@@ -11,6 +11,10 @@ DEV_ENV = os.path.expanduser("~/Development/.env")
 # demo id -> variables whose NEW values must be inside the container afterwards
 CHECK = {"privilege-api-explorer": ["PRIV_LOG_CONSOLE_TENANT"], "pf-array-claims-lab": ["PAC_GW_KEY_LAB_AGENT", "PAC_GW_KEY_AGG_GUEST", "PAC_GW_KEY_AGG_DELEGATE"],
          "meridian-air-lab": ["MA_REGISTRY_TENANT"], "privilege-a2a-anthropic-demo": ["MAIN_AGENT_KEY", "WORKER_AGENT_KEY"], "spiffe-issuer": ["SPIFFE_GW_KEY_MAIN"]}
+# 2026-11-25: the aggregate doors were renamed to lab-agg-full|limited|blocked on 5bfb4e12; each lab also reads the door list
+for _d, _v in {"pf-array-claims-lab": "PAC_GW_APPS", "spiffe-issuer": "SPIFFE_GW_APPS", "aggregate-entitlement-lab": "AGG_ENT_GW_APPS",
+               "mcp-tools": "MCP_TOOLS_GW_APPS", "agent-audit-trail-lab": "AAT_GW_APPS", "privilege-demo": "PDG_GW_APPS"}.items():
+    CHECK[_d] = CHECK.get(_d, []) + [_v]
 sha = lambda s: hashlib.sha256(s.encode()).hexdigest()
 
 
