@@ -1,0 +1,35 @@
+/* Mock E page styles — layout only. Visuals come from standalone-ui.css, layout.css,
+   top-menu.css, evidence.css, floating-dialog.css. */
+
+.frame { max-width: 2200px; margin: 0 auto; padding: 0 1.5rem 3rem; width: 100%; }
+h2 { color: var(--text); font-size: 1.05rem; margin: 1.4rem 0 0.5rem; }
+
+/* setup sidebar: collapsed by default; the chevron icon toggle sits to its right */
+.agno { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.frame--setup .agno { grid-template-columns: 270px 20px minmax(0, 1fr); }
+@media (max-width: 900px) { .frame--setup .agno { grid-template-columns: minmax(0, 1fr); } .setup-toggle { display: none; } }
+.setup { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); position: sticky; top: 8px; }
+.setup__prompts { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.setup-toggle { display: inline-grid; place-items: center; width: 20px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.setup-toggle:hover { color: var(--text); border-color: var(--muted); }
+.setup-toggle.open svg { transform: rotate(180deg); }
+.work { min-width: 0; }
+
+.prompt-card { margin-top: 0.9rem; }
+
+.prompt-card { margin-top: 0.9rem; }
+.prompt-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.prompt-row input { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-width: 0; }
+.prompt-row select { font: inherit; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+
+/* ===== evidence layout: sequence+detail left, vertical reel right ===== */
+.evidence { display: grid; grid-template-columns: 1fr minmax(240px, 290px); gap: 1rem; align-items: start; }
+@media (max-width: 1000px) { .evidence { grid-template-columns: 1fr; } }
+.ev-main { display: grid; gap: 0.9rem; min-width: 0; }
+.ev-side { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); border-top: 4px solid var(--status-info); padding: 0.8rem; }
+
+/* Vertical movie reel: the REAL MovieReel's .rl re-flowed top to bottom. */
+.reel-vertical .rl { grid-auto-flow: row; grid-auto-columns: unset; grid-template-columns: 1fr; overflow-x: visible; max-height: 560px; overflow-y: auto; }
+.reel-vertical .rl-f { min-height: 0; }
+
+.empty-state { border: 1.5px dashed var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; color: var(--muted); font-size: 0.9rem; }

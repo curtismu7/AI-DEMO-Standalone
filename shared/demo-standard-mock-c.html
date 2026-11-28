@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Standard Mock C — Human-in-the-loop gateway demo (consent gate, phone, live sequence)</title>
+<!--
+  DEMO-STANDARD MOCK C of 3 — 2026-11-27. The HITL / consent tier of the same demo standard:
+  for demos whose point is a HUMAN DECISION inside an agent run (approve, MFA step-up, CIBA).
+  Same shell, banner, chips and live sequence as Mock A; adds:
+    - the run PAUSES at the consent hop (chip: held — amber, in words)
+    - a phone mock shows what the human sees
+    - approve / deny continues or ends the run, and the sequence records the human's verdict
+  Interactions: Send → watch hops → approve or deny on the phone → watch the run finish.
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfc; --surface: #ffffff; --surface-2: #eff0f1;
+  --text: #051727; --text-body: #263746; --muted: #556070; --border: #556070;
+  --accent: #d20e0f; --accent-deep: #aa0005; --on-accent: #fff; --accent-soft: #fde8e8;
+  --focus: #12538d; --danger-text: #aa0005;
+  --accent-gradient: linear-gradient(90deg, #d20e0f 55%, #aa0005);
+  --status-ok: #1d7a43; --status-warn: #8a5a00; --status-info: #12538d;
+  --box-dark: #051727; --on-box: #fcfcfc;
+  --font-primary: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1622; --surface: #10202f; --surface-2: #0f2236;
+    --text: #fcfcfc; --text-body: #d5dde4; --muted: #9aa7b2; --border: #7c8894;
+    --status-warn: #f0b34c; --status-info: #8fbcff; --danger-text: #fca5a5;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-body); font: 14px/1.55 var(--font-primary); }
+.shell-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: var(--box-dark); color: var(--on-box); padding: 0.5rem 1rem; border-bottom: 3px solid; border-image: var(--accent-gradient) 1; }
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+.brand-mark { width: 1.7rem; height: 1.7rem; border-radius: 6px; background: var(--accent-gradient); display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; }
+.shell-brand__name { font-size: 1.4rem; font-weight: 700; }
+.shell-nav { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.shell-nav a { color: inherit; text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; font-size: 0.85rem; }
+.shell-nav a[aria-current] { background: var(--accent); border-color: var(--accent); }
+.shell-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.ctl { font: inherit; font-size: 0.8rem; color: inherit; background: transparent; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 0.28rem 0.7rem; cursor: pointer; }
+.ctl--mode { background: var(--accent); border-color: var(--accent-deep); font-weight: 600; }
+.ctl--primary { background: var(--accent); border-color: var(--accent-deep); font-weight: 600; }
+.shell-right label { font-size: 0.8rem; opacity: 0.85; display: inline-flex; align-items: center; gap: 0.3rem; }
+
+.frame { max-width: 1600px; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+.banner { border: 1px solid var(--border); border-left: 4px solid var(--accent); background: var(--surface-2); padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.9rem; }
+.step-num { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent-gradient); color: #fff; font-family: var(--font-mono); font-size: 0.85em; margin-right: 0.5em; vertical-align: middle; }
+h2 { color: var(--text); font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.chip { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; }
+.chip--ok { color: var(--status-ok); border-color: var(--status-ok); }
+.chip--info { color: var(--status-info); border-color: var(--status-info); }
+.chip--warn { color: var(--status-warn); border-color: var(--status-warn); }
+.chip--deny { color: var(--danger-text); border-color: var(--danger-text); }
+
+.demo { display: grid; grid-template-columns: 1fr minmax(280px, 340px); gap: 1rem; align-items: start; }
+@media (max-width: 1000px) { .demo { grid-template-columns: 1fr; } }
+.card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); border-top: 4px solid var(--accent); padding: 1rem; }
+.card h3 { margin: 0 0 0.5rem; color: var(--text); font-size: 1rem; }
+.prompt-row { display: flex; gap: 0.5rem; }
+.prompt-row input { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-width: 0; }
+button.primary { font: inherit; font-weight: 700; color: var(--on-accent); background: var(--accent-gradient); border: 1px solid var(--accent-deep); border-radius: 8px; padding: 0.5rem 1.1rem; cursor: pointer; }
+button.secondary { font: inherit; font-size: 0.85rem; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.9rem; cursor: pointer; }
+
+.seq { border: 1px dotted var(--border); border-radius: 10px; background: var(--surface-2); padding: 1.25rem 1rem 0.75rem; overflow-x: auto; }
+.lifelines { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; min-width: 620px; }
+.actor { text-align: center; }
+.actor .box { display: inline-block; padding: 0.45rem 0.8rem; border-radius: 8px; border: 2px solid transparent; background: var(--box-dark); color: var(--on-box); font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+.actor .box.hot { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lane-col { position: relative; height: 12px; }
+.lane-col::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 2px dashed var(--border); opacity: 0.5; }
+.hop { display: grid; grid-template-columns: repeat(4, 1fr); min-width: 620px; }
+.hop .arrow { grid-column: 2 / 4; display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0; }
+.hop.rev .arrow { grid-column: 1 / 3; flex-direction: row-reverse; }
+.arrow .line { flex: 1; height: 0; border-top: 2px solid var(--text); position: relative; }
+.arrow .line::after { content: ""; position: absolute; top: -5px; border: 5px solid transparent; }
+.hop:not(.rev) .line::after { right: -1px; border-left: 8px solid var(--text); border-right: 0; }
+.hop.rev .line::after { left: -1px; border-right: 8px solid var(--text); border-left: 0; }
+.arrow .alabel { font-size: 0.72rem; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.15rem 0.5rem; cursor: pointer; white-space: nowrap; }
+.hop.hot .line { border-top-color: var(--accent); border-top-width: 2.5px; }
+.hop.hot .alabel { border-color: var(--accent); font-weight: 800; }
+.hop.held .line { border-top-style: dashed; border-top-color: var(--status-warn); }
+.hop.held .alabel { border-color: var(--status-warn); color: var(--status-warn); font-weight: 800; }
+.hop.deny .line { border-top-color: var(--danger-text); }
+.hop.deny .alabel { border-color: var(--danger-text); color: var(--danger-text); font-weight: 800; }
+.hop.pending { opacity: 0.35; }
+
+.reel { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; margin-top: 0.6rem; }
+.reel-card { flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; width: 210px; min-height: 60px; padding: 8px 10px; text-align: left; border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; font: inherit; }
+.reel-card--now { border-color: var(--status-info); box-shadow: 0 0 0 2px var(--status-info); }
+.reel-n { grid-row: 1 / span 2; min-width: 22px; padding: 1px 6px; border-radius: 999px; background: var(--muted); color: var(--surface); font-size: 0.72rem; font-weight: 700; text-align: center; }
+.reel-card--now .reel-n { background: var(--status-info); }
+.reel-title { font-size: 0.72rem; font-weight: 700; }
+.reel-fact { font-size: 0.72rem; color: var(--muted); }
+
+/* phone */
+.phone { border: 2px solid var(--border); border-radius: 22px; padding: 10px; background: var(--surface); }
+.phone .screen { border-radius: 14px; background: var(--surface-2); padding: 0.9rem; min-height: 380px; display: grid; gap: 0.7rem; align-content: start; }
+.phone .notch { width: 80px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 0.6rem; }
+.phone h4 { margin: 0; font-size: 0.85rem; color: var(--text); }
+.phone .who { font-size: 0.72rem; color: var(--muted); }
+.phone .amount { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+.phone .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.phone .cta button { font: inherit; font-weight: 700; padding: 0.55rem; border-radius: 8px; cursor: pointer; }
+.phone .cta .yes { color: var(--on-accent); background: var(--accent-gradient); border: 1px solid var(--accent-deep); }
+.phone .cta .no { color: var(--text); background: var(--surface); border: 1px solid var(--border); }
+.phone .cta button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.phone .receipt { font-size: 0.78rem; border: 1px solid var(--status-ok); border-radius: 8px; padding: 0.5rem 0.6rem; color: var(--status-ok); font-weight: 600; }
+.phone .receipt--no { border-color: var(--danger-text); color: var(--danger-text); }
+
+.detail { margin-top: 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 0.9rem 1.1rem; }
+.code { margin: 0.5rem 0 0; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.sub { color: var(--muted); font-size: 0.8rem; }
+.empty-state { border: 1.5px dashed var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; color: var(--muted); font-size: 0.9rem; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; margin-top: 0.6rem; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+.two-col h4 { margin: 0 0 0.25rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="shell-bar">
+  <div class="shell-brand"><span class="brand-mark">HT</span><span class="shell-brand__name">Transfer gate — human in the loop</span></div>
+  <nav class="shell-nav" aria-label="Pages"><a href="#" aria-current="page">Transfer gate</a><a href="#">Diagram</a></nav>
+  <div class="shell-right">
+    <button class="ctl ctl--mode">Mode: Mock ▾</button>
+    <button class="ctl">Presenter</button>
+    <button class="ctl">Talk track</button>
+    <button class="ctl">Help</button>
+    <button class="ctl">Reset</button>
+    <button class="ctl ctl--primary">Demo</button><button class="ctl">Story</button>
+    <button class="ctl ctl--primary">Shelf↵</button>
+    <label>Theme <button class="ctl">Auto ▾</button></label>
+    <label>Text size <button class="ctl">M ▾</button></label>
+  </div>
+</header>
+
+<main class="frame">
+  <div class="banner">SIMULATED, Mock mode: the consent push, the approval and the MFA beat are simulated on this page. No tenant, phone or PingID is touched. Real mode sends the CIBA request to your configured tenant.</div>
+
+  <h2><span class="step-num">1</span>Ask the agent to move money</h2>
+  <p class="sub" style="max-width:78ch">Amounts at or above $300 pause the run for human consent. The agent waits — it cannot proceed without a single-use approval receipt.</p>
+
+  <div class="demo">
+    <section class="card" aria-label="Run">
+      <h3 style="display:flex;align-items:center;gap:0.5rem">Run
+        <span class="chip chip--info" id="runstate">idle</span>
+        <span style="margin-left:auto"><button class="secondary" onclick="start()">Replay</button></span></h3>
+      <form class="prompt-row" onsubmit="document.getElementById('prompt').value='pay $500 to the vendor account'; start(); return false;">
+        <input id="prompt" value="pay $500 to the vendor account" aria-label="Prompt">
+        <button class="primary" type="submit">Send</button>
+      </form>
+
+      <div class="seq" style="margin-top:0.9rem" role="img" aria-label="Sequence diagram of the run, live">
+        <div class="lifelines">
+          <div class="actor"><span class="box" onclick="show(0)">AI agent</span><div class="lane-col"></div></div>
+          <div class="actor"><span class="box" onclick="show(1)">Transfer gate</span><div class="lane-col"></div></div>
+          <div class="actor"><span class="box" onclick="show(2)">Authorize</span><div class="lane-col"></div></div>
+          <div class="actor"><span class="box" onclick="show(3)">Payments API</span><div class="lane-col"></div></div>
+        </div>
+        <div id="hops"></div>
+      </div>
+
+      <div class="reel" id="reel"></div>
+      <div id="detail-host"></div>
+    </section>
+
+    <section class="card" aria-label="The approver's phone" style="border-top-color: var(--status-info)">
+      <h3>Mark's phone</h3>
+      <div class="phone"><div class="screen" id="screen">
+        <div class="notch"></div>
+        <h4>Approval request</h4>
+        <p class="sub">Run a prompt above. When the gate holds the transfer, the request lands here — approve or deny, and the run continues or ends.</p>
+      </div></div>
+    </section>
+  </div>
+
+  <h2><span class="step-num">2</span>What the gate proved</h2>
+  <div class="empty-state" id="verdict-host">Run a prompt: the gate's decision, the human's verdict and the audit trail appear here.</div>
+</main>
+
+<script>
+const ACTORS=['AI agent','Transfer gate','Authorize','Payments API'];
+const HOPS=[
+  { title:'Invoke', label:'agent → gate · pay $500', fact:'agent identity + amount', chip:['ok','ok'],
+    req:'POST /gate/transfer\nauthorization: Bearer MOCK_AGENT_TOKEN\nx-on-behalf-of: mark\n\n{ "amount": 500, "to": "vendor account" }',
+    res:'HTTP 202\n{ "held": true, "reason": "amount >= consent threshold ($300)" }' },
+  { title:'Policy', label:'gate → Authorize · may this agent ask?', fact:'agent may request; human must consent', chip:['info','info'],
+    req:'POST /as/decision\n\n{ "action": "payments.transfer", "amount": 500,\n  "subject": { "type": "agent", "onBehalfOf": "mark" } }',
+    res:'HTTP 200\n{ "outcome": "PERMIT_WITH_CONSENT",\n  "obligations": ["human-approval", "single-use-receipt"] }' },
+  { title:'Consent', label:'gate → human · push to phone', fact:'HELD — waiting for Mark', chip:['warn','held'],
+    req:'POST /ciba/backchannel\n\n{ "scope": "payments.transfer",\n  "binding_message": "Pay $500 to vendor account",\n  "user": "mark" }',
+    res:'HTTP 200\n{ "auth_req_id": "adr_9k2", "expires_in": 300 }' },
+];
+const AFTER={
+  approve:{ title:'Execute', label:'gate → Payments API · transfer', fact:'receipt consumed, transfer executed', chip:['ok','ok'],
+    req:'POST /payments\nauthorization: Bearer MOCK_NARROWED_TOKEN\nx-approval-receipt: rct_1-use-77f\n\n{ "amount": 500, "to": "vendor account" }',
+    res:'HTTP 201\n{ "paymentId": "PM-55210", "status": "executed" }',
+    verdict:'<strong style="color:var(--status-ok)">APPROVED</strong> — Mark approved on his phone; the gate consumed the single-use receipt and executed the transfer. The receipt cannot be replayed: approving $500 does not authorize $600, and the same receipt fails a second run.' },
+  deny:{ title:'Refused', label:'gate → agent · denied by human', fact:'human said no — the run ends', chip:['deny','deny'],
+    req:'(internal) consent: DENIED by mark',
+    res:'HTTP 403\n{ "error": "consent_denied", "by": "human approval" }',
+    verdict:'<strong style="color:var(--danger-text)">DENIED BY THE HUMAN</strong> — the gate never executed; the agent must tell Mark\'s customer the transfer did not happen. The refusal, who decided it and when are on the audit trail.' },
+};
+let timer=null, pending=null;
+function chipHtml(c){ return `<span class="chip chip--${c[0]}">${c[1]}</span>`; }
+function renderHops(extra){
+  const all=[...HOPS, ...(extra?[extra]:[])];
+  document.getElementById('hops').innerHTML=all.map((h,i)=>{
+    const held=h.chip[1]==='held', deny=h.chip[1]==='deny';
+    return `<div class="hop ${h.rev?'rev':''} ${held?'held':''} ${deny?'deny':''} ${i===all.length-1?'hot':''}">
+      <div class="arrow"><span class="line"></span><button class="alabel" onclick="show(${i})">${h.label} ${chipHtml(h.chip)}</button></div></div>`;
+  }).join('');
+  const cur=all[all.length-1];
+  document.querySelectorAll('.actor .box').forEach((b,i)=>b.classList.toggle('hot', cur&&(cur.to===i||cur.from===i)));
+}
+function renderReel(count, extra){
+  const all=[...HOPS.slice(0,count), ...(extra?[extra]:[])];
+  document.getElementById('reel').innerHTML=all.map((h,i)=>
+    `<button class="reel-card ${i===all.length-1?'reel-card--now':''}" onclick="show(${i})">
+      <span class="reel-n">${i+1}</span><span class="reel-title">${h.title}</span><span class="reel-fact">${h.fact}</span></button>`).join('');
+}
+function show(i){
+  const extra=pending?AFTER[pending]:null;
+  const all=[...HOPS, ...(extra?[extra]:[])];
+  const h=all[i]; if(!h) return;
+  document.getElementById('detail-host').innerHTML=`
+    <div class="detail" role="region" aria-label="Step ${i+1} detail">
+      <header style="display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap"><h3 style="margin:0;font-size:1rem;color:var(--text)">${i+1}. ${h.title}</h3><span class="sub">${h.fact}</span>${chipHtml(h.chip)}</header>
+      <div class="two-col">
+        <div><h4>Request</h4><div class="code">${h.req}</div></div>
+        <div><h4>Response</h4><div class="code">${h.res}</div></div>
+      </div>
+    </div>`;
+}
+function start(){
+  if(timer){clearInterval(timer);timer=null;}
+  pending=null;
+  document.getElementById('detail-host').innerHTML='';
+  document.getElementById('verdict-host').innerHTML='Running…';
+  document.getElementById('runstate').textContent='running'; document.getElementById('runstate').className='chip chip--warn';
+  document.getElementById('screen').innerHTML='<div class="notch"></div><h4>Approval request</h4><p class="sub">Waiting for the gate…</p>';
+  renderHops(false); renderReel(0);
+  let i=0;
+  timer=setInterval(()=>{
+    i++; renderHops(false); renderReel(i); show(i-1);
+    if(i===HOPS.length){
+      clearInterval(timer); timer=null;
+      document.getElementById('runstate').textContent='held'; document.getElementById('runstate').className='chip chip--warn';
+      document.getElementById('screen').innerHTML=`<div class="notch"></div>
+        <h4>Approval request</h4>
+        <p class="who">From: Transfer gate · agent: payments-agent acting for mark</p>
+        <div class="amount">$500.00</div>
+        <p style="margin:.1rem 0 .4rem">Pay <strong>vendor account</strong>. The agent says: "settle this month's invoice".</p>
+        <p class="sub">Single-use receipt. Approving this exact amount only.</p>
+        <div class="cta"><button class="no" onclick="decide('deny')">Deny</button><button class="yes" onclick="decide('approve')">Approve</button></div>`;
+    }
+  },800);
+}
+function decide(d){
+  pending=d; const a=AFTER[d];
+  renderHops(a); renderReel(HOPS.length+1); show(HOPS.length);
+  document.getElementById('runstate').textContent=d==='approve'?'done':'denied';
+  document.getElementById('runstate').className='chip '+(d==='approve'?'chip--ok':'chip--deny');
+  document.getElementById('screen').innerHTML=`<div class="notch"></div><h4>Approval request</h4>
+    <div class="receipt ${d==='approve'?'':'receipt--no'}">${d==='approve'?'Approved — receipt rct_1-use-77f sent to the gate (single use).':'Denied — the gate was told.'}</div>`;
+  document.getElementById('verdict-host').innerHTML=a.verdict;
+}
+</script>
+</body>
+</html>
