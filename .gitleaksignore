@@ -4,3 +4,6 @@
 d47da853475bf4ce44d5bbbc7993632e53010f11:HANDOFF-TW-SIGNIN-FLEET-2026-11-15.md:generic-api-key:17
 # Same file on the closed PR #243 branch (fix/handoff-tw-username, 641ad26).
 641ad26c0ef19096e4d8c249d83dbbdff7f30bb9:HANDOFF-TW-SIGNIN-FLEET-2026-11-15.md:generic-api-key:17
+
+# agent_control_watch.py self-test fixture: a made-up "Authorization: Bearer eyJ..." string used to prove mask() hides tokens (not a credential)
+91b7df71698aed8c3bb59c6b5f5c1da079369c0a:docs/privilege-env-rebuild/scripts/agent_control_watch.py:curl-auth-header:79
