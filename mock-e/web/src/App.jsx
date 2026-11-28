@@ -5,6 +5,7 @@ import HelpDialog from "./help-dialog/HelpDialog.jsx";
 import SequenceView from "./evidence/SequenceView";
 import MovieReel from "./evidence/MovieReel";
 import StepDetailPanel from "./evidence/StepDetailPanel";
+import { Tag } from "./evidence/Tag";
 import { UC1_RUN, UC1_DENY_RUN } from "./evidence/fixtures";
 import "./top-menu/top-menu.css";
 import "./floating-dialog/floating-dialog.css";
@@ -25,6 +26,24 @@ const HELP = [
   { heading: "Components", body: "Every screen is the shared evidence component set (SequenceView, MovieReel, StepDetailPanel) from shared/evidence — nothing is hand-drawn." },
 ];
 
+// The agent's reply, derived from the run itself (the customer-agent rule: nothing generated, nothing the engine did not produce).
+function replyOf(scenario, hops) {
+  if (scenario === "deny") {
+    const refused = hops.find((h) => h.verdict === "deny");
+    return {
+      who: "Gateway",
+      text: "I could not complete that. The gateway refused the tool call: the delegated token does not carry accounts:read (insufficient_scope). Nothing was sent to the tool.",
+      outcome: "DENY",
+    };
+  }
+  const tool = hops.find((h) => h.kind === "tool-dispatched");
+  return {
+    who: "Agent",
+    text: tool ? "Here is Alex's account balance, read through the gateway with the delegated token — the policy permitted it at call time." : "Working on it...",
+    outcome: "PERMIT",
+  };
+}
+
 export default function App() {
   const [prompt, setPrompt] = useState("Show Alex's account balance");
   const [scenario, setScenario] = useState("uc1");
@@ -41,6 +60,8 @@ export default function App() {
   const hops = scenario === "uc1" ? UC1_RUN : UC1_DENY_RUN;
   const shown = hops.slice(0, revealed);
   const done = revealed >= hops.length && revealed > 0;
+  const started = revealed > 0;
+  const reply = replyOf(scenario, hops);
 
   const run = () => {
     clearInterval(timer.current);
@@ -105,6 +126,28 @@ export default function App() {
               <option value="deny">UC1 · wrong scope (DENY)</option>
             </select>
           </div>
+          {started && (
+            <div className="turns" aria-label="Conversation">
+              <div className="turn">
+                <div className="turn__you">
+                  <span className="avatar" aria-hidden="true">You</span>
+                  <p className="turn__said">{prompt}</p>
+                </div>
+                <div className="turn__agent">
+                  <span className="avatar avatar--agent" aria-hidden="true">AI</span>
+                  <div className="turn__body">
+                    {!done
+                      ? <p className="ev-muted" data-testid="turn-running">Working on it{running ? "…" : ""}</p>
+                      : <div className="turn__answer" data-testid="turn-answer">
+                          <p className="turn__who kicker">{reply.who}</p>
+                          <p data-testid="turn-answer-text">{reply.text}</p>
+                          <span><Tag state={reply.outcome === "PERMIT" ? "ok" : "bad"}>{reply.outcome}</Tag> <button type="button" className="turn__ev" onClick={() => setSelected(hops[0].n)}>See evidence →</button></span>
+                        </div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ===== the ONE sequence diagram — the real SequenceView, live ===== */}
