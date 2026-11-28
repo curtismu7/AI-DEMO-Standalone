@@ -1,36 +1,16 @@
-/* Mock E page styles — shell, strip, layout. Everything component-shaped comes from the
-   vendored evidence.css / floating-dialog.css / JsonPane.css and the shared standalone-ui.css. */
+/* Mock E page styles — layout only. Visuals come from standalone-ui.css, layout.css,
+   top-menu.css, evidence.css, floating-dialog.css. */
 
-.frame { max-width: 1600px; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+.frame { max-width: 2200px; margin: 0 auto; padding: 0 1.5rem 3rem; width: 100%; }
+h1 { color: var(--text); margin: 0.6rem 0; }
 h2 { color: var(--text); font-size: 1.05rem; margin: 1.4rem 0 0.5rem; }
 
-/* shell bar (P12 order) */
-.shell-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: var(--box-dark); color: var(--on-box); padding: 0.5rem 1rem; border-bottom: 3px solid; border-image: var(--accent-gradient) 1; }
-.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; }
-.brand-mark { width: 1.7rem; height: 1.7rem; border-radius: 6px; background: var(--accent-gradient); display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; }
-.shell-brand__name { font-size: 1.4rem; font-weight: 700; }
-.shell-nav { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
-.shell-nav a { color: inherit; text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; font-size: 0.85rem; }
-.shell-nav a[aria-current] { background: var(--accent); border-color: var(--accent); }
-.shell-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-.ctl { font: inherit; font-size: 0.8rem; color: inherit; background: transparent; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 0.28rem 0.7rem; cursor: pointer; }
-.ctl--mode { background: var(--accent); border-color: var(--accent-deep); font-weight: 600; }
-.shell-right label { font-size: 0.8rem; opacity: 0.85; display: inline-flex; align-items: center; gap: 0.3rem; }
+.prompt-card { margin-top: 0.9rem; }
 
-.banner { border: 1px solid var(--border); border-left: 4px solid var(--accent); background: var(--surface-2); padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.9rem; }
-
-.prompt-card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); border-top: 4px solid var(--accent); padding: 0.9rem 1rem; margin-top: 0.9rem; }
+.prompt-card { margin-top: 0.9rem; }
 .prompt-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .prompt-row input { flex: 1; font: inherit; padding: 0.5rem 0.7rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-width: 0; }
 .prompt-row select { font: inherit; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-button.primary { font: inherit; font-weight: 700; color: var(--on-accent); background: var(--accent-gradient); border: 1px solid var(--accent-deep); border-radius: 8px; padding: 0.5rem 1.1rem; cursor: pointer; }
-button.primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
-
-.chip { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; }
-.chip[data-state="ok"] { color: var(--status-ok); border-color: var(--status-ok); }
-.chip[data-state="warn"] { color: var(--status-warn); border-color: var(--status-warn); }
-.chip[data-state="deny"] { color: var(--danger-text); border-color: var(--danger-text); }
-.chip[data-state="info"] { color: var(--status-info); border-color: var(--status-info); }
 
 /* ===== evidence layout: sequence+detail left, vertical reel right ===== */
 .evidence { display: grid; grid-template-columns: 1fr minmax(240px, 290px); gap: 1rem; align-items: start; }
